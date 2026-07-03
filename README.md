@@ -65,21 +65,7 @@ Verified using v3.2 scheme (APK Signature Scheme v3.2): false
 Verified using v4 scheme (APK Signature Scheme v4): false
 ```
 
-> **Note:** Starting with version 1.7, releases are signed using a new keystore. Use the fingerprints below that match the version you're verifying.
-
-### v1.7 and later
-
-```
-Owner: CN=Mowtiie
-Issuer: CN=Mowtiie
-Serial number: 8a256fdcdde50069
-Valid from: Wed Jun 10 22:57:23 PST 2026 until: Sun Oct 26 22:57:23 PST 2053
-Certificate fingerprints:
-         SHA1: 56:4E:2C:DB:E4:06:C9:EC:15:E6:BC:D9:0A:88:38:72:8B:FB:13:20
-         SHA256: 8B:67:51:F3:C3:31:85:63:5F:98:95:30:B6:C0:73:A1:39:7B:3D:41:2B:EF:AE:69:06:A2:EB:58:45:D2:DE:63
-```
-
-### v1.6 and earlier
+### From v1.4 up to future releases
 
 ```
 CN=Vrixzandro Eliponga
