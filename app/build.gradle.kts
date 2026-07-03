@@ -27,8 +27,8 @@ android {
         applicationId = "com.eipna.centsation"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.7.1"
+        versionCode = 9
+        versionName = "1.7.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
