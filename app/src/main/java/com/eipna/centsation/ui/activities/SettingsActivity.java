@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -13,6 +14,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -33,6 +35,7 @@ import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
 import com.eipna.centsation.databinding.ActivitySettingsBinding;
+import com.eipna.centsation.util.BackupManager;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -77,6 +80,15 @@ public class SettingsActivity extends CentsationActivity {
                     .replace(R.id.settings_container, new SettingsFragment())
                     .commit();
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -138,6 +150,22 @@ public class SettingsActivity extends CentsationActivity {
                 return true;
             });
 
+            Preference backupNow = findPreference("backup_now");
+            if (backupNow != null) {
+                backupNow.setOnPreferenceClickListener(preference -> {
+                    performManualBackup();
+                    return true;
+                });
+            }
+
+            Preference restoreAuto = findPreference("restore_auto");
+            if (restoreAuto != null) {
+                restoreAuto.setOnPreferenceClickListener(preference -> {
+                    checkAndPromptAutoRestore();
+                    return true;
+                });
+            }
+
             listCurrency.setEntries(Currency.getNames());
             listCurrency.setEntryValues(Currency.getCodes());
 
@@ -189,6 +217,63 @@ public class SettingsActivity extends CentsationActivity {
 
             exportSavings = findPreference("export");
             importSavings = findPreference("import");
+        }
+
+        private void performManualBackup() {
+            Context context = requireContext().getApplicationContext();
+            showProgressDialog(R.string.progress_exporting);
+            executor.execute(() -> {
+                boolean success = BackupManager.performAutoBackup(context);
+                postToUi(() -> {
+                    dismissProgressDialog();
+                    Toast.makeText(requireContext(),
+                            success ? R.string.toast_backup_successful : R.string.toast_backup_failed,
+                            Toast.LENGTH_LONG).show();
+                });
+            });
+        }
+
+        private void checkAndPromptAutoRestore() {
+            Context context = requireContext().getApplicationContext();
+            showProgressDialog(R.string.progress_importing);
+            executor.execute(() -> {
+                BackupManager.BackupInfo info = BackupManager.detectExistingBackup(context);
+                postToUi(() -> {
+                    dismissProgressDialog();
+                    if (info == null) {
+                        Toast.makeText(requireContext(), R.string.toast_no_auto_backup, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.preference_restore_auto_title)
+                            .setIcon(R.drawable.ic_unarchive)
+                            .setMessage(String.format("Found backup from %s containing %d goal(s) and %d transaction(s).\n\nRestore now?",
+                                    info.dateFormatted, info.savingsCount, info.transactionsCount))
+                            .setPositiveButton("Restore", (d, w) -> executeAutoRestore(info))
+                            .setNegativeButton(R.string.dialog_button_cancel, null)
+                            .show();
+                });
+            });
+        }
+
+        private void executeAutoRestore(BackupManager.BackupInfo info) {
+            Context context = requireContext().getApplicationContext();
+            showProgressDialog(R.string.progress_importing);
+            executor.execute(() -> {
+                boolean ok = false;
+                if (info.sourceFile != null) {
+                    ok = BackupManager.restoreFromFile(context, info.sourceFile);
+                } else if (info.sourceUri != null) {
+                    ok = BackupManager.restoreFromUri(context, info.sourceUri);
+                }
+                final boolean success = ok;
+                postToUi(() -> {
+                    dismissProgressDialog();
+                    Toast.makeText(requireContext(),
+                            success ? R.string.toast_import_successful : R.string.toast_import_failed,
+                            Toast.LENGTH_SHORT).show();
+                });
+            });
         }
 
         private void exportData() {

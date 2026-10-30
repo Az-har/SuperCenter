@@ -12,11 +12,13 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textview.MaterialTextView;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionType;
+import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.PreferenceUtil;
 
@@ -58,7 +60,7 @@ public class TransactionAdapter extends ListAdapter<Transaction, TransactionAdap
 
     @Override
     public void onBindViewHolder(@NonNull TransactionAdapter.ViewHolder holder, int position) {
-        holder.bind(getItem(position), preferenceUtil, context);
+        holder.bind(getItem(position), preferenceUtil);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -71,26 +73,30 @@ public class TransactionAdapter extends ListAdapter<Transaction, TransactionAdap
             parent = itemView.findViewById(R.id.transaction_parent);
             amount = itemView.findViewById(R.id.transaction_amount);
             date = itemView.findViewById(R.id.transaction_date);
+            AnimationUtil.applySpringPressEffect(parent);
         }
 
-        public void bind(Transaction currentTransaction, PreferenceUtil preferenceUtil, Context context) {
+        public void bind(Transaction currentTransaction, PreferenceUtil preferenceUtil) {
             String selectedCurrencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
+            String deadlineFormat = preferenceUtil.getDeadlineFormat();
 
-            int depositCardColor = context.getResources().getColor(R.color.md_theme_primaryContainer, itemView.getContext().getTheme());
-            int depositTextColor = context.getResources().getColor(R.color.md_theme_onPrimaryContainer, itemView.getContext().getTheme());
+            int depositCardColor = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorPrimaryContainer);
+            int depositTextColor = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorOnPrimaryContainer);
 
-            int withdrawCardColor = context.getResources().getColor(R.color.md_theme_tertiaryContainer, itemView.getContext().getTheme());
-            int withdrawTextColor = context.getResources().getColor(R.color.md_theme_onTertiaryContainer, itemView.getContext().getTheme());
+            int withdrawCardColor = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorTertiaryContainer);
+            int withdrawTextColor = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorOnTertiaryContainer);
 
-            date.setText(DateParser.getStringDate(currentTransaction.getDate()));
+            date.setText(DateParser.getStringDate(currentTransaction.getDate(), deadlineFormat));
 
             if (currentTransaction.getType().equals(TransactionType.DEPOSIT.VALUE) || currentTransaction.getType().equals(TransactionType.CREATED.VALUE)) {
                 parent.setCardBackgroundColor(depositCardColor);
                 amount.setTextColor(depositTextColor);
+                date.setTextColor(depositTextColor);
                 amount.setText(String.format("%c%s%s", '+', selectedCurrencySymbol, NumberFormat.getInstance().format(currentTransaction.getAmount())));
             } else if (currentTransaction.getType().equals(TransactionType.WITHDRAW.VALUE)) {
                 parent.setCardBackgroundColor(withdrawCardColor);
                 amount.setTextColor(withdrawTextColor);
+                date.setTextColor(withdrawTextColor);
                 amount.setText(String.format("%c%s%s", '-', selectedCurrencySymbol, NumberFormat.getInstance().format(currentTransaction.getAmount())));
             }
         }

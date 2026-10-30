@@ -14,6 +14,8 @@ if (keystorePropertiesFile.exists()) {
     println("WARNING: keystore.properties file not found in the root directory.")
 }
 
+val hasReleaseKeystore = keystorePropertiesFile.exists() && keystoreProperties.containsKey("storeFile")
+
 android {
     namespace = "com.eipna.centsation"
     compileSdk = 36
@@ -27,8 +29,8 @@ android {
         applicationId = "com.eipna.centsation"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.7.2"
+        versionCode = 10
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -36,11 +38,13 @@ android {
         manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_round"
     }
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -48,7 +52,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

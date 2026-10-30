@@ -27,8 +27,17 @@ public class Database extends SQLiteOpenHelper {
     public static final String COLUMN_TRANSACTION_TYPE = "type";
     public static final String COLUMN_TRANSACTION_DATE = "date";
 
+    private static volatile Database sInstance;
+
+    public static synchronized Database getInstance(Context context) {
+        if (sInstance == null && context != null) {
+            sInstance = new Database(context.getApplicationContext());
+        }
+        return sInstance;
+    }
+
     public Database(@Nullable Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        super(context != null ? context.getApplicationContext() : null, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     @Override
@@ -36,7 +45,7 @@ public class Database extends SQLiteOpenHelper {
         String createSavingTable = "CREATE TABLE IF NOT EXISTS " + TABLE_SAVING + "(" +
                 COLUMN_SAVING_ID + " TEXT PRIMARY KEY, " +
                 COLUMN_SAVING_NAME + " TEXT NOT NULL, " +
-                COLUMN_SAVING_CURRENT_SAVING+ " REAL NOT NULL, " +
+                COLUMN_SAVING_CURRENT_SAVING + " REAL NOT NULL, " +
                 COLUMN_SAVING_GOAL + " REAL NOT NULL, " +
                 COLUMN_SAVING_NOTES + " TEXT, " +
                 COLUMN_SAVING_IS_ARCHIVED + " INTEGER NOT NULL, " +

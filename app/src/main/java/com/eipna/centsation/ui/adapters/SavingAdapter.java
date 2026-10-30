@@ -20,8 +20,10 @@ import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.PreferenceUtil;
+import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -72,33 +74,13 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View savingView = LayoutInflater.from(context).inflate(R.layout.recycler_saving, parent, false);
-        return new ViewHolder(savingView);
+        return new ViewHolder(savingView, listener);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Saving currentSaving = getItem(position);
         holder.bind(currentSaving, preferences);
-
-        holder.itemView.setOnClickListener(view -> dispatchClick(holder));
-        holder.delete.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.DELETE));
-        holder.share.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.SHARE));
-        holder.update.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.TRANSACTION));
-        holder.archive.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.ARCHIVE));
-        holder.unarchive.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.UNARCHIVE));
-        holder.history.setOnClickListener(view -> dispatchOperation(holder, SavingOperation.HISTORY));
-    }
-
-    private void dispatchClick(ViewHolder holder) {
-        int pos = holder.getBindingAdapterPosition();
-        if (pos == RecyclerView.NO_POSITION) return;
-        listener.onClick(pos);
-    }
-
-    private void dispatchOperation(ViewHolder holder, SavingOperation operation) {
-        int pos = holder.getBindingAdapterPosition();
-        if (pos == RecyclerView.NO_POSITION) return;
-        listener.onOperationClick(operation, pos);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -110,7 +92,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
         LinearLayout description;
         LinearProgressIndicator progress;
 
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView, Listener listener) {
             super(itemView);
             parent = itemView.findViewById(R.id.saving_parent);
             name = itemView.findViewById(R.id.saving_name);
@@ -127,12 +109,36 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             unarchive = itemView.findViewById(R.id.saving_unarchive);
             delete = itemView.findViewById(R.id.saving_delete);
             share = itemView.findViewById(R.id.saving_share);
+
+            AnimationUtil.applySpringPressEffect(parent);
+            AnimationUtil.applySpringPressEffect(update);
+
+            itemView.setOnClickListener(v -> {
+                int pos = getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && listener != null) {
+                    listener.onClick(pos);
+                }
+            });
+
+            delete.setOnClickListener(v -> dispatchOp(listener, SavingOperation.DELETE));
+            share.setOnClickListener(v -> dispatchOp(listener, SavingOperation.SHARE));
+            update.setOnClickListener(v -> dispatchOp(listener, SavingOperation.TRANSACTION));
+            archive.setOnClickListener(v -> dispatchOp(listener, SavingOperation.ARCHIVE));
+            unarchive.setOnClickListener(v -> dispatchOp(listener, SavingOperation.UNARCHIVE));
+            history.setOnClickListener(v -> dispatchOp(listener, SavingOperation.HISTORY));
+        }
+
+        private void dispatchOp(Listener listener, SavingOperation op) {
+            int pos = getBindingAdapterPosition();
+            if (pos != RecyclerView.NO_POSITION && listener != null) {
+                listener.onOperationClick(op, pos);
+            }
         }
 
         public void bind(Saving currentSaving, PreferenceUtil preferences) {
             String currencySymbol = Currency.getSymbol(preferences.getCurrency());
             String deadlineFormat = preferences.getDeadlineFormat();
-            int percentValue = (int) ((currentSaving.getCurrentSaving() / currentSaving.getGoal()) * 100);
+            int percentValue = SavingsCalculator.getPercent(currentSaving);
 
             if (Currency.isRTLCurrency(preferences.getCurrency())) {
                 description.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -146,6 +152,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
 
             if (currentSaving.getIsArchived() == Saving.IS_ARCHIVE) {
                 archive.setVisibility(View.GONE);
+                unarchive.setVisibility(View.VISIBLE);
                 update.setVisibility(View.GONE);
                 name.setAlpha(0.6f);
 
@@ -153,7 +160,10 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                 spannableString.setSpan(new StrikethroughSpan(), 0, currentSaving.getName().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 name.setText(spannableString);
             } else {
+                archive.setVisibility(View.VISIBLE);
                 unarchive.setVisibility(View.GONE);
+                update.setVisibility(View.VISIBLE);
+                name.setAlpha(1.0f);
                 name.setText(currentSaving.getName());
             }
 
@@ -163,11 +173,11 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             deadline.setVisibility(currentSaving.getDeadline() == AlarmSetter.NO_ALARM ? View.GONE : View.VISIBLE);
             deadline.setText(String.format("Deadline: %s", DateParser.getStringDate(currentSaving.getDeadline(), deadlineFormat)));
 
-            percent.setText(String.format("(%s%c)", percentValue, '%'));
-            parent.setChecked(currentSaving.getCurrentSaving() >= currentSaving.getGoal());
+            percent.setText(String.format("%d%%", percentValue));
+            parent.setChecked(SavingsCalculator.isCompleted(currentSaving));
             saving.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getCurrentSaving())));
             goal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getGoal())));
-            progress.setProgress(percentValue, true);
+            progress.setProgressCompat(Math.min(percentValue, 100), false);
         }
     }
 }

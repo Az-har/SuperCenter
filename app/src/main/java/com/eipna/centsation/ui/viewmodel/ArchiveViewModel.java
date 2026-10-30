@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.BackupManager;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -36,6 +37,7 @@ public class ArchiveViewModel extends AndroidViewModel {
 
     private void loadSavingsBlocking() {
         savingsLiveData.postValue(savingRepository.getSavings(Saving.IS_ARCHIVE));
+        BackupManager.triggerAutoBackup(getApplication());
     }
 
     public void deleteSaving(Saving saving) {
@@ -46,11 +48,26 @@ public class ArchiveViewModel extends AndroidViewModel {
         });
     }
 
+    public void archiveSaving(Saving saving) {
+        Saving archived = new Saving(saving);
+        archived.setIsArchived(Saving.IS_ARCHIVE);
+        AlarmSetter.cancel(getApplication(), saving);
+        executor.execute(() -> {
+            savingRepository.edit(archived);
+            loadSavingsBlocking();
+        });
+    }
+
     public void unarchiveSaving(Saving saving) {
         Saving unarchived = new Saving(saving);
         unarchived.setIsArchived(Saving.NOT_ARCHIVE);
         executor.execute(() -> {
             savingRepository.edit(unarchived);
+            if (unarchived.getDeadline() != AlarmSetter.NO_ALARM
+                    && unarchived.getDeadline() > System.currentTimeMillis()
+                    && unarchived.getCurrentSaving() < unarchived.getGoal()) {
+                AlarmSetter.set(getApplication(), unarchived);
+            }
             loadSavingsBlocking();
         });
     }

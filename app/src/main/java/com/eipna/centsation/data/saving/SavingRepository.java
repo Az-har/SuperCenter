@@ -10,190 +10,200 @@ import androidx.annotation.Nullable;
 
 import com.eipna.centsation.data.Database;
 import com.eipna.centsation.data.transaction.Transaction;
-import com.eipna.centsation.data.transaction.TransactionRepository;
 import com.eipna.centsation.data.transaction.TransactionType;
 import com.eipna.centsation.util.AlarmSetter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class SavingRepository extends Database {
+public class SavingRepository implements AutoCloseable {
 
-    private final TransactionRepository transactionRepository;
-
+    private final Database dbHelper;
     private final Context context;
 
     public SavingRepository(@Nullable Context context) {
-        super(context);
         this.context = context == null ? null : context.getApplicationContext();
-        this.transactionRepository = new TransactionRepository(context);
+        this.dbHelper = Database.getInstance(context);
     }
 
     public void create(Saving createdSaving) {
-        SQLiteDatabase database = getWritableDatabase();
-        ContentValues values = new ContentValues();
+        if (dbHelper == null || createdSaving == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        database.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Database.COLUMN_SAVING_ID, createdSaving.getID());
+            values.put(Database.COLUMN_SAVING_NAME, createdSaving.getName());
+            values.put(Database.COLUMN_SAVING_CURRENT_SAVING, createdSaving.getCurrentSaving());
+            values.put(Database.COLUMN_SAVING_GOAL, createdSaving.getGoal());
+            values.put(Database.COLUMN_SAVING_NOTES, createdSaving.getNotes());
+            values.put(Database.COLUMN_SAVING_IS_ARCHIVED, createdSaving.getIsArchived());
+            values.put(Database.COLUMN_SAVING_DEADLINE, createdSaving.getDeadline());
+            database.insert(Database.TABLE_SAVING, null, values);
 
-        values.put(COLUMN_SAVING_ID, createdSaving.getID());
-        values.put(COLUMN_SAVING_NAME, createdSaving.getName());
-        values.put(COLUMN_SAVING_CURRENT_SAVING, createdSaving.getCurrentSaving());
-        values.put(COLUMN_SAVING_GOAL, createdSaving.getGoal());
-        values.put(COLUMN_SAVING_NOTES, createdSaving.getNotes());
-        values.put(COLUMN_SAVING_IS_ARCHIVED, createdSaving.getIsArchived());
-        values.put(COLUMN_SAVING_DEADLINE, createdSaving.getDeadline());
-        database.insert(TABLE_SAVING, null, values);
+            ContentValues txValues = new ContentValues();
+            txValues.put(Database.COLUMN_TRANSACTION_SAVING_ID, createdSaving.getID());
+            txValues.put(Database.COLUMN_TRANSACTION_AMOUNT, createdSaving.getCurrentSaving());
+            txValues.put(Database.COLUMN_TRANSACTION_TYPE, TransactionType.CREATED.VALUE);
+            txValues.put(Database.COLUMN_TRANSACTION_DATE, System.currentTimeMillis());
+            database.insert(Database.TABLE_TRANSACTION, null, txValues);
 
-        Transaction initialTransaction = new Transaction();
-        initialTransaction.setSavingID(createdSaving.getID());
-        initialTransaction.setAmount(createdSaving.getCurrentSaving());
-        initialTransaction.setType(TransactionType.CREATED.VALUE);
-        transactionRepository.create(initialTransaction);
-        database.close();
+            database.setTransactionSuccessful();
+        } finally {
+            database.endTransaction();
+        }
     }
 
     public void edit(Saving editedSaving) {
-        SQLiteDatabase database = getWritableDatabase();
+        if (dbHelper == null || editedSaving == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
         ContentValues values = new ContentValues();
+        values.put(Database.COLUMN_SAVING_NAME, editedSaving.getName());
+        values.put(Database.COLUMN_SAVING_CURRENT_SAVING, editedSaving.getCurrentSaving());
+        values.put(Database.COLUMN_SAVING_GOAL, editedSaving.getGoal());
+        values.put(Database.COLUMN_SAVING_NOTES, editedSaving.getNotes());
+        values.put(Database.COLUMN_SAVING_IS_ARCHIVED, editedSaving.getIsArchived());
+        values.put(Database.COLUMN_SAVING_DEADLINE, editedSaving.getDeadline());
 
-        values.put(COLUMN_SAVING_NAME, editedSaving.getName());
-        values.put(COLUMN_SAVING_CURRENT_SAVING, editedSaving.getCurrentSaving());
-        values.put(COLUMN_SAVING_GOAL, editedSaving.getGoal());
-        values.put(COLUMN_SAVING_NOTES, editedSaving.getNotes());
-        values.put(COLUMN_SAVING_IS_ARCHIVED, editedSaving.getIsArchived());
-        values.put(COLUMN_SAVING_DEADLINE, editedSaving.getDeadline());
-
-        database.update(TABLE_SAVING, values, COLUMN_SAVING_ID + " = ?", new String[]{editedSaving.getID()});
-        database.close();
+        database.update(Database.TABLE_SAVING, values, Database.COLUMN_SAVING_ID + " = ?", new String[]{editedSaving.getID()});
     }
 
     public void delete(String savingID) {
-        SQLiteDatabase database = getWritableDatabase();
-        database.delete(TABLE_SAVING, COLUMN_SAVING_ID + " = ?", new String[]{savingID});
-        database.close();
+        if (dbHelper == null || savingID == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        database.beginTransaction();
+        try {
+            database.delete(Database.TABLE_TRANSACTION, Database.COLUMN_TRANSACTION_SAVING_ID + " = ?", new String[]{savingID});
+            database.delete(Database.TABLE_SAVING, Database.COLUMN_SAVING_ID + " = ?", new String[]{savingID});
+            database.setTransactionSuccessful();
+        } finally {
+            database.endTransaction();
+        }
     }
 
     public void makeTransaction(Saving updatedSaving, double amount, TransactionType type) {
-        SQLiteDatabase database = getWritableDatabase();
-        ContentValues values = new ContentValues();
+        if (dbHelper == null || updatedSaving == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        database.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Database.COLUMN_SAVING_CURRENT_SAVING, updatedSaving.getCurrentSaving());
+            database.update(Database.TABLE_SAVING, values, Database.COLUMN_SAVING_ID + " = ?", new String[]{updatedSaving.getID()});
 
-        values.put(COLUMN_SAVING_CURRENT_SAVING, updatedSaving.getCurrentSaving());
-        database.update(TABLE_SAVING, values, COLUMN_SAVING_ID + " = ?", new String[]{updatedSaving.getID()});
+            ContentValues txValues = new ContentValues();
+            txValues.put(Database.COLUMN_TRANSACTION_SAVING_ID, updatedSaving.getID());
+            txValues.put(Database.COLUMN_TRANSACTION_AMOUNT, Math.abs(amount));
+            txValues.put(Database.COLUMN_TRANSACTION_TYPE, type.VALUE);
+            txValues.put(Database.COLUMN_TRANSACTION_DATE, System.currentTimeMillis());
+            database.insert(Database.TABLE_TRANSACTION, null, txValues);
 
-        Transaction transaction = new Transaction();
-        transaction.setSavingID(updatedSaving.getID());
-        transaction.setAmount(Math.abs(amount));
-        transaction.setType(type.VALUE);
-        transaction.setDate(System.currentTimeMillis());
-        transactionRepository.create(transaction);
-        database.close();
+            database.setTransactionSuccessful();
+        } finally {
+            database.endTransaction();
+        }
     }
 
     public ArrayList<Saving> getSavings(int isArchive) {
         ArrayList<Saving> list = new ArrayList<>();
-        SQLiteDatabase database = getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_SAVING + " WHERE " + COLUMN_SAVING_IS_ARCHIVED + " = ?";
-        Cursor cursor = database.rawQuery(query, new String[]{String.valueOf(isArchive)});
-
-        if (cursor.moveToFirst()) {
-            do {
-                Saving queriedSaving = new Saving();
-                queriedSaving.setID(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_ID)));
-                queriedSaving.setName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NAME)));
-                queriedSaving.setCurrentSaving(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_CURRENT_SAVING)));
-                queriedSaving.setGoal(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_GOAL)));
-                queriedSaving.setNotes(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NOTES)));
-                queriedSaving.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SAVING_IS_ARCHIVED)));
-                queriedSaving.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_SAVING_DEADLINE)));
-                list.add(queriedSaving);
-            } while (cursor.moveToNext());
+        if (dbHelper == null) return list;
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+        String query = "SELECT * FROM " + Database.TABLE_SAVING + " WHERE " + Database.COLUMN_SAVING_IS_ARCHIVED + " = ?";
+        try (Cursor cursor = database.rawQuery(query, new String[]{String.valueOf(isArchive)})) {
+            if (cursor.moveToFirst()) {
+                do {
+                    Saving queriedSaving = mapSavingFromCursor(cursor);
+                    list.add(queriedSaving);
+                } while (cursor.moveToNext());
+            }
         }
-        cursor.close();
-        database.close();
         return list;
     }
 
     public ArrayList<Saving> getAllSavings() {
         ArrayList<Saving> list = new ArrayList<>();
-        SQLiteDatabase database = getReadableDatabase();
-        Cursor cursor = database.rawQuery("SELECT * FROM " + TABLE_SAVING, null);
-
-        if (cursor.moveToFirst()) {
-            do {
-                Saving queriedSaving = new Saving();
-                queriedSaving.setID(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_ID)));
-                queriedSaving.setName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NAME)));
-                queriedSaving.setCurrentSaving(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_CURRENT_SAVING)));
-                queriedSaving.setGoal(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_GOAL)));
-                queriedSaving.setNotes(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NOTES)));
-                queriedSaving.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SAVING_IS_ARCHIVED)));
-                queriedSaving.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_SAVING_DEADLINE)));
-                list.add(queriedSaving);
-            } while (cursor.moveToNext());
+        if (dbHelper == null) return list;
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+        try (Cursor cursor = database.rawQuery("SELECT * FROM " + Database.TABLE_SAVING, null)) {
+            if (cursor.moveToFirst()) {
+                do {
+                    Saving queriedSaving = mapSavingFromCursor(cursor);
+                    list.add(queriedSaving);
+                } while (cursor.moveToNext());
+            }
         }
-        cursor.close();
-        database.close();
         return list;
     }
 
     public Saving getSaving(String savingID) {
-        SQLiteDatabase database = getReadableDatabase();
-        Cursor cursor = database.rawQuery("SELECT * FROM " + TABLE_SAVING + " WHERE " + Database.COLUMN_SAVING_ID + " = ?", new String[]{savingID});
-
-        if (cursor.moveToFirst()) {
-            Saving queriedSaving = new Saving();
-            queriedSaving.setID(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_ID)));
-            queriedSaving.setName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NAME)));
-            queriedSaving.setCurrentSaving(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_CURRENT_SAVING)));
-            queriedSaving.setGoal(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_SAVING_GOAL)));
-            queriedSaving.setNotes(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SAVING_NOTES)));
-            queriedSaving.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SAVING_IS_ARCHIVED)));
-            queriedSaving.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_SAVING_DEADLINE)));
-
-            cursor.close();
-            database.close();
-            return queriedSaving;
+        if (dbHelper == null || savingID == null) return null;
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+        try (Cursor cursor = database.rawQuery("SELECT * FROM " + Database.TABLE_SAVING + " WHERE " + Database.COLUMN_SAVING_ID + " = ?", new String[]{savingID})) {
+            if (cursor.moveToFirst()) {
+                return mapSavingFromCursor(cursor);
+            }
         }
-        cursor.close();
-        database.close();
         return null;
     }
 
+    private Saving mapSavingFromCursor(Cursor cursor) {
+        Saving queriedSaving = new Saving();
+        queriedSaving.setID(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_ID)));
+        queriedSaving.setName(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_NAME)));
+        queriedSaving.setCurrentSaving(cursor.getDouble(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_CURRENT_SAVING)));
+        queriedSaving.setGoal(cursor.getDouble(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_GOAL)));
+        queriedSaving.setNotes(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_NOTES)));
+        queriedSaving.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_IS_ARCHIVED)));
+        queriedSaving.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_DEADLINE)));
+        return queriedSaving;
+    }
+
     public void bulkImport(@NonNull List<Saving> savings, @NonNull List<Transaction> transactions) {
-        try (SQLiteDatabase database = getWritableDatabase()) {
-            database.beginTransaction();
-            try {
-                for (Saving saving : savings) {
-                    ContentValues values = new ContentValues();
-                    values.put(COLUMN_SAVING_ID, saving.getID());
-                    values.put(COLUMN_SAVING_NAME, saving.getName());
-                    values.put(COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
-                    values.put(COLUMN_SAVING_GOAL, saving.getGoal());
-                    values.put(COLUMN_SAVING_NOTES, saving.getNotes());
-                    values.put(COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
-                    values.put(COLUMN_SAVING_DEADLINE, saving.getDeadline());
-                    database.insert(TABLE_SAVING, null, values);
-                }
-
-                for (Transaction transaction : transactions) {
-                    ContentValues values = new ContentValues();
-                    values.put(COLUMN_TRANSACTION_SAVING_ID, transaction.getSavingID());
-                    values.put(COLUMN_TRANSACTION_AMOUNT, transaction.getAmount());
-                    values.put(COLUMN_TRANSACTION_TYPE, transaction.getType());
-                    values.put(COLUMN_TRANSACTION_DATE, transaction.getDate());
-                    database.insert(TABLE_TRANSACTION, null, values);
-                }
-
-                database.setTransactionSuccessful();
-            } finally {
-                database.endTransaction();
+        if (dbHelper == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        database.beginTransaction();
+        try {
+            for (Saving saving : savings) {
+                ContentValues values = new ContentValues();
+                values.put(Database.COLUMN_SAVING_ID, saving.getID());
+                values.put(Database.COLUMN_SAVING_NAME, saving.getName());
+                values.put(Database.COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
+                values.put(Database.COLUMN_SAVING_GOAL, saving.getGoal());
+                values.put(Database.COLUMN_SAVING_NOTES, saving.getNotes());
+                values.put(Database.COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
+                values.put(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
+                database.insert(Database.TABLE_SAVING, null, values);
             }
+
+            for (Transaction transaction : transactions) {
+                ContentValues values = new ContentValues();
+                values.put(Database.COLUMN_TRANSACTION_SAVING_ID, transaction.getSavingID());
+                values.put(Database.COLUMN_TRANSACTION_AMOUNT, transaction.getAmount());
+                values.put(Database.COLUMN_TRANSACTION_TYPE, transaction.getType());
+                values.put(Database.COLUMN_TRANSACTION_DATE, transaction.getDate());
+                database.insert(Database.TABLE_TRANSACTION, null, values);
+            }
+
+            database.setTransactionSuccessful();
+        } finally {
+            database.endTransaction();
         }
 
         long now = System.currentTimeMillis();
         for (Saving saving : savings) {
             long deadline = saving.getDeadline();
-            if (deadline != AlarmSetter.NO_ALARM && deadline > now) {
+            if (saving.getIsArchived() == Saving.NOT_ARCHIVE
+                    && saving.getCurrentSaving() < saving.getGoal()
+                    && deadline != AlarmSetter.NO_ALARM
+                    && deadline > now) {
                 AlarmSetter.set(context, saving);
+            } else {
+                AlarmSetter.cancel(context, saving);
             }
         }
+    }
+
+    @Override
+    public void close() {
+        // Shared database helper connection pool is managed globally.
     }
 }

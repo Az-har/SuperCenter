@@ -2,40 +2,54 @@
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     style="?attr/materialCardViewFilledStyle"
     android:id="@+id/transaction_parent"
-    app:cardUseCompatPadding="true"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="?attr/colorPrimaryContainer"
-    android:layout_marginHorizontal="8dp"
+    app:cardElevation="1dp"
+    app:cardCornerRadius="18dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    android:layout_marginStart="14dp"
+    android:layout_marginEnd="14dp"
+    android:layout_marginTop="5dp"
+    android:layout_marginBottom="5dp"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <RelativeLayout
-        android:padding="16dp"
+    <LinearLayout
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/transaction_amount"
-            android:text="Transaction Amount"
-            android:textAppearance="?attr/textAppearanceTitleLarge"
-            android:fontFamily="serif"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentStart="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/transaction_date"
+                android:text="May 14, 2026 • 10:30 AM"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textStyle="bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+        </LinearLayout>
 
         <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/transaction_date"
-            android:text="Transaction Date"
-            android:layout_below="@id/transaction_amount"
-            android:layout_alignParentStart="true"
-            android:layout_marginTop="7dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnPrimaryContainer"
+            android:id="@+id/transaction_amount"
+            android:text="+$150.00"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-    </RelativeLayout>
+            android:layout_height="wrap_content"
+            tools:ignore="HardcodedText" />
+    </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

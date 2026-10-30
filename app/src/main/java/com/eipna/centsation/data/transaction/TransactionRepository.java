@@ -11,62 +11,74 @@ import com.eipna.centsation.data.Database;
 
 import java.util.ArrayList;
 
-public class TransactionRepository extends Database {
+public class TransactionRepository implements AutoCloseable {
+
+    private final Database dbHelper;
+
     public TransactionRepository(@Nullable Context context) {
-        super(context);
+        this.dbHelper = Database.getInstance(context);
     }
 
     public void create(Transaction createdTransaction) {
-        SQLiteDatabase database = getWritableDatabase();
+        if (dbHelper == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put(COLUMN_TRANSACTION_SAVING_ID, createdTransaction.getSavingID());
-        values.put(COLUMN_TRANSACTION_AMOUNT, createdTransaction.getAmount());
-        values.put(COLUMN_TRANSACTION_TYPE, createdTransaction.getType());
-        values.put(COLUMN_TRANSACTION_DATE, System.currentTimeMillis());
-        database.insert(TABLE_TRANSACTION, null, values);
-        database.close();
+        values.put(Database.COLUMN_TRANSACTION_SAVING_ID, createdTransaction.getSavingID());
+        values.put(Database.COLUMN_TRANSACTION_AMOUNT, createdTransaction.getAmount());
+        values.put(Database.COLUMN_TRANSACTION_TYPE, createdTransaction.getType());
+        values.put(Database.COLUMN_TRANSACTION_DATE, createdTransaction.getDate() > 0 ? createdTransaction.getDate() : System.currentTimeMillis());
+        database.insert(Database.TABLE_TRANSACTION, null, values);
     }
 
     public ArrayList<Transaction> get(String savingID) {
         ArrayList<Transaction> list = new ArrayList<>();
-        SQLiteDatabase database = getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_TRANSACTION + " WHERE " + COLUMN_TRANSACTION_SAVING_ID + " = ?" + " ORDER BY " + COLUMN_TRANSACTION_DATE + " DESC";
-        Cursor cursor = database.rawQuery(query, new String[]{savingID});
-
-        if (cursor.moveToFirst()) {
-            do {
-                Transaction queriedTransaction = new Transaction();
-                queriedTransaction.setID(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_ID)));
-                queriedTransaction.setSavingID(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_SAVING_ID)));
-                queriedTransaction.setAmount(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_AMOUNT)));
-                queriedTransaction.setType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_TYPE)));
-                queriedTransaction.setDate(cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_DATE)));
-                list.add(queriedTransaction);
-            } while (cursor.moveToNext());
+        if (dbHelper == null || savingID == null) return list;
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+        String query = "SELECT * FROM " + Database.TABLE_TRANSACTION + " WHERE " + Database.COLUMN_TRANSACTION_SAVING_ID + " = ? ORDER BY " + Database.COLUMN_TRANSACTION_DATE + " DESC";
+        try (Cursor cursor = database.rawQuery(query, new String[]{savingID})) {
+            if (cursor.moveToFirst()) {
+                do {
+                    Transaction queriedTransaction = new Transaction();
+                    queriedTransaction.setID(cursor.getInt(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_ID)));
+                    queriedTransaction.setSavingID(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_SAVING_ID)));
+                    queriedTransaction.setAmount(cursor.getDouble(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_AMOUNT)));
+                    queriedTransaction.setType(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_TYPE)));
+                    queriedTransaction.setDate(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_DATE)));
+                    list.add(queriedTransaction);
+                } while (cursor.moveToNext());
+            }
         }
-        cursor.close();
-        database.close();
         return list;
     }
 
     public ArrayList<Transaction> getAll() {
         ArrayList<Transaction> list = new ArrayList<>();
-        SQLiteDatabase database = getReadableDatabase();
-        Cursor cursor = database.rawQuery("SELECT * FROM " + TABLE_TRANSACTION, null);
-
-        if (cursor.moveToFirst()) {
-            do {
-                Transaction queriedTransaction = new Transaction();
-                queriedTransaction.setID(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_ID)));
-                queriedTransaction.setSavingID(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_SAVING_ID)));
-                queriedTransaction.setAmount(cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_AMOUNT)));
-                queriedTransaction.setType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_TYPE)));
-                queriedTransaction.setDate(cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_DATE)));
-                list.add(queriedTransaction);
-            } while (cursor.moveToNext());
+        if (dbHelper == null) return list;
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+        try (Cursor cursor = database.rawQuery("SELECT * FROM " + Database.TABLE_TRANSACTION + " ORDER BY " + Database.COLUMN_TRANSACTION_DATE + " DESC", null)) {
+            if (cursor.moveToFirst()) {
+                do {
+                    Transaction queriedTransaction = new Transaction();
+                    queriedTransaction.setID(cursor.getInt(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_ID)));
+                    queriedTransaction.setSavingID(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_SAVING_ID)));
+                    queriedTransaction.setAmount(cursor.getDouble(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_AMOUNT)));
+                    queriedTransaction.setType(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_TYPE)));
+                    queriedTransaction.setDate(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_TRANSACTION_DATE)));
+                    list.add(queriedTransaction);
+                } while (cursor.moveToNext());
+            }
         }
-        cursor.close();
-        database.close();
         return list;
+    }
+
+    public void deleteForSaving(String savingID) {
+        if (dbHelper == null || savingID == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        database.delete(Database.TABLE_TRANSACTION, Database.COLUMN_TRANSACTION_SAVING_ID + " = ?", new String[]{savingID});
+    }
+
+    @Override
+    public void close() {
+        // Shared database helper connection pool is managed globally.
     }
 }

@@ -9,9 +9,10 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
-        app:liftOnScroll="false"
+        app:liftOnScroll="true"
         app:liftOnScrollColor="?attr/colorSurface"
         android:fitsSystemWindows="true"
+        android:background="@android:color/transparent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -27,7 +28,9 @@
     <LinearLayout
         android:id="@+id/empty_indicator"
         android:orientation="vertical"
+        android:gravity="center"
         android:layout_gravity="center"
+        android:padding="24dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
 
@@ -36,14 +39,17 @@
             android:layout_height="100dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_archive"
+            android:background="@drawable/bg_pill_accent"
+            android:padding="22dp"
             tools:ignore="ContentDescription"
-            app:tint="?attr/colorTertiary" />
+            app:tint="?attr/colorPrimary" />
 
         <com.google.android.material.textview.MaterialTextView
             android:text="@string/empty_indicator_archive"
-            android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:layout_marginTop="4dp"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textColor="?attr/colorOnSurface"
             android:textAlignment="center"
             android:layout_gravity="center"
             android:layout_width="wrap_content"
@@ -53,12 +59,10 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/saving_list"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:layoutAnimation="@anim/layout_animation_fall_down"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/archive_list"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

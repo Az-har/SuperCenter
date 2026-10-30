@@ -3,158 +3,216 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/saving_parent"
     android:clickable="true"
     android:focusable="true"
     android:checkable="true"
-    android:layout_marginStart="8dp"
-    android:layout_marginEnd="8dp"
-    app:cardUseCompatPadding="true"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+    android:layout_marginStart="14dp"
+    android:layout_marginEnd="14dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="8dp"
+    app:cardElevation="1dp"
+    app:cardCornerRadius="22dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
     style="@style/Widget.Material3.CardView.Filled"
-    android:id="@+id/saving_parent"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
     <LinearLayout
         android:orientation="vertical"
-        android:padding="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/saving_name"
-            android:text="Saving Name"
-            android:textAppearance="?attr/textAppearanceTitleLarge"
-            android:textColor="?attr/colorPrimary"
-            android:ellipsize="end"
-            android:maxLines="1"
+        <!-- Top Header: Title and Percent Badge -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            tools:ignore="HardcodedText" />
+            android:layout_height="wrap_content">
 
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/saving_name"
+                android:text="Vacation Fund"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/saving_percent"
+                android:text="75%"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:background="@drawable/bg_pill_accent"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginStart="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+        </LinearLayout>
+
+        <!-- Current Amount vs Goal -->
         <LinearLayout
             android:id="@+id/saving_description"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
+            android:gravity="bottom"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="12dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/saving_current_saving"
-                android:text="1000.0"
-                android:textColor="?attr/colorOnSurface"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:text="$1,500.00"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:textAppearance="?attr/textAppearanceHeadlineMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:text="out of"
-                android:textColor="?attr/colorOnSurface"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:layout_marginEnd="4dp"
-                android:layout_marginStart="4dp"
+                android:text=" of "
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="2dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/saving_goal"
-                android:text="1000.0"
-                android:textColor="?attr/colorOnSurface"
+                android:text="$2,000.00"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textStyle="bold"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:layout_marginEnd="4dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:ignore="HardcodedText" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/saving_percent"
-                android:text="(100.0%)"
-                android:textColor="?attr/colorOnSurface"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:layout_marginBottom="2dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:ignore="HardcodedText" />
         </LinearLayout>
 
+        <!-- Rounded Progress Indicator -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/saving_progress"
+            android:max="100"
+            app:trackThickness="10dp"
+            app:trackCornerRadius="5dp"
+            app:indicatorColor="?attr/colorPrimary"
+            app:trackColor="?attr/colorSurfaceContainerHighest"
+            android:layout_marginBottom="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Deadline Info -->
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/saving_deadline"
-            android:text="Deadline: 04/11/2025"
-            android:textColor="?attr/colorOnSurface"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:layout_marginBottom="12dp"
+            android:text="Deadline: 12/25/2026"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:layout_marginBottom="8dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             tools:ignore="HardcodedText" />
 
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
+        <!-- Divider line -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
+            android:background="?attr/colorOutlineVariant"
+            android:alpha="0.5" />
+
+        <!-- Action Row -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_gravity="center"
+            <!-- Primary Transact Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_update"
+                style="@style/Widget.Material3.Button.TonalButton"
+                app:icon="@drawable/ic_add_circle"
+                app:iconSize="18dp"
+                android:text="Transact"
+                app:cornerRadius="14dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="16dp"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content">
+                android:layout_height="40dp"
+                tools:ignore="HardcodedText" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_update"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_add_circle"
-                    app:iconTint="?attr/colorSecondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+            <Space
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_history"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_history"
-                    app:iconTint="?attr/colorSecondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_history"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_history"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="@string/toolbar_history"
+                android:layout_width="40dp"
+                android:layout_height="40dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_share"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_share"
-                    app:iconTint="?attr/colorSecondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_share"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_share"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="Share notes"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                tools:ignore="HardcodedText" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_archive"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_archive"
-                    app:iconTint="?attr/colorSecondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_archive"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_archive"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="@string/toolbar_archive"
+                android:layout_width="40dp"
+                android:layout_height="40dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_unarchive"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_unarchive"
-                    app:iconTint="?attr/colorSecondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_unarchive"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_unarchive"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="Unarchive"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                tools:ignore="HardcodedText" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saving_delete"
-                    style="?attr/materialIconButtonStyle"
-                    app:icon="@drawable/ic_delete"
-                    app:iconTint="?attr/colorTertiary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saving_delete"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="?attr/colorError"
+                android:contentDescription="@string/dialog_button_delete"
+                android:layout_width="40dp"
+                android:layout_height="40dp" />
+        </LinearLayout>
     </LinearLayout>
-
-    <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/saving_progress"
-        android:layout_gravity="bottom"
-        android:max="100"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
 </com.google.android.material.card.MaterialCardView>

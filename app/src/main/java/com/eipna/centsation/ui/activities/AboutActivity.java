@@ -5,9 +5,11 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -58,6 +60,15 @@ public class AboutActivity extends AppCompatActivity {
                     .replace(R.id.about_container, new AboutFragment())
                     .commit();
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public static class AboutFragment extends PreferenceFragmentCompat {

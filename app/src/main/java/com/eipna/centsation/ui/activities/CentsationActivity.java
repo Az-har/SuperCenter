@@ -1,10 +1,8 @@
 package com.eipna.centsation.ui.activities;
 
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.WindowManager;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -55,11 +53,5 @@ public abstract class CentsationActivity extends AppCompatActivity {
         }
 
         if (preferenceUtil.isDynamicColors()) DynamicColors.applyToActivityIfAvailable(this);
-    }
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        recreate();
     }
 }

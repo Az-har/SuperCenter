@@ -12,6 +12,7 @@
         android:fitsSystemWindows="true"
         app:liftOnScroll="true"
         app:liftOnScrollTargetViewId="@id/scrollView"
+        android:background="@android:color/transparent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -32,16 +33,21 @@
 
         <LinearLayout
             android:orientation="vertical"
-            android:paddingBottom="16dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="8dp"
+            android:paddingBottom="24dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="12dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_name_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_name"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
@@ -55,7 +61,12 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_current_saving_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_current_saving"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="16dp"
                 android:layout_width="match_parent"
@@ -71,7 +82,12 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_goal_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_goal"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
                 android:layout_marginBottom="16dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
@@ -86,7 +102,12 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_deadline_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_deadline"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
                 app:helperText="This field is optional"
                 app:endIconMode="custom"
                 app:endIconDrawable="@drawable/ic_clear"
@@ -106,7 +127,12 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_notes_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_notes"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
                 app:helperText="This field is optional"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">

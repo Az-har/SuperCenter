@@ -27,6 +27,7 @@ import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.ActivityEditBinding;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.DateValidatorPointForward;
@@ -36,6 +37,7 @@ import com.google.android.material.snackbar.Snackbar;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.TimeZone;
 
 public class EditActivity extends CentsationActivity {
 
@@ -73,6 +75,11 @@ public class EditActivity extends CentsationActivity {
 
         savingRepository = new SavingRepository(this);
         currentSaving = savingRepository.getSaving(savingIDExtra);
+        if (currentSaving == null) {
+            Toast.makeText(this, "Saving goal not found", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
         String selectedCurrencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
         binding.fieldSavingGoalLayout.setPrefixText(selectedCurrencySymbol);
@@ -92,6 +99,7 @@ public class EditActivity extends CentsationActivity {
         binding.fieldSavingDeadlineLayout.setEndIconOnClickListener(v -> {
             binding.fieldSavingDeadlineText.setText("");
             binding.fieldSavingDeadlineLayout.setEndIconVisible(false);
+            currentSaving.setDeadline(AlarmSetter.NO_ALARM);
         });
     }
 
@@ -124,17 +132,29 @@ public class EditActivity extends CentsationActivity {
                 .build();
 
         datePicker.addOnPositiveButtonClickListener(selection -> {
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTimeInMillis(selection);
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
+            Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            utcCalendar.setTimeInMillis(selection);
 
-            currentSaving.setDeadline(calendar.getTimeInMillis());
+            Calendar localCalendar = Calendar.getInstance();
+            localCalendar.set(
+                    utcCalendar.get(Calendar.YEAR),
+                    utcCalendar.get(Calendar.MONTH),
+                    utcCalendar.get(Calendar.DAY_OF_MONTH),
+                    9, 0, 0
+            );
+            localCalendar.set(Calendar.MILLISECOND, 0);
+
+            long calculatedDeadline = localCalendar.getTimeInMillis();
+            if (calculatedDeadline <= System.currentTimeMillis()) {
+                Calendar fallback = Calendar.getInstance();
+                fallback.add(Calendar.HOUR_OF_DAY, 1);
+                calculatedDeadline = fallback.getTimeInMillis();
+            }
+
+            currentSaving.setDeadline(calculatedDeadline);
             String deadlineFormat = preferenceUtil.getDeadlineFormat();
 
-            binding.fieldSavingDeadlineText.setText(DateParser.getStringDate(selection, deadlineFormat));
+            binding.fieldSavingDeadlineText.setText(DateParser.getStringDate(calculatedDeadline, deadlineFormat));
             binding.fieldSavingDeadlineLayout.setEndIconVisible(true);
         });
         datePicker.show(getSupportFragmentManager(), null);
@@ -142,7 +162,10 @@ public class EditActivity extends CentsationActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home) finish();
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
         if (item.getItemId() == R.id.save) editSaving();
         return true;
     }
@@ -162,6 +185,10 @@ public class EditActivity extends CentsationActivity {
         double goal;
         try {
             goal = Double.parseDouble(goalText);
+            if (goal <= 0) {
+                binding.fieldSavingGoalLayout.setError(getString(R.string.field_error_positive_goal));
+                return;
+            }
         } catch (NumberFormatException e) {
             binding.fieldSavingGoalLayout.setError(getString(R.string.field_error_invalid_number));
             return;
@@ -174,16 +201,18 @@ public class EditActivity extends CentsationActivity {
         editedSaving.setGoal(goal);
         editedSaving.setNotes(notesText);
         editedSaving.setIsArchived(currentSaving.getIsArchived());
-        editedSaving.setDeadline(currentSaving.getDeadline());
+        editedSaving.setDeadline(deadlineText.isEmpty() ? AlarmSetter.NO_ALARM : currentSaving.getDeadline());
 
-        if (deadlineText.isEmpty()) {
+        if (deadlineText.isEmpty()
+                || editedSaving.getIsArchived() == Saving.IS_ARCHIVE
+                || editedSaving.getCurrentSaving() >= editedSaving.getGoal()) {
             AlarmSetter.cancel(this, editedSaving);
-            editedSaving.setDeadline(AlarmSetter.NO_ALARM);
         } else {
             AlarmSetter.set(this, editedSaving);
         }
 
         savingRepository.edit(editedSaving);
+        BackupManager.triggerAutoBackup(this);
         setResult(RESULT_OK);
         finish();
     }

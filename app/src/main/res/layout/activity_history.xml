@@ -9,8 +9,11 @@
     tools:context=".ui.activities.HistoryActivity">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
         app:liftOnScroll="true"
+        app:liftOnScrollColor="?attr/colorSurface"
         android:fitsSystemWindows="true"
+        android:background="@android:color/transparent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -18,14 +21,58 @@
             android:id="@+id/toolbar"
             app:title="@string/toolbar_history"
             app:titleTextColor="?attr/colorOnSurface"
+            app:subtitleTextColor="?attr/colorOnSurfaceVariant"
             app:navigationIconTint="?attr/colorOnSurfaceVariant"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"/>
     </com.google.android.material.appbar.AppBarLayout>
 
+    <LinearLayout
+        android:id="@+id/empty_indicator"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:padding="24dp"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_history"
+            android:background="@drawable/bg_pill_accent"
+            android:padding="24dp"
+            tools:ignore="ContentDescription"
+            app:tint="?attr/colorPrimary" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:text="@string/empty_indicator_history"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:layout_marginTop="20dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <com.google.android.material.textview.MaterialTextView
+            android:text="@string/empty_indicator_history_subtitle"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAlignment="center"
+            android:layout_marginTop="6dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:layoutAnimation="@anim/layout_animation_fall_down"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

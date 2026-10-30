@@ -14,6 +14,9 @@
 
     <string name="empty_indicator_main">No savings found</string>
     <string name="empty_indicator_archive">No archived savings</string>
+    <string name="empty_indicator_history">No transactions recorded yet</string>
+    <string name="empty_indicator_history_subtitle">Deposits and withdrawals will appear here</string>
+    <string name="empty_indicator_search">No matching savings goals found</string>
 
     <string name="radio_button_deposit">Deposit</string>
     <string name="radio_button_withdraw">Withdraw</string>
@@ -21,6 +24,7 @@
     <string name="field_error_required">This field is required</string>
     <string name="field_error_empty_saving">Please enter a value</string>
     <string name="field_error_negative_saving">Saving cannot be negative</string>
+    <string name="field_error_positive_goal">Target goal must be greater than zero</string>
     <string name="field_error_invalid_number">Please enter a valid number</string>
 
     <string name="field_saving_name">Name</string>
@@ -59,6 +63,8 @@
     <string name="menu_item_about">About</string>
     <string name="menu_item_overflow">More Options</string>
     <string name="menu_item_sort">Sort By</string>
+    <string name="menu_item_search">Search</string>
+    <string name="search_hint">Search savings goals…</string>
     <string name="menu_item_sort_name">Name</string>
     <string name="menu_item_sort_current_saving">Saving</string>
     <string name="menu_item_sort_goal">Goal</string>
@@ -112,10 +118,20 @@
 
     <!-- Backup Preference Category -->
     <string name="preference_category_backup">Backup</string>
+    <string name="preference_auto_backup_title">Auto-Backup to Storage</string>
+    <string name="preference_auto_backup_summary">Keep a persistent backup in Documents/Centsation that survives app uninstall</string>
+    <string name="preference_backup_now_title">Back Up Now</string>
+    <string name="preference_backup_now_summary">Save an immediate backup to Documents/Centsation</string>
+    <string name="preference_restore_auto_title">Restore from Auto-Backup</string>
+    <string name="preference_restore_auto_summary">Restore savings from persistent local backup</string>
     <string name="preference_import_title">Import</string>
     <string name="preference_import_summary">Import back your savings</string>
     <string name="preference_export_title">Export</string>
     <string name="preference_export_summary">Export your savings</string>
+    <string name="toast_backup_successful">Backup saved to Documents/Centsation</string>
+    <string name="toast_backup_failed">Could not create backup</string>
+    <string name="toast_no_auto_backup">No auto-backup file found</string>
+    <string name="btn_restore_from_backup">Restore from Backup</string>
 
     <!--About Preference Category -->
     <string name="preference_support_title">Support the developer</string>
@@ -144,4 +160,16 @@
     <string name="deadline_format_dd_mm_yyyy">08/04/2025</string>
     <string name="deadline_format_yyyy_dd_mm">2025/08/04</string>
     <string name="deadline_format_yyyy_mm_dd">2025/04/08</string>
+
+    <!-- Notification strings -->
+    <string name="notification_deadline_title">%s Deadline!</string>
+    <string name="notification_deadline_body">The deadline for your goal \"%s\" is today.</string>
+
+    <!-- Feedback & Swipe Action strings -->
+    <string name="snackbar_archived">%s archived</string>
+    <string name="snackbar_unarchived">%s restored</string>
+    <string name="snackbar_undo">UNDO</string>
+    <string name="swipe_action_transact">Transact</string>
+    <string name="swipe_action_archive">Archive</string>
+    <string name="swipe_action_unarchive">Restore</string>
 </resources>

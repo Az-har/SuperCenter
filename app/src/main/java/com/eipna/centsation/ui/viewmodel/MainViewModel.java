@@ -12,6 +12,7 @@ import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.saving.SavingSort;
 import com.eipna.centsation.data.transaction.TransactionType;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.PreferenceUtil;
 
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public class MainViewModel extends AndroidViewModel {
 
     private volatile String sortCriteria;
     private volatile boolean isSortAscending;
+    private volatile String searchQuery = "";
 
     public MainViewModel(@NonNull Application application) {
         super(application);
@@ -52,14 +54,33 @@ public class MainViewModel extends AndroidViewModel {
         return isSortAscending;
     }
 
+    public String getSearchQuery() {
+        return searchQuery;
+    }
+
     public void loadSavings() {
+        executor.execute(this::loadSavingsBlocking);
+    }
+
+    public void setSearchQuery(String query) {
+        this.searchQuery = query == null ? "" : query.trim().toLowerCase();
         executor.execute(this::loadSavingsBlocking);
     }
 
     private void loadSavingsBlocking() {
         List<Saving> list = savingRepository.getSavings(Saving.NOT_ARCHIVE);
         sortInPlace(list);
+        if (!searchQuery.isEmpty()) {
+            List<Saving> filtered = new ArrayList<>();
+            for (Saving s : list) {
+                if (s.getName() != null && s.getName().toLowerCase().contains(searchQuery)) {
+                    filtered.add(s);
+                }
+            }
+            list = filtered;
+        }
         savingsLiveData.postValue(list);
+        BackupManager.triggerAutoBackup(getApplication());
     }
 
     public void setSortCriteria(String criteria) {
@@ -112,15 +133,37 @@ public class MainViewModel extends AndroidViewModel {
     public void archiveSaving(Saving saving) {
         Saving archived = new Saving(saving);
         archived.setIsArchived(Saving.IS_ARCHIVE);
+        AlarmSetter.cancel(getApplication(), saving);
         executor.execute(() -> {
             savingRepository.edit(archived);
             loadSavingsBlocking();
         });
     }
 
+    public void unarchiveSaving(Saving saving) {
+        Saving unarchived = new Saving(saving);
+        unarchived.setIsArchived(Saving.NOT_ARCHIVE);
+        executor.execute(() -> {
+            savingRepository.edit(unarchived);
+            if (unarchived.getDeadline() != AlarmSetter.NO_ALARM
+                    && unarchived.getDeadline() > System.currentTimeMillis()
+                    && unarchived.getCurrentSaving() < unarchived.getGoal()) {
+                AlarmSetter.set(getApplication(), unarchived);
+            }
+            loadSavingsBlocking();
+        });
+    }
+
     public void deposit(Saving saving, double amount) {
         Saving updated = new Saving(saving);
-        updated.setCurrentSaving(saving.getCurrentSaving() + amount);
+        double newBalance = saving.getCurrentSaving() + amount;
+        updated.setCurrentSaving(newBalance);
+
+        // If goal is achieved, cancel the deadline notification
+        if (newBalance >= updated.getGoal()) {
+            AlarmSetter.cancel(getApplication(), updated);
+        }
+
         executor.execute(() -> {
             savingRepository.makeTransaction(updated, amount, TransactionType.DEPOSIT);
             loadSavingsBlocking();
@@ -132,6 +175,14 @@ public class MainViewModel extends AndroidViewModel {
         if (newBalance < 0) return false;
         Saving updated = new Saving(saving);
         updated.setCurrentSaving(newBalance);
+
+        // If previously achieved and balance dropped below goal, re-arm alarm if future
+        if (saving.getCurrentSaving() >= saving.getGoal() && newBalance < updated.getGoal()) {
+            if (updated.getDeadline() != AlarmSetter.NO_ALARM && updated.getDeadline() > System.currentTimeMillis()) {
+                AlarmSetter.set(getApplication(), updated);
+            }
+        }
+
         executor.execute(() -> {
             savingRepository.makeTransaction(updated, amount, TransactionType.WITHDRAW);
             loadSavingsBlocking();

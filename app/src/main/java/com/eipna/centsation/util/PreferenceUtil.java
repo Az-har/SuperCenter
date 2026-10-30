@@ -82,4 +82,28 @@ public class PreferenceUtil {
     public boolean isScreenPrivacyEnabled() {
         return sharedPreferences.getBoolean("screen_privacy", false);
     }
+
+    public boolean isAutoBackupEnabled() {
+        return sharedPreferences.getBoolean("auto_backup", true);
+    }
+
+    public void setAutoBackupEnabled(boolean value) {
+        sharedPreferences.edit().putBoolean("auto_backup", value).apply();
+    }
+
+    public long getLastBackupTimestamp() {
+        return sharedPreferences.getLong("last_backup_timestamp", 0L);
+    }
+
+    public void setLastBackupTimestamp(long timestamp) {
+        sharedPreferences.edit().putLong("last_backup_timestamp", timestamp).apply();
+    }
+
+    public boolean hasDismissedReinstallRestore() {
+        return sharedPreferences.getBoolean("dismissed_reinstall_restore", false);
+    }
+
+    public void setDismissedReinstallRestore(boolean value) {
+        sharedPreferences.edit().putBoolean("dismissed_reinstall_restore", value).apply();
+    }
 }
