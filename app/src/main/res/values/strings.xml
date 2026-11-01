@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Centsation</string>
-    <string name="app_easter_egg">You\'ve done this before, haven\'t you?</string>
+    <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>
     <string name="app_license">GNU General Public License v3.0</string>
-    <string name="app_author">mowtiie</string>
+    <string name="app_author">Az-har</string>
 
     <string name="toolbar_main">Savings</string>
     <string name="toolbar_create">New saving</string>
@@ -143,6 +143,8 @@
     <string name="preference_app_source_code_title">Source Code</string>
     <string name="preference_app_source_code_summary">Check the Github repository and the README</string>
     <string name="preference_app_author">Author</string>
+    <string name="preference_author_note_title">Author Notes</string>
+    <string name="preference_author_note_summary">Crafted with care by Az-har. A clean, privacy-first offline savings tracker built for achieving your financial goals without ads, trackers, or complexity.</string>
 
     <!-- Theme options -->
     <string name="theme_system">System Default</string>

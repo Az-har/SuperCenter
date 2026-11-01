@@ -1,92 +1,66 @@
 <div align="center">
 
-<img width="" src="metadata/en-US/images/icon.png"  width=160 height=160  align="center">
+<img src="metadata/en-US/images/icon.png" width="160" height="160" alt="Centsation Icon" align="center">
 
 # Centsation
 
-Centsation is the easy-to-use savings tracker that helps you reach your financial goals! Whether you're saving for a vacation, a new gadget, or an emergency fund, Centsation makes it simple and straightforward.
+**Personal Savings & Goal Tracker**  
+*Crafted with passion by [Az-har](https://github.com/Az-har)*
+
+Centsation is a modern, privacy-first offline savings tracker designed to help you reach your financial milestones with zero fuss. Whether you're setting aside funds for a vacation, an emergency buffer, a vehicle, or a major purchase, Centsation keeps you focused, motivated, and in control.
+
+[![GitHub release](https://img.shields.io/github/v/release/Az-har/Centsation?style=flat-square)](https://github.com/Az-har/Centsation/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg?style=flat-square)](https://developer.android.com)
 
 </div>
 
-## Features
+---
 
-* **Free and Open Source:** Enjoy complete transparency and community-driven development.
-* **Modern Design:** Experience a beautiful and intuitive interface with Material 3 and dynamic color support.
-* **Enhanced Accessibility:** Customize the UI contrast (low, medium, or high) for optimal readability.
-* **Dark Mode:** Save battery and reduce eye strain with a sleek dark theme.
-* **Multi-Currency Support:** Track your savings in a currency of your choice.
-* **Archived Savings:** Keep your active savings organized by archiving completed or paused goals.
-* **Data Management:** Easily export and import your data using JSON files.
-* **Transaction History:** Review a detailed log of your savings activities.
-* **Optional Deadlines:** Set and track progress towards your goals with optional deadlines.
-* **Flexible Sorting:** Organize your savings by name, current amount, goal amount, or deadline.
-* **Crash Reports:** If the app encounters an unexpected error, a dialog on the next launch lets you send the crash details by email or save them to a file.
+## Highlights & Features
+
+- **100% Offline & Private:** Your financial data stays strictly on your device. No analytics, no accounts, and no network tracking.
+- **Persistent Auto-Backup:** Automatically creates and updates resilient backups in `Documents/Centsation` so your goals survive app reinstallation.
+- **Material 3 Expressive UI:** Built with Material 3 design, dynamic wallpaper color palettes, smooth spring animations, and an interactive dashboard.
+- **Deposit & Withdrawal Ledger:** Log incremental deposits and withdrawals with quick-select chips (`+10`, `+25`, `+50`, etc.) and a full history log.
+- **Target Deadlines & Reminders:** Set target completion dates with notification reminders to keep your plans on schedule.
+- **Flexible Organization:** Instant search, sorting (by name, value, target goal, or deadline), and goal archiving.
+- **Multi-Currency & Contrast Control:** Tailor currency symbols and UI contrast (low, medium, high) for optimal accessibility.
+- **JSON Import & Export:** Full control to export and import your savings data across devices anytime.
+
+---
 
 ## Screenshots
 
 <div align="center">
-	<div>
-	<img src="metadata/en-US/images/phoneScreenshots/screenshot_1.jpg" width="30%" />
-    <img src="metadata/en-US/images/phoneScreenshots/screenshot_2.jpg" width="30%" />
-    <img src="metadata/en-US/images/phoneScreenshots/screenshot_3.jpg" width="30%" />
-    <img src="metadata/en-US/images/phoneScreenshots/screenshot_4.jpg" width="30%" />
-    <img src="metadata/en-US/images/phoneScreenshots/screenshot_5.jpg" width="30%" />
-    <img src="metadata/en-US/images/phoneScreenshots/screenshot_6.jpg" width="30%" />
-	</div>
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_1.jpg" width="30%" />
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_2.jpg" width="30%" />
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_3.jpg" width="30%" />
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_4.jpg" width="30%" />
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_5.jpg" width="30%" />
+  <img src="metadata/en-US/images/phoneScreenshots/screenshot_6.jpg" width="30%" />
 </div>
 
-## Downloads
+---
 
-Centsation is also available on IzzyOnDroid.
+## Installation & Releases
 
-[<img height=80 alt="Get it on IzzyOnDroid"
-src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
-/>](https://apt.izzysoft.de/fdroid/index/apk/com.eipna.centsation)
+Pre-compiled signed releases are available under the GitHub Releases tab:
 
-## Verification
+👉 **[Download Latest APK from Releases](https://github.com/Az-har/Centsation/releases)**
 
-APK releases on GitHub are signed using my key. They can
-be verified using
-[apksigner](https://developer.android.com/studio/command-line/apksigner.html#options-verify):
+You can also find the ready-to-install APK at [`app/release/app-release.apk`](app/release/app-release.apk) in this repository.
 
-```
-apksigner verify --print-certs --verbose centsation.apk
-```
+---
 
-The output should look like:
+## Author & Notes
 
-```
-Verifies
-Verified using v1 scheme (JAR signing): false
-Verified using v2 scheme (APK Signature Scheme v2): true
-Verified using v3 scheme (APK Signature Scheme v3): false
-Verified using v3.1 scheme (APK Signature Scheme v3.1): false
-Verified using v3.2 scheme (APK Signature Scheme v3.2): false
-Verified using v4 scheme (APK Signature Scheme v4): false
-```
+- **Author:** [Az-har](https://github.com/Az-har)
+- **Contact:** [azharayyash999@gmail.com](mailto:azharayyash999@gmail.com)
+- **Author Notes:** Designed as a clean, distraction-free savings companion. If you have feature suggestions or would like to contribute, feel free to open an issue or pull request!
 
-### From v1.4 up to future releases
-
-```
-CN=Vrixzandro Eliponga
-O=OSSentials
-OU=Hobbyist Developer
-L=Lian
-ST=Batangas
-C=PH
-Certificate fingerprints:
-   MD5:  a8a82d68a60fe6ecf45eff4550b94d6f
-   SHA1: af8be376426c6725fc3bdb287abeb268bf94b768
-   SHA256: 561f3fec72e1f9878c2749d079f8b2175d02131c842955714e63365da5301baa
-```
-
-**Warning:** Please be aware that versions 1.3 and below of this application were released without digital signatures. For the best security and to ensure you are using a genuine version of the application, I strongly recommend updating to the latest version as soon as possible.
-
-## Mapping Files
-
-Each release on GitHub includes a `mapping-<version>.txt` file alongside the APK. This file is needed to deobfuscate stack traces from crash reports — match the file to the version shown in the crash report header and use it with `retrace` from the Android SDK.
+---
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0. See the
-[LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.

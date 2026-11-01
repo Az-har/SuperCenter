@@ -1,1 +1,1 @@
-Android offline savings-tracker
+Offline personal savings and goal tracker crafted by Az-har
