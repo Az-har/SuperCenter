@@ -1,11 +1,15 @@
 package com.eipna.centsation.ui.dialogs;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +18,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import android.widget.FrameLayout;
+import android.widget.Toast;
+
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
@@ -21,11 +28,15 @@ import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.DialogBottomSheetSavingDetailsBinding;
 import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
+import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,12 +50,14 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         void onShare(Saving saving);
         void onArchive(Saving saving);
         void onDelete(Saving saving);
+        default void onSavingUpdated(Saving saving) {}
     }
 
     private DialogBottomSheetSavingDetailsBinding binding;
     private Saving saving;
     private OnDetailsActionListener listener;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public static SavingDetailsBottomSheetDialogFragment newInstance(String savingID) {
         SavingDetailsBottomSheetDialogFragment fragment = new SavingDetailsBottomSheetDialogFragment();
@@ -75,7 +88,6 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         }
 
         final Context appContext = requireContext().getApplicationContext();
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
         executor.execute(() -> {
             Saving loadedSaving;
             try (SavingRepository repo = new SavingRepository(appContext)) {
@@ -162,13 +174,15 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             binding.detailsInsightCard.setVisibility(View.GONE);
         }
 
-        // Notes Card
+        // Notes Section
         String notes = saving.getNotes();
         if (notes != null && !notes.trim().isEmpty()) {
             binding.detailsNotesCard.setVisibility(View.VISIBLE);
-            binding.detailsNotesText.setText(notes);
+            binding.detailsBtnAddNote.setVisibility(View.GONE);
+            binding.detailsNotesText.setText(notes.trim());
         } else {
             binding.detailsNotesCard.setVisibility(View.GONE);
+            binding.detailsBtnAddNote.setVisibility(View.VISIBLE);
         }
     }
 
@@ -180,6 +194,13 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         AnimationUtil.applySpringPressEffect(binding.detailsBtnTestNotify);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnArchive);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnDelete);
+        AnimationUtil.applySpringPressEffect(binding.detailsBtnCopyNote);
+        AnimationUtil.applySpringPressEffect(binding.detailsBtnEditNote);
+        AnimationUtil.applySpringPressEffect(binding.detailsBtnAddNote);
+
+        binding.detailsBtnCopyNote.setOnClickListener(v -> copyNotesToClipboard());
+        binding.detailsBtnEditNote.setOnClickListener(v -> showQuickEditNotesDialog());
+        binding.detailsBtnAddNote.setOnClickListener(v -> showQuickEditNotesDialog());
 
         binding.detailsBtnTransact.setOnClickListener(v -> {
             dismiss();
@@ -204,7 +225,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         binding.detailsBtnTestNotify.setOnClickListener(v -> {
             if (getContext() != null && saving != null) {
                 NotificationHandler.create(requireContext(), saving);
-                android.widget.Toast.makeText(requireContext(), "Alert notification sent for " + saving.getName() + "!", android.widget.Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Alert notification sent for " + saving.getName() + "!", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -217,6 +238,70 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             dismiss();
             if (listener != null) listener.onDelete(saving);
         });
+    }
+
+    private void copyNotesToClipboard() {
+        if (saving == null || saving.getNotes() == null || saving.getNotes().trim().isEmpty()) return;
+        ClipboardManager clipboard = (ClipboardManager)
+                requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            ClipData clip = ClipData.newPlainText("Goal Note", saving.getNotes().trim());
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(requireContext(), "Note copied to clipboard", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showQuickEditNotesDialog() {
+        if (saving == null || !isAdded()) return;
+
+        Context context = requireContext();
+        final TextInputEditText editText =
+                new TextInputEditText(context);
+        editText.setText(saving.getNotes() != null ? saving.getNotes() : "");
+        editText.setHint("Notes, milestones, or reminders");
+        editText.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        editText.setMinLines(3);
+        editText.setMaxLines(7);
+        editText.setGravity(Gravity.TOP | Gravity.START);
+
+        TextInputLayout inputLayout =
+                new TextInputLayout(context, null, com.google.android.material.R.style.Widget_Material3_TextInputLayout_OutlinedBox);
+        float cornerRadius = 16 * getResources().getDisplayMetrics().density;
+        inputLayout.setBoxCornerRadii(cornerRadius, cornerRadius, cornerRadius, cornerRadius);
+        inputLayout.setCounterEnabled(true);
+        inputLayout.setCounterMaxLength(500);
+        inputLayout.addView(editText);
+
+        FrameLayout container = new FrameLayout(context);
+        int paddingHorizontal = (int) (24 * getResources().getDisplayMetrics().density);
+        int paddingTop = (int) (12 * getResources().getDisplayMetrics().density);
+        container.setPadding(paddingHorizontal, paddingTop, paddingHorizontal, 0);
+        container.addView(inputLayout);
+
+        new MaterialAlertDialogBuilder(context)
+                .setTitle("Goal Note")
+                .setView(container)
+                .setPositiveButton("Save Note", (dialog, which) -> {
+                    String updatedNotes = editText.getText() != null ? editText.getText().toString().trim() : "";
+                    saving.setNotes(updatedNotes);
+                    final Context appContext = context.getApplicationContext();
+                    executor.execute(() -> {
+                        try (SavingRepository repo = new SavingRepository(appContext)) {
+                            repo.edit(saving);
+                        }
+                        BackupManager.triggerAutoBackup(appContext);
+                        mainHandler.post(() -> {
+                            if (!isAdded() || binding == null) return;
+                            bindSavingDetails();
+                            Toast.makeText(appContext, "Note updated", Toast.LENGTH_SHORT).show();
+                            if (listener != null) listener.onSavingUpdated(saving);
+                        });
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override

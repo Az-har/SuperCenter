@@ -480,6 +480,11 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             public void onDelete(Saving s) {
                 showDeleteDialog(s);
             }
+
+            @Override
+            public void onSavingUpdated(Saving s) {
+                viewModel.loadSavings();
+            }
         });
         sheet.show(getSupportFragmentManager(), "saving_details_sheet");
     }

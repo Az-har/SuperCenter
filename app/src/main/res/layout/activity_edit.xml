@@ -111,19 +111,27 @@
                 android:id="@+id/field_saving_notes_layout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:hint="@string/field_saving_notes"
+                app:startIconDrawable="@drawable/ic_edit_note"
+                app:endIconMode="clear_text"
+                app:counterEnabled="true"
+                app:counterMaxLength="500"
                 app:boxCornerRadiusTopStart="16dp"
                 app:boxCornerRadiusTopEnd="16dp"
                 app:boxCornerRadiusBottomStart="16dp"
                 app:boxCornerRadiusBottomEnd="16dp"
-                app:helperText="This field is optional"
+                app:helperText="Optional notes, milestones, or reminders"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/field_saving_notes_text"
-                    android:inputType="textAutoComplete|textMultiLine"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:minLines="3"
+                    android:maxLines="6"
+                    android:gravity="top|start"
+                    android:scrollbars="vertical"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
+                    android:layout_height="wrap_content"/>
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </ScrollView>

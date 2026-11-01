@@ -156,6 +156,11 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
             public void onDelete(Saving s) {
                 showDeleteDialog(s);
             }
+
+            @Override
+            public void onSavingUpdated(Saving s) {
+                viewModel.loadSavings();
+            }
         });
         sheet.show(getSupportFragmentManager(), "archived_saving_details_sheet");
     }

@@ -86,10 +86,10 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
         MaterialCardView parent;
-        MaterialTextView name, saving, goal, percent, deadline;
+        MaterialTextView name, saving, goal, percent, deadline, notesPreview;
         MaterialButton update, history, archive, unarchive, delete, share;
 
-        LinearLayout description;
+        LinearLayout description, notesContainer;
         LinearProgressIndicator progress;
 
         public ViewHolder(@NonNull View itemView, Listener listener) {
@@ -102,6 +102,8 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             description = itemView.findViewById(R.id.saving_description);
             progress = itemView.findViewById(R.id.saving_progress);
             deadline = itemView.findViewById(R.id.saving_deadline);
+            notesContainer = itemView.findViewById(R.id.saving_notes_container);
+            notesPreview = itemView.findViewById(R.id.saving_notes_preview);
 
             update = itemView.findViewById(R.id.saving_update);
             history = itemView.findViewById(R.id.saving_history);
@@ -192,6 +194,14 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             saving.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getCurrentSaving())));
             goal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getGoal())));
             progress.setProgressCompat(Math.min(percentValue, 100), false);
+
+            String notesText = currentSaving.getNotes();
+            if (notesText != null && !notesText.trim().isEmpty()) {
+                notesContainer.setVisibility(View.VISIBLE);
+                notesPreview.setText(notesText.trim());
+            } else {
+                notesContainer.setVisibility(View.GONE);
+            }
         }
     }
 }

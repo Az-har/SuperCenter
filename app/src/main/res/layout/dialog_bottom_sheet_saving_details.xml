@@ -159,11 +159,12 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Notes Card (if present) -->
+    <!-- Notes Section -->
+    <!-- 1. Notes Card (when notes exist) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/details_notes_card"
         style="@style/Widget.Material3.CardView.Filled"
-        app:cardCornerRadius="16dp"
+        app:cardCornerRadius="18dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
         android:layout_marginBottom="16dp"
         android:layout_width="match_parent"
@@ -171,31 +172,96 @@
 
         <LinearLayout
             android:orientation="vertical"
-            android:padding="14dp"
+            android:padding="16dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <com.google.android.material.textview.MaterialTextView
-                android:text="NOTES"
-                android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textStyle="bold"
-                android:letterSpacing="0.08"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:layout_marginBottom="4dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:ignore="HardcodedText" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/details_notes_text"
-                android:text="Save for flights and hotel in Tokyo"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface"
+            <!-- Notes Header with Copy and Edit Action Icons -->
+            <LinearLayout
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                tools:ignore="HardcodedText" />
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:src="@drawable/ic_edit_note"
+                    app:tint="?attr/colorPrimary"
+                    android:layout_marginEnd="6dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    tools:ignore="ContentDescription" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:text="NOTES &amp; REMINDERS"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:textColor="?attr/colorPrimary"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/details_btn_copy_note"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    app:icon="@drawable/ic_content_copy"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    app:iconSize="18dp"
+                    android:tooltipText="Copy Note"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/details_btn_edit_note"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    app:icon="@drawable/ic_edit_note"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    app:iconSize="20dp"
+                    android:tooltipText="Edit Note"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Vertical Accent Quote Bar -->
+                <View
+                    android:layout_width="3dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="10dp"
+                    android:background="?attr/colorPrimary" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/details_notes_text"
+                    android:text="Save for flights and hotel in Tokyo"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:lineSpacingExtra="3dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    <!-- 2. Empty Notes Prompt (when no notes exist) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/details_btn_add_note"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        app:icon="@drawable/ic_add"
+        app:iconTint="?attr/colorOnSurfaceVariant"
+        android:text="Add note or milestone"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:cornerRadius="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        tools:ignore="HardcodedText" />
 
     <!-- Action Buttons -->
     <LinearLayout
