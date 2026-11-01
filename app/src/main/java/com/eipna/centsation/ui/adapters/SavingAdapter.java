@@ -195,12 +195,14 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             goal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getGoal())));
             progress.setProgressCompat(Math.min(percentValue, 100), false);
 
-            String notesText = currentSaving.getNotes();
-            if (notesText != null && !notesText.trim().isEmpty()) {
-                notesContainer.setVisibility(View.VISIBLE);
-                notesPreview.setText(notesText.trim());
-            } else {
-                notesContainer.setVisibility(View.GONE);
+            if (notesContainer != null && notesPreview != null) {
+                String notesText = currentSaving.getNotes();
+                if (notesText != null && !notesText.trim().isEmpty()) {
+                    notesContainer.setVisibility(View.VISIBLE);
+                    notesPreview.setText(notesText.trim());
+                } else {
+                    notesContainer.setVisibility(View.GONE);
+                }
             }
         }
     }

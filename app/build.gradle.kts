@@ -63,8 +63,8 @@ android {
             )
         }
         debug {
-            manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher_debug"
-            manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_debug_round"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
+            manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_round"
             isMinifyEnabled = false
             isShrinkResources = false
             applicationIdSuffix = ".debug"
