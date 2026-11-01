@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
@@ -108,8 +107,7 @@ public class CreateActivity extends CentsationActivity {
             getOnBackPressedDispatcher().onBackPressed();
             return true;
         }
-        if (item.getItemId() == R.id.save) createSaving();
-        return true;
+        return super.onOptionsItemSelected(item);
     }
 
     private void createSaving() {
@@ -234,12 +232,6 @@ public class CreateActivity extends CentsationActivity {
             binding.fieldSavingDeadlineLayout.setEndIconVisible(true);
         });
         datePicker.show(getSupportFragmentManager(), "deadline_date_picker");
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_saving, menu);
-        return true;
     }
 
     @Override

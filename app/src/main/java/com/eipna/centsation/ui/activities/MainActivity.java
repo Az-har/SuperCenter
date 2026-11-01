@@ -381,22 +381,6 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         return true;
     }
 
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuItem themeItem = menu.findItem(R.id.action_theme_toggle);
-        if (themeItem != null) {
-            boolean isDark = isDarkModeActive();
-            themeItem.setIcon(isDark ? R.drawable.ic_light_mode : R.drawable.ic_dark_mode);
-            themeItem.setTitle(isDark ? "Switch to Light Mode" : "Switch to Dark Mode");
-        }
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    private boolean isDarkModeActive() {
-        int nightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return nightMode == Configuration.UI_MODE_NIGHT_YES;
-    }
-
     private void loadSortingMenu(Menu menu) {
         String criteria = viewModel.getSortCriteria();
         if (SavingSort.NAME.SORT.equals(criteria)) {
@@ -419,14 +403,6 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
-
-        if (id == R.id.action_theme_toggle) {
-            boolean isDark = isDarkModeActive();
-            String newTheme = isDark ? Theme.LIGHT.VALUE : Theme.DARK.VALUE;
-            preferenceUtil.setTheme(newTheme);
-            AppCompatDelegate.setDefaultNightMode(isDark ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
-            return true;
-        }
 
         if (id == R.id.archive) {
             startActivity(new Intent(this, ArchiveActivity.class));

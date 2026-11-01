@@ -20,7 +20,6 @@
             android:id="@+id/toolbar"
             app:title="@string/toolbar_edit"
             app:titleTextColor="?attr/colorOnSurface"
-            app:menu="@menu/menu_saving"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"/>
     </com.google.android.material.appbar.AppBarLayout>
