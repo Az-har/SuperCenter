@@ -160,29 +160,46 @@ public class BackupManager {
 
     @Nullable
     public static BackupInfo detectExistingBackup(@NonNull Context context) {
-        // Candidate file paths that persist after uninstallation
-        List<File> candidates = new ArrayList<>();
+        try {
+            // Candidate file paths that persist after uninstallation
+            List<File> candidates = new ArrayList<>();
 
-        File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-        candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
-        candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/exported_savings.json"));
-
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        candidates.add(new File(downloadsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
-        candidates.add(new File(downloadsDir, AUTO_BACKUP_FILE_NAME));
-        candidates.add(new File(downloadsDir, "exported_savings.json"));
-
-        for (File candidate : candidates) {
-            if (candidate.exists() && candidate.isFile() && candidate.length() > 0) {
-                BackupInfo info = inspectFile(context, candidate);
-                if (info != null) return info;
+            try {
+                File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                if (docsDir != null) {
+                    candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
+                    candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/exported_savings.json"));
+                }
+            } catch (Throwable ignored) {
             }
-        }
 
-        // Check MediaStore query on Android 10+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            BackupInfo mediaStoreInfo = queryMediaStoreForBackup(context);
-            if (mediaStoreInfo != null) return mediaStoreInfo;
+            try {
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (downloadsDir != null) {
+                    candidates.add(new File(downloadsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
+                    candidates.add(new File(downloadsDir, AUTO_BACKUP_FILE_NAME));
+                    candidates.add(new File(downloadsDir, "exported_savings.json"));
+                }
+            } catch (Throwable ignored) {
+            }
+
+            for (File candidate : candidates) {
+                try {
+                    if (candidate.exists() && candidate.isFile() && candidate.length() > 0) {
+                        BackupInfo info = inspectFile(context, candidate);
+                        if (info != null) return info;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+
+            // Check MediaStore query on Android 10+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                BackupInfo mediaStoreInfo = queryMediaStoreForBackup(context);
+                if (mediaStoreInfo != null) return mediaStoreInfo;
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "Error in detectExistingBackup", t);
         }
 
         return null;

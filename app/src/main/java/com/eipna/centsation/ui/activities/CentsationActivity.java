@@ -5,11 +5,10 @@ import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 
+import com.eipna.centsation.CentsationApp;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Contrast;
-import com.eipna.centsation.data.Theme;
 import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.google.android.material.color.DynamicColors;
@@ -30,18 +29,13 @@ public abstract class CentsationActivity extends AppCompatActivity {
             );
         }
 
-        NotificationHandler.createChannels(this);
-
-        String theme = preferenceUtil.getTheme();
-        if (theme.equals(Theme.SYSTEM.VALUE)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-        } else if (theme.equals(Theme.BATTERY.VALUE)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY);
-        } else if (theme.equals(Theme.LIGHT.VALUE)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        } else if (theme.equals(Theme.DARK.VALUE)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        try {
+            NotificationHandler.createChannels(this);
+        } catch (Throwable ignored) {
         }
+
+        // Apply theme using shared method without redundant recreation
+        CentsationApp.applyTheme(preferenceUtil.getTheme());
 
         String contrast = preferenceUtil.getContrast();
         if (contrast.equals(Contrast.LOW.VALUE)) {

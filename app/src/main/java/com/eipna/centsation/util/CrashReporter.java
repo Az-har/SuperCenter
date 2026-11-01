@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Toast;
@@ -30,18 +31,22 @@ import java.util.Locale;
 
 public class CrashReporter {
 
+    private static final String TAG = "CrashReporter";
     private static final String REPORT_FILENAME = "last_crash.txt";
+    private static String inMemoryReport = null;
 
     public static File getReportFile(Context context) {
         return new File(context.getFilesDir(), REPORT_FILENAME);
     }
 
     public static boolean hasReport(Context context) {
-        return getReportFile(context).exists();
+        File file = getReportFile(context);
+        return file.exists() && file.length() > 0;
     }
 
     @Nullable
     public static String readReport(Context context) {
+        if (inMemoryReport != null) return inMemoryReport;
         File file = getReportFile(context);
         if (!file.exists()) return null;
 
@@ -51,62 +56,85 @@ public class CrashReporter {
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append('\n');
             }
-            return sb.toString();
+            inMemoryReport = sb.toString();
+            return inMemoryReport;
         } catch (IOException e) {
+            Log.e(TAG, "Error reading crash report", e);
             return null;
         }
     }
 
     public static void deleteReport(Context context) {
-        File file = getReportFile(context);
-        if (file.exists()) {
-            file.delete();
+        try {
+            File file = getReportFile(context);
+            if (file.exists()) {
+                file.delete();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error deleting crash report file", e);
         }
     }
 
     public static void showDialogIfPending(Activity activity, ActivityResultLauncher<Intent> saveLauncher) {
         if (activity == null || activity.isFinishing() || activity.isDestroyed() || !hasReport(activity)) return;
 
-        View crashDialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_crash, null, false);
+        // Read report into memory first
+        final String report = readReport(activity);
 
-        MaterialButton actionEmail = crashDialogView.findViewById(R.id.crash_action_email);
-        MaterialButton actionSave = crashDialogView.findViewById(R.id.crash_action_save);
-        MaterialButton actionDismiss = crashDialogView.findViewById(R.id.crash_action_dismiss);
+        // Delete report immediately from disk so it NEVER repeats on subsequent launches!
+        deleteReport(activity);
 
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
-                .setTitle(R.string.dialog_title_crash)
-                .setMessage(R.string.dialog_message_crash)
-                .setIcon(R.drawable.ic_crash_error)
-                .setCancelable(false)
-                .setView(crashDialogView);
+        if (report == null || report.trim().isEmpty()) {
+            inMemoryReport = null;
+            return;
+        }
 
-        AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(dialogInterface -> {
-            actionEmail.setOnClickListener(view -> {
-                String report = readReport(activity);
-                if (report == null) return;
-                if (sendEmail(activity, report)) {
-                    deleteReport(activity);
-                }
-                dialog.dismiss();
+        inMemoryReport = report;
+
+        try {
+            View crashDialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_crash, null, false);
+
+            MaterialButton actionEmail = crashDialogView.findViewById(R.id.crash_action_email);
+            MaterialButton actionSave = crashDialogView.findViewById(R.id.crash_action_save);
+            MaterialButton actionDismiss = crashDialogView.findViewById(R.id.crash_action_dismiss);
+
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
+                    .setTitle(R.string.dialog_title_crash)
+                    .setMessage(R.string.dialog_message_crash)
+                    .setIcon(R.drawable.ic_crash_error)
+                    .setCancelable(true)
+                    .setView(crashDialogView);
+
+            AlertDialog dialog = builder.create();
+            dialog.setOnShowListener(dialogInterface -> {
+                actionEmail.setOnClickListener(view -> {
+                    sendEmail(activity, report);
+                    dialog.dismiss();
+                });
+
+                actionSave.setOnClickListener(view -> {
+                    launchSaveDialog(saveLauncher);
+                    dialog.dismiss();
+                });
+
+                actionDismiss.setOnClickListener(view -> {
+                    inMemoryReport = null;
+                    dialog.dismiss();
+                });
             });
 
-            actionSave.setOnClickListener(view -> {
-                launchSaveDialog(saveLauncher);
-                dialog.dismiss();
-            });
-
-            actionDismiss.setOnClickListener(view -> {
-                deleteReport(activity);
-                dialog.dismiss();
-            });
-        });
-
-        dialog.show();
+            dialog.show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying crash dialog", e);
+            inMemoryReport = null;
+        }
     }
 
     public static boolean writeReportToUri(Context context, Uri uri) {
-        String report = readReport(context);
+        String report = inMemoryReport;
+        if (report == null) {
+            report = readReport(context);
+        }
         if (report == null) return false;
 
         try (OutputStream out = context.getContentResolver().openOutputStream(uri)) {
@@ -114,7 +142,10 @@ public class CrashReporter {
             out.write(report.getBytes(StandardCharsets.UTF_8));
             return true;
         } catch (IOException e) {
+            Log.e(TAG, "Error writing report to URI", e);
             return false;
+        } finally {
+            inMemoryReport = null;
         }
     }
 

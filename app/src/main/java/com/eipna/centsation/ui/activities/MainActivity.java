@@ -188,22 +188,26 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     private void checkForReinstallBackup() {
         final Context appContext = getApplicationContext();
         executor.execute(() -> {
-            try (SavingRepository repo = new SavingRepository(appContext)) {
-                if (!repo.getAllSavings().isEmpty()) {
+            try {
+                try (SavingRepository repo = new SavingRepository(appContext)) {
+                    if (!repo.getAllSavings().isEmpty()) {
+                        return;
+                    }
+                }
+                if (preferenceUtil.hasDismissedReinstallRestore()) {
                     return;
                 }
-            }
-            if (preferenceUtil.hasDismissedReinstallRestore()) {
-                return;
-            }
 
-            BackupManager.BackupInfo backupInfo = BackupManager.detectExistingBackup(appContext);
-            if (backupInfo != null && backupInfo.savingsCount > 0) {
-                runOnUiThread(() -> {
-                    if (!isFinishing() && !isDestroyed()) {
-                        showReinstallRestoreDialog(backupInfo);
-                    }
-                });
+                BackupManager.BackupInfo backupInfo = BackupManager.detectExistingBackup(appContext);
+                if (backupInfo != null && backupInfo.savingsCount > 0) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            showReinstallRestoreDialog(backupInfo);
+                        }
+                    });
+                }
+            } catch (Throwable t) {
+                android.util.Log.e("MainActivity", "Failed checking for reinstall backup", t);
             }
         });
     }
