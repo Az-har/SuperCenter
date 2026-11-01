@@ -160,7 +160,10 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             long days = SavingsCalculator.getDaysRemaining(saving.getDeadline());
             String dateStr = DateParser.getStringDate(saving.getDeadline(), deadlineFormat);
 
-            if (isCompleted) {
+            if (saving.getIsArchived() == Saving.IS_ARCHIVE) {
+                binding.detailsDeadlineText.setText(String.format("📅 Target was %s • Goal is archived", dateStr));
+                binding.detailsPaceText.setVisibility(View.GONE);
+            } else if (isCompleted) {
                 binding.detailsDeadlineText.setText(String.format("📅 Target was %s • Goal already reached!", dateStr));
                 binding.detailsPaceText.setVisibility(View.GONE);
             } else if (days < 0) {
@@ -312,7 +315,12 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        executor.shutdown();
         binding = null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
     }
 }

@@ -65,7 +65,7 @@ public class CrashReporter {
     }
 
     public static void showDialogIfPending(Activity activity, ActivityResultLauncher<Intent> saveLauncher) {
-        if (!hasReport(activity)) return;
+        if (activity == null || activity.isFinishing() || activity.isDestroyed() || !hasReport(activity)) return;
 
         View crashDialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_crash, null, false);
 

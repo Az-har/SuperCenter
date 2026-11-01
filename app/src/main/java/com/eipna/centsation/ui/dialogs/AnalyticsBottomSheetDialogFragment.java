@@ -185,7 +185,12 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        executor.shutdown();
         binding = null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
     }
 }

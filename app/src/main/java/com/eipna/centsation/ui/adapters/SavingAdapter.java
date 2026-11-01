@@ -229,7 +229,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
 
             // Savings pace indicator
             if (paceContainer != null && pace != null) {
-                if (!isCompleted && currentSaving.getDeadline() != AlarmSetter.NO_ALARM) {
+                if (!isCompleted && currentSaving.getIsArchived() != Saving.IS_ARCHIVE && currentSaving.getDeadline() != AlarmSetter.NO_ALARM) {
                     long daysLeft = SavingsCalculator.getDaysRemaining(currentSaving.getDeadline());
                     double dailyRate = SavingsCalculator.getDailySavingsRate(currentSaving);
                     if (daysLeft > 0 && dailyRate > 0) {

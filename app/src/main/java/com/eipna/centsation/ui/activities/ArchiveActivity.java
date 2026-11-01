@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.View;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -93,6 +94,15 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
         itemTouchHelper.attachToRecyclerView(binding.savingList);
 
         viewModel.getSavings().observe(this, this::onSavingsChanged);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull android.view.MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
