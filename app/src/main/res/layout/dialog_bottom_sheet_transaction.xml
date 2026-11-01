@@ -78,6 +78,9 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/field_amount_text"
             android:inputType="numberDecimal"
+            android:imeOptions="actionDone"
+            android:singleLine="true"
+            android:maxLines="1"
             android:textSize="22sp"
             android:textStyle="bold"
             android:layout_width="match_parent"

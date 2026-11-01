@@ -160,6 +160,11 @@ public class CreateActivity extends CentsationActivity {
         if (isSaving) return;
         isSaving = true;
 
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && getCurrentFocus() != null) {
+            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        }
+
         if (!deadlineText.isEmpty() && createdSaving.getCurrentSaving() < createdSaving.getGoal()) {
             AlarmSetter.set(this, createdSaving);
         }

@@ -242,6 +242,11 @@ public class EditActivity extends CentsationActivity {
 
         isSaving = true;
 
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && getCurrentFocus() != null) {
+            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        }
+
         Saving editedSaving = new Saving();
         editedSaving.setID(currentSaving.getID());
         editedSaving.setName(nameText);

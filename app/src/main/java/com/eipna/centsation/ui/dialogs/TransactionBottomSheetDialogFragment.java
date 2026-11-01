@@ -1,11 +1,13 @@
 package com.eipna.centsation.ui.dialogs;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
@@ -85,11 +87,31 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.fieldAmountLayout.setPrefixText(currencySymbol);
         binding.toggleType.check(R.id.btn_type_deposit);
 
+        // Tap on non-input areas to dismiss software keyboard
+        binding.getRoot().setOnClickListener(v -> hideKeyboard());
+        binding.dragHandle.setOnClickListener(v -> hideKeyboard());
+        binding.transactionTitle.setOnClickListener(v -> hideKeyboard());
+        binding.transactionSubtitle.setOnClickListener(v -> hideKeyboard());
+        binding.toggleType.addOnButtonCheckedListener((group, checkedId, isChecked) -> hideKeyboard());
+
+        // Keyboard 'Done' action submits or dismisses keyboard cleanly
+        binding.fieldAmountText.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                hideKeyboard();
+                binding.btnSubmit.performClick();
+                return true;
+            }
+            return false;
+        });
+
         setupQuickChips();
         AnimationUtil.applySpringPressEffect(binding.btnSubmit);
         AnimationUtil.applySpringPressEffect(binding.btnCancel);
 
-        binding.btnCancel.setOnClickListener(v -> dismiss());
+        binding.btnCancel.setOnClickListener(v -> {
+            hideKeyboard();
+            dismiss();
+        });
 
         binding.btnSubmit.setOnClickListener(v -> {
             String text = Objects.requireNonNull(binding.fieldAmountText.getText()).toString().trim().replace(',', '.');
@@ -111,6 +133,7 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
             }
 
             binding.fieldAmountLayout.setError(null);
+            hideKeyboard();
 
             int checkedId = binding.toggleType.getCheckedButtonId();
             if (checkedId == R.id.btn_type_withdraw) {
@@ -149,7 +172,10 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
             View chip = binding.getRoot().findViewById(chipIds[i]);
             if (chip != null) {
                 AnimationUtil.applySpringPressEffect(chip);
-                chip.setOnClickListener(v -> addAmount(addVal));
+                chip.setOnClickListener(v -> {
+                    hideKeyboard();
+                    addAmount(addVal);
+                });
             }
         }
     }
@@ -167,8 +193,34 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.fieldAmountText.setSelection(binding.fieldAmountText.getText().length());
     }
 
+    public void hideKeyboard() {
+        if (binding != null && binding.fieldAmountText != null) {
+            binding.fieldAmountText.clearFocus();
+        }
+        Context ctx = getContext();
+        if (ctx != null) {
+            InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                View root = getView();
+                if (root != null) {
+                    imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
+                }
+                if (binding != null && binding.fieldAmountText != null) {
+                    imm.hideSoftInputFromWindow(binding.fieldAmountText.getWindowToken(), 0);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        hideKeyboard();
+        super.onDismiss(dialog);
+    }
+
     @Override
     public void onDestroyView() {
+        hideKeyboard();
         super.onDestroyView();
         binding = null;
     }

@@ -18,18 +18,19 @@ import com.eipna.centsation.ui.activities.MainActivity;
 
 public class NotificationHandler {
 
-    public static final String CHANNEL_DEADLINE_ID = "channel_deadline_v2";
+    public static final String CHANNEL_DEADLINE_ID = "channel_deadline_v3";
     public static final String CHANNEL_DEADLINE_NAME = "Deadlines & Milestones";
-    public static final int CHANNEL_DEADLINE_IMPORTANCE = NotificationManager.IMPORTANCE_DEFAULT;
+    public static final int CHANNEL_DEADLINE_IMPORTANCE = NotificationManager.IMPORTANCE_HIGH;
 
     public static void createChannels(Context context) {
         if (context == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
-                // Delete legacy high-importance channel that caused sticky on-screen banners
+                // Delete legacy channels so Android applies new HIGH importance channel cleanly
                 try {
                     notificationManager.deleteNotificationChannel("channel_deadline");
+                    notificationManager.deleteNotificationChannel("channel_deadline_v2");
                 } catch (Exception ignored) {}
 
                 NotificationChannel deadlineChannel = new NotificationChannel(
@@ -39,6 +40,11 @@ public class NotificationHandler {
                 );
                 deadlineChannel.setDescription("Reminders for savings goal deadlines and advance alerts");
                 deadlineChannel.enableVibration(true);
+                deadlineChannel.setVibrationPattern(new long[]{0, 250, 150, 250});
+                deadlineChannel.enableLights(true);
+                deadlineChannel.setLightColor(0xFF22C55E);
+                deadlineChannel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+                deadlineChannel.setShowBadge(true);
                 notificationManager.createNotificationChannel(deadlineChannel);
             }
         }
@@ -83,21 +89,23 @@ public class NotificationHandler {
         String remainingStr = currencySymbol + NumberFormat.getInstance().format(remainingVal);
 
         String expandedContent = notificationBody + "\n\n"
-                + "• Progress: " + savedStr + " / " + goalStr + " (" + percent + "%)\n"
+                + "• Progress: " + savedStr + " / " + goalStr + " (" + percent + "% saved)\n"
                 + "• Remaining: " + remainingStr;
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_DEADLINE_ID)
                 .setSmallIcon(R.drawable.ic_stat_centsation)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentTitle(notificationTitle)
                 .setContentText(notificationBody)
                 .setSubText(percent + "% saved")
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(expandedContent))
-                .setProgress(100, Math.min(100, Math.max(0, percent)), false)
                 .setContentIntent(pendingIntent)
                 .addAction(R.drawable.ic_savings, "View Goal", pendingIntent)
-                .setAutoCancel(true);
+                .setAutoCancel(true)
+                .setOngoing(false);
 
         notificationManager.notify(notificationId, builder.build());
     }
