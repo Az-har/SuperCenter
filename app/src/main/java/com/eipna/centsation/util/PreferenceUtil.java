@@ -36,7 +36,7 @@ public class PreferenceUtil {
     }
 
     public String getCurrency() {
-        return sharedPreferences.getString("currency", Currency.PHILIPPINE_PESO.CODE);
+        return sharedPreferences.getString("currency", Currency.INDIAN_RUPEE.CODE);
     }
 
     public void setCurrency(String value) {

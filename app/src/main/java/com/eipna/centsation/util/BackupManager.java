@@ -54,6 +54,7 @@ public class BackupManager {
         public long fileSizeBytes;
         public File sourceFile;
         public Uri sourceUri;
+        public String currency;
     }
 
     public static void triggerAutoBackup(@NonNull Context context) {
@@ -149,6 +150,21 @@ public class BackupManager {
             root.put("timestamp", System.currentTimeMillis());
             root.put("savings_count", savings.size());
             root.put("transactions_count", transactions.size());
+
+            PreferenceUtil prefs = new PreferenceUtil(context);
+            JSONObject prefsObj = new JSONObject();
+            prefsObj.put("currency", prefs.getCurrency());
+            prefsObj.put("theme", prefs.getTheme());
+            prefsObj.put("contrast", prefs.getContrast());
+            prefsObj.put("deadline_format", prefs.getDeadlineFormat());
+            prefsObj.put("dynamic_colors", prefs.isDynamicColors());
+            prefsObj.put("screen_privacy", prefs.isScreenPrivacyEnabled());
+            prefsObj.put("auto_backup", prefs.isAutoBackupEnabled());
+            prefsObj.put("sort_criteria", prefs.getSortCriteria());
+            prefsObj.put("sort_order", prefs.getSortOrder());
+
+            root.put("preferences", prefsObj);
+            root.put("currency", prefs.getCurrency());
 
             // Support both direct table names and generic keys for compatibility
             root.put(Database.TABLE_SAVING, savingJsonArray);
@@ -250,6 +266,14 @@ public class BackupManager {
             PreferenceUtil prefs = new PreferenceUtil(context);
             info.dateFormatted = DateParser.getStringDate(info.timestamp, prefs.getDeadlineFormat());
 
+            JSONObject prefsObj = root.optJSONObject("preferences");
+            if (prefsObj == null) prefsObj = root.optJSONObject("settings");
+            if (prefsObj != null && prefsObj.has("currency")) {
+                info.currency = prefsObj.optString("currency");
+            } else if (root.has("currency")) {
+                info.currency = root.optString("currency");
+            }
+
             return info;
         } catch (Exception e) {
             Log.d(TAG, "Failed parsing JSON backup header", e);
@@ -273,6 +297,53 @@ public class BackupManager {
             List<Transaction> transactions = transactionsArray != null ? parseTransactions(transactionsArray) : new ArrayList<>();
 
             savingRepo.bulkImport(savings, transactions);
+
+            // Restore user preferences/settings if present
+            PreferenceUtil prefs = new PreferenceUtil(context);
+            JSONObject prefsObj = jsonImport.optJSONObject("preferences");
+            if (prefsObj == null) {
+                prefsObj = jsonImport.optJSONObject("settings");
+            }
+
+            if (prefsObj != null) {
+                if (prefsObj.has("currency")) {
+                    prefs.setCurrency(prefsObj.getString("currency"));
+                }
+                if (prefsObj.has("theme")) {
+                    prefs.setTheme(prefsObj.getString("theme"));
+                    com.eipna.centsation.CentsationApp.applyTheme(prefsObj.getString("theme"));
+                }
+                if (prefsObj.has("contrast")) {
+                    prefs.setContrast(prefsObj.getString("contrast"));
+                }
+                if (prefsObj.has("deadline_format")) {
+                    prefs.setDeadlineFormat(prefsObj.getString("deadline_format"));
+                }
+                if (prefsObj.has("dynamic_colors")) {
+                    prefs.setDynamicColors(prefsObj.getBoolean("dynamic_colors"));
+                }
+                if (prefsObj.has("screen_privacy")) {
+                    prefs.setScreenPrivacy(prefsObj.getBoolean("screen_privacy"));
+                }
+                if (prefsObj.has("auto_backup")) {
+                    prefs.setAutoBackupEnabled(prefsObj.getBoolean("auto_backup"));
+                }
+                if (prefsObj.has("sort_criteria")) {
+                    prefs.setSortCriteria(prefsObj.getString("sort_criteria"));
+                }
+                if (prefsObj.has("sort_order")) {
+                    prefs.setSortOrder(prefsObj.getBoolean("sort_order"));
+                }
+            } else if (jsonImport.has("currency")) {
+                prefs.setCurrency(jsonImport.getString("currency"));
+            } else {
+                // If restoring an older backup without preferences and current currency is PHP (old legacy default),
+                // migrate to INR as user's primary currency
+                if ("PHP".equalsIgnoreCase(prefs.getCurrency())) {
+                    prefs.setCurrency(com.eipna.centsation.data.Currency.INDIAN_RUPEE.CODE);
+                }
+            }
+
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Restore from payload failed", e);

@@ -38,7 +38,7 @@
         <ListPreference
             android:key="currency"
             android:title="@string/preference_list_currency"
-            android:defaultValue="PHP"
+            android:defaultValue="INR"
             app:useSimpleSummaryProvider="true"
             app:iconSpaceReserved="false"/>
 

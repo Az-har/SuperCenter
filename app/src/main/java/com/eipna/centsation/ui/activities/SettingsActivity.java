@@ -355,47 +355,15 @@ public class SettingsActivity extends CentsationActivity {
         }
 
         private boolean performExport(Context context, Uri uri) {
-            try (SavingRepository savingRepo = new SavingRepository(context);
-                 TransactionRepository txRepo = new TransactionRepository(context)) {
-
-                ArrayList<Saving> savings = new ArrayList<>(savingRepo.getAllSavings());
-                ArrayList<Transaction> transactions = new ArrayList<>(txRepo.getAll());
-
-                JSONArray savingJsonArray = new JSONArray();
-                for (Saving saving : savings) {
-                    JSONObject savingObject = new JSONObject();
-                    savingObject.put(Database.COLUMN_SAVING_ID, saving.getID());
-                    savingObject.put(Database.COLUMN_SAVING_NAME, saving.getName());
-                    savingObject.put(Database.COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
-                    savingObject.put(Database.COLUMN_SAVING_GOAL, saving.getGoal());
-                    savingObject.put(Database.COLUMN_SAVING_NOTES,
-                            saving.getNotes() == null ? "" : saving.getNotes());
-                    savingObject.put(Database.COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
-                    savingObject.put(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
-                    savingJsonArray.put(savingObject);
-                }
-
-                JSONArray transactionJsonArray = new JSONArray();
-                for (Transaction transaction : transactions) {
-                    JSONObject transactionObject = new JSONObject();
-                    transactionObject.put(Database.COLUMN_TRANSACTION_ID, transaction.getID());
-                    transactionObject.put(Database.COLUMN_TRANSACTION_SAVING_ID, transaction.getSavingID());
-                    transactionObject.put(Database.COLUMN_TRANSACTION_AMOUNT, transaction.getAmount());
-                    transactionObject.put(Database.COLUMN_TRANSACTION_TYPE, transaction.getType());
-                    transactionObject.put(Database.COLUMN_TRANSACTION_DATE, transaction.getDate());
-                    transactionJsonArray.put(transactionObject);
-                }
-
-                JSONObject jsonExport = new JSONObject();
-                jsonExport.put(Database.TABLE_SAVING, savingJsonArray);
-                jsonExport.put(Database.TABLE_TRANSACTION, transactionJsonArray);
-
+            try {
+                String jsonPayload = BackupManager.generateBackupJSON(context);
                 try (OutputStream out = context.getContentResolver().openOutputStream(uri)) {
                     if (out == null) {
                         Log.e(TAG_EXPORT, "openOutputStream returned null for " + uri);
                         return false;
                     }
-                    out.write(jsonExport.toString().getBytes(StandardCharsets.UTF_8));
+                    out.write(jsonPayload.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
                 }
                 return true;
             } catch (Exception e) {
@@ -418,75 +386,18 @@ public class SettingsActivity extends CentsationActivity {
                 boolean success = performImport(appContext, uri);
                 postToUi(() -> {
                     dismissProgressDialog();
-                    Toast.makeText(requireContext(),
-                            success ? R.string.toast_import_successful : R.string.toast_import_failed,
-                            Toast.LENGTH_SHORT).show();
+                    if (success) {
+                        Toast.makeText(requireContext(), R.string.toast_import_successful, Toast.LENGTH_SHORT).show();
+                        requireActivity().recreate();
+                    } else {
+                        Toast.makeText(requireContext(), R.string.toast_import_failed, Toast.LENGTH_SHORT).show();
+                    }
                 });
             });
         }
 
         private boolean performImport(Context context, Uri uri) {
-            String jsonContent;
-            try (InputStream rawStream = context.getContentResolver().openInputStream(uri)) {
-                if (rawStream == null) {
-                    Log.e(TAG_IMPORT, "openInputStream returned null for " + uri);
-                    return false;
-                }
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(rawStream, StandardCharsets.UTF_8));
-                StringBuilder jsonBuilder = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    jsonBuilder.append(line);
-                }
-                jsonContent = jsonBuilder.toString();
-            } catch (Exception e) {
-                Log.e(TAG_IMPORT, "Could not read input file", e);
-                return false;
-            }
-
-            try (SavingRepository savingRepo = new SavingRepository(context)) {
-                JSONObject jsonImport = new JSONObject(jsonContent);
-                List<Saving> savings = parseSavings(jsonImport.getJSONArray(Database.TABLE_SAVING));
-                List<Transaction> transactions = parseTransactions(jsonImport.getJSONArray(Database.TABLE_TRANSACTION));
-
-                savingRepo.bulkImport(savings, transactions);
-                return true;
-            } catch (Exception e) {
-                Log.e(TAG_IMPORT, "Import failed", e);
-                return false;
-            }
-        }
-
-        private static List<Saving> parseSavings(JSONArray array) throws JSONException {
-            List<Saving> result = new ArrayList<>(array.length());
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                Saving saving = new Saving();
-                saving.setID(obj.getString(Database.COLUMN_SAVING_ID));
-                saving.setName(obj.getString(Database.COLUMN_SAVING_NAME));
-                saving.setCurrentSaving(obj.getDouble(Database.COLUMN_SAVING_CURRENT_SAVING));
-                saving.setGoal(obj.getDouble(Database.COLUMN_SAVING_GOAL));
-                saving.setNotes(obj.optString(Database.COLUMN_SAVING_NOTES, ""));
-                saving.setIsArchived(obj.getInt(Database.COLUMN_SAVING_IS_ARCHIVED));
-                saving.setDeadline(obj.getLong(Database.COLUMN_SAVING_DEADLINE));
-                result.add(saving);
-            }
-            return result;
-        }
-
-        private static List<Transaction> parseTransactions(JSONArray array) throws JSONException {
-            List<Transaction> result = new ArrayList<>(array.length());
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                Transaction transaction = new Transaction();
-                transaction.setSavingID(obj.getString(Database.COLUMN_TRANSACTION_SAVING_ID));
-                transaction.setAmount(obj.getDouble(Database.COLUMN_TRANSACTION_AMOUNT));
-                transaction.setType(obj.getString(Database.COLUMN_TRANSACTION_TYPE));
-                transaction.setDate(obj.getLong(Database.COLUMN_TRANSACTION_DATE));
-                result.add(transaction);
-            }
-            return result;
+            return BackupManager.restoreFromUri(context, uri);
         }
 
         private void showProgressDialog(@StringRes int messageRes) {

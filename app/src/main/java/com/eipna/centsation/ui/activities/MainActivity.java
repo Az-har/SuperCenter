@@ -215,11 +215,15 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     private void showReinstallRestoreDialog(BackupManager.BackupInfo backupInfo) {
         if (isFinishing() || isDestroyed()) return;
 
+        String currencyNotice = (backupInfo.currency != null && !backupInfo.currency.isEmpty())
+                ? " (Currency: " + backupInfo.currency + ")"
+                : "";
         String message = String.format(
-                "We found a previous Centsation backup from %s containing %d savings goal(s) and %d transaction(s).\n\nWould you like to restore your savings?",
+                "We found a previous Centsation backup from %s containing %d savings goal(s) and %d transaction(s)%s.\n\nWould you like to restore your savings and settings?",
                 backupInfo.dateFormatted,
                 backupInfo.savingsCount,
-                backupInfo.transactionsCount
+                backupInfo.transactionsCount,
+                currencyNotice
         );
 
         new MaterialAlertDialogBuilder(this)
@@ -251,6 +255,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     if (ok) {
                         Toast.makeText(this, "Savings restored successfully!", Toast.LENGTH_SHORT).show();
                         viewModel.loadSavings();
+                        recreate();
                     } else {
                         Toast.makeText(this, "Could not restore backup", Toast.LENGTH_SHORT).show();
                     }
@@ -287,6 +292,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     if (success) {
                         Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
                         viewModel.loadSavings();
+                        recreate();
                     } else {
                         Toast.makeText(this, "Failed to restore backup", Toast.LENGTH_SHORT).show();
                     }
