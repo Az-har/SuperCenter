@@ -23,6 +23,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.ActivityCreateBinding;
 import com.eipna.centsation.util.AlarmSetter;
@@ -152,6 +153,7 @@ public class CreateActivity extends CentsationActivity {
         createdSaving.setCurrentSaving(currentSaving);
         createdSaving.setGoal(goal);
         createdSaving.setNotes(notesText);
+        createdSaving.setCategory(getSelectedCategoryId());
         createdSaving.setIsArchived(Saving.NOT_ARCHIVE);
         createdSaving.setDeadline(deadlineText.isEmpty() ? AlarmSetter.NO_ALARM : selectedDeadline);
 
@@ -232,6 +234,19 @@ public class CreateActivity extends CentsationActivity {
             binding.fieldSavingDeadlineLayout.setEndIconVisible(true);
         });
         datePicker.show(getSupportFragmentManager(), "deadline_date_picker");
+    }
+
+    private String getSelectedCategoryId() {
+        int checkedId = binding.categoryChipGroup.getCheckedChipId();
+        if (checkedId == R.id.cat_emergency) return SavingCategory.EMERGENCY.getId();
+        if (checkedId == R.id.cat_travel) return SavingCategory.TRAVEL.getId();
+        if (checkedId == R.id.cat_tech) return SavingCategory.TECH.getId();
+        if (checkedId == R.id.cat_vehicle) return SavingCategory.VEHICLE.getId();
+        if (checkedId == R.id.cat_home) return SavingCategory.HOME.getId();
+        if (checkedId == R.id.cat_shopping) return SavingCategory.SHOPPING.getId();
+        if (checkedId == R.id.cat_education) return SavingCategory.EDUCATION.getId();
+        if (checkedId == R.id.cat_investment) return SavingCategory.INVESTMENT.getId();
+        return SavingCategory.GENERAL.getId();
     }
 
     @Override

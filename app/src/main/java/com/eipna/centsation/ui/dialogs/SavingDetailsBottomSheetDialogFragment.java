@@ -24,6 +24,7 @@ import android.widget.Toast;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.DialogBottomSheetSavingDetailsBinding;
 import com.eipna.centsation.util.AlarmSetter;
@@ -117,6 +118,10 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         int percent = SavingsCalculator.getPercent(saving);
         boolean isCompleted = SavingsCalculator.isCompleted(saving);
         double remaining = SavingsCalculator.getRemainingAmount(saving);
+
+        // Category Chip
+        SavingCategory category = SavingCategory.fromId(saving.getCategory());
+        binding.detailsCategoryChip.setText(category.getFormattedLabel());
 
         // Status Chip
         if (saving.getIsArchived() == Saving.IS_ARCHIVE) {

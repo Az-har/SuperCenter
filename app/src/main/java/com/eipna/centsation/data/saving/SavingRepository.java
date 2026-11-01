@@ -37,6 +37,7 @@ public class SavingRepository implements AutoCloseable {
             values.put(Database.COLUMN_SAVING_CURRENT_SAVING, createdSaving.getCurrentSaving());
             values.put(Database.COLUMN_SAVING_GOAL, createdSaving.getGoal());
             values.put(Database.COLUMN_SAVING_NOTES, createdSaving.getNotes());
+            values.put(Database.COLUMN_SAVING_CATEGORY, createdSaving.getCategory());
             values.put(Database.COLUMN_SAVING_IS_ARCHIVED, createdSaving.getIsArchived());
             values.put(Database.COLUMN_SAVING_DEADLINE, createdSaving.getDeadline());
             database.insert(Database.TABLE_SAVING, null, values);
@@ -62,6 +63,7 @@ public class SavingRepository implements AutoCloseable {
         values.put(Database.COLUMN_SAVING_CURRENT_SAVING, editedSaving.getCurrentSaving());
         values.put(Database.COLUMN_SAVING_GOAL, editedSaving.getGoal());
         values.put(Database.COLUMN_SAVING_NOTES, editedSaving.getNotes());
+        values.put(Database.COLUMN_SAVING_CATEGORY, editedSaving.getCategory());
         values.put(Database.COLUMN_SAVING_IS_ARCHIVED, editedSaving.getIsArchived());
         values.put(Database.COLUMN_SAVING_DEADLINE, editedSaving.getDeadline());
 
@@ -154,6 +156,14 @@ public class SavingRepository implements AutoCloseable {
         queriedSaving.setNotes(cursor.getString(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_NOTES)));
         queriedSaving.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_IS_ARCHIVED)));
         queriedSaving.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_SAVING_DEADLINE)));
+
+        int catIdx = cursor.getColumnIndex(Database.COLUMN_SAVING_CATEGORY);
+        if (catIdx != -1 && !cursor.isNull(catIdx)) {
+            queriedSaving.setCategory(cursor.getString(catIdx));
+        } else {
+            queriedSaving.setCategory(SavingCategory.GENERAL.getId());
+        }
+
         return queriedSaving;
     }
 
@@ -172,6 +182,7 @@ public class SavingRepository implements AutoCloseable {
                 values.put(Database.COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
                 values.put(Database.COLUMN_SAVING_GOAL, saving.getGoal());
                 values.put(Database.COLUMN_SAVING_NOTES, saving.getNotes() != null ? saving.getNotes() : "");
+                values.put(Database.COLUMN_SAVING_CATEGORY, saving.getCategory());
                 values.put(Database.COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
                 values.put(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
 

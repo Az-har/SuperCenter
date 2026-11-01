@@ -29,7 +29,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Top Header: Title and Percent Badge -->
+        <!-- Top Header: Title, Category Badge and Percent Badge -->
         <LinearLayout
             android:orientation="horizontal"
             android:gravity="center_vertical"
@@ -50,6 +50,22 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/saving_category_badge"
+                android:text="🎯 General"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:background="@drawable/bg_pill_accent"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:layout_marginStart="6dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/saving_percent"
                 android:text="75%"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
@@ -60,7 +76,7 @@
                 android:paddingEnd="10dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:ignore="HardcodedText" />
@@ -127,10 +143,31 @@
             android:text="Deadline: 12/25/2026"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="6dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             tools:ignore="HardcodedText" />
+
+        <!-- Savings Pace Info -->
+        <LinearLayout
+            android:id="@+id/saving_pace_container"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/saving_pace"
+                android:text="💡 Save $25.00/day to reach goal"
+                android:textColor="?attr/colorPrimary"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textStyle="bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+        </LinearLayout>
 
         <!-- Notes Preview (Visible only when notes exist) -->
         <LinearLayout

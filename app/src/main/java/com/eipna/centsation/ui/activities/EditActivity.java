@@ -24,6 +24,7 @@ import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.Database;
 import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.ActivityEditBinding;
 import com.eipna.centsation.util.AlarmSetter;
@@ -113,6 +114,7 @@ public class EditActivity extends CentsationActivity {
         binding.fieldSavingNameText.setText(currentSaving.getName());
         binding.fieldSavingGoalText.setText(String.format(Locale.getDefault(), "%.2f", currentSaving.getGoal()));
         binding.fieldSavingNotesText.setText(currentSaving.getNotes());
+        setCategorySelection(currentSaving.getCategory());
         binding.fieldSavingDeadlineLayout.setEndIconVisible(false);
 
         if (currentSaving.getDeadline() != AlarmSetter.NO_ALARM) {
@@ -246,6 +248,7 @@ public class EditActivity extends CentsationActivity {
         editedSaving.setCurrentSaving(currentSaving.getCurrentSaving());
         editedSaving.setGoal(goal);
         editedSaving.setNotes(notesText);
+        editedSaving.setCategory(getSelectedCategoryId());
         editedSaving.setIsArchived(currentSaving.getIsArchived());
         editedSaving.setDeadline(deadlineText.isEmpty() ? AlarmSetter.NO_ALARM : currentSaving.getDeadline());
 
@@ -268,6 +271,35 @@ public class EditActivity extends CentsationActivity {
         });
     }
 
+
+    private void setCategorySelection(String categoryId) {
+        if (categoryId == null) {
+            binding.catGeneral.setChecked(true);
+            return;
+        }
+        if (categoryId.equalsIgnoreCase(SavingCategory.EMERGENCY.getId())) binding.catEmergency.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.TRAVEL.getId())) binding.catTravel.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.TECH.getId())) binding.catTech.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.VEHICLE.getId())) binding.catVehicle.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.HOME.getId())) binding.catHome.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.SHOPPING.getId())) binding.catShopping.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.EDUCATION.getId())) binding.catEducation.setChecked(true);
+        else if (categoryId.equalsIgnoreCase(SavingCategory.INVESTMENT.getId())) binding.catInvestment.setChecked(true);
+        else binding.catGeneral.setChecked(true);
+    }
+
+    private String getSelectedCategoryId() {
+        int checkedId = binding.categoryChipGroup.getCheckedChipId();
+        if (checkedId == R.id.cat_emergency) return SavingCategory.EMERGENCY.getId();
+        if (checkedId == R.id.cat_travel) return SavingCategory.TRAVEL.getId();
+        if (checkedId == R.id.cat_tech) return SavingCategory.TECH.getId();
+        if (checkedId == R.id.cat_vehicle) return SavingCategory.VEHICLE.getId();
+        if (checkedId == R.id.cat_home) return SavingCategory.HOME.getId();
+        if (checkedId == R.id.cat_shopping) return SavingCategory.SHOPPING.getId();
+        if (checkedId == R.id.cat_education) return SavingCategory.EDUCATION.getId();
+        if (checkedId == R.id.cat_investment) return SavingCategory.INVESTMENT.getId();
+        return SavingCategory.GENERAL.getId();
+    }
 
     @Override
     protected void onDestroy() {

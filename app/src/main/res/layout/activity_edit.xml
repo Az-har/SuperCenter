@@ -60,6 +60,106 @@
                     android:layout_height="match_parent"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Category Selector -->
+            <com.google.android.material.textview.MaterialTextView
+                android:text="Category"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textStyle="bold"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="6dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+
+            <HorizontalScrollView
+                android:scrollbars="none"
+                android:layout_marginBottom="6dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/category_chip_group"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_general"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:checked="true"
+                        android:text="🎯 General"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_emergency"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="🛡️ Emergency"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_travel"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="✈️ Travel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_tech"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="💻 Tech"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_vehicle"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="🚗 Vehicle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_home"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="🏠 Home"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_shopping"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="🛍️ Shopping"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_education"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="📚 Education"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/cat_investment"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:text="📈 Investment"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/field_saving_goal_layout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"

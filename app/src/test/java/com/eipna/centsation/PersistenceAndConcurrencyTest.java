@@ -28,6 +28,7 @@ public class PersistenceAndConcurrencyTest {
         assertEquals("current_saving", Database.COLUMN_SAVING_CURRENT_SAVING);
         assertEquals("goal", Database.COLUMN_SAVING_GOAL);
         assertEquals("notes", Database.COLUMN_SAVING_NOTES);
+        assertEquals("category", Database.COLUMN_SAVING_CATEGORY);
         assertEquals("is_archived", Database.COLUMN_SAVING_IS_ARCHIVED);
         assertEquals("deadline", Database.COLUMN_SAVING_DEADLINE);
 
@@ -75,6 +76,7 @@ public class PersistenceAndConcurrencyTest {
         saving.setCurrentSaving(500.0);
         saving.setGoal(1000.0);
         saving.setNotes("High yield savings");
+        saving.setCategory("travel");
         saving.setIsArchived(Saving.NOT_ARCHIVE);
         saving.setDeadline(1750000000000L);
 
@@ -83,6 +85,7 @@ public class PersistenceAndConcurrencyTest {
         assertEquals(500.0, saving.getCurrentSaving(), 0.001);
         assertEquals(1000.0, saving.getGoal(), 0.001);
         assertEquals("High yield savings", saving.getNotes());
+        assertEquals("travel", saving.getCategory());
         assertEquals(Saving.NOT_ARCHIVE, saving.getIsArchived());
         assertEquals(1750000000000L, saving.getDeadline());
 
@@ -93,6 +96,7 @@ public class PersistenceAndConcurrencyTest {
         assertEquals(saving.getCurrentSaving(), copy.getCurrentSaving(), 0.001);
         assertEquals(saving.getGoal(), copy.getGoal(), 0.001);
         assertEquals(saving.getNotes(), copy.getNotes());
+        assertEquals(saving.getCategory(), copy.getCategory());
         assertEquals(saving.getIsArchived(), copy.getIsArchived());
         assertEquals(saving.getDeadline(), copy.getDeadline());
     }

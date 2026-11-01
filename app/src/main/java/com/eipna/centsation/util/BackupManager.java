@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 
 import com.eipna.centsation.data.Database;
 import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
@@ -125,6 +126,7 @@ public class BackupManager {
                 obj.put(Database.COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
                 obj.put(Database.COLUMN_SAVING_GOAL, saving.getGoal());
                 obj.put(Database.COLUMN_SAVING_NOTES, saving.getNotes() == null ? "" : saving.getNotes());
+                obj.put(Database.COLUMN_SAVING_CATEGORY, saving.getCategory());
                 obj.put(Database.COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
                 obj.put(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
                 savingJsonArray.put(obj);
@@ -302,6 +304,7 @@ public class BackupManager {
             saving.setCurrentSaving(obj.getDouble(Database.COLUMN_SAVING_CURRENT_SAVING));
             saving.setGoal(obj.getDouble(Database.COLUMN_SAVING_GOAL));
             saving.setNotes(obj.optString(Database.COLUMN_SAVING_NOTES, ""));
+            saving.setCategory(obj.optString(Database.COLUMN_SAVING_CATEGORY, SavingCategory.GENERAL.getId()));
             saving.setIsArchived(obj.getInt(Database.COLUMN_SAVING_IS_ARCHIVED));
             saving.setDeadline(obj.optLong(Database.COLUMN_SAVING_DEADLINE, AlarmSetter.NO_ALARM));
             result.add(saving);

@@ -1,6 +1,5 @@
 package com.eipna.centsation.data.saving;
 
-
 import java.util.Comparator;
 
 public class Saving {
@@ -10,6 +9,7 @@ public class Saving {
     private double currentSaving;
     private double goal;
     private String notes;
+    private String category;
     private int isArchived;
     private long deadline;
 
@@ -22,6 +22,7 @@ public class Saving {
         this.currentSaving = 0.0;
         this.goal = 0.0;
         this.notes = null;
+        this.category = SavingCategory.GENERAL.getId();
         this.isArchived = 0;
         this.deadline = 0;
     }
@@ -32,6 +33,7 @@ public class Saving {
         this.currentSaving = other.currentSaving;
         this.goal = other.goal;
         this.notes = other.notes;
+        this.category = other.category != null ? other.category : SavingCategory.GENERAL.getId();
         this.isArchived = other.isArchived;
         this.deadline = other.deadline;
     }
@@ -90,6 +92,14 @@ public class Saving {
 
     public String getNotes() {
         return notes;
+    }
+
+    public String getCategory() {
+        return category != null ? category : SavingCategory.GENERAL.getId();
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public long getDeadline() {

@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 public class Database extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "centsation.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     public static final String TABLE_SAVING = "savings";
     public static final String COLUMN_SAVING_ID = "id";
@@ -17,6 +17,7 @@ public class Database extends SQLiteOpenHelper {
     public static final String COLUMN_SAVING_CURRENT_SAVING = "current_saving";
     public static final String COLUMN_SAVING_GOAL = "goal";
     public static final String COLUMN_SAVING_NOTES = "notes";
+    public static final String COLUMN_SAVING_CATEGORY = "category";
     public static final String COLUMN_SAVING_IS_ARCHIVED = "is_archived";
     public static final String COLUMN_SAVING_DEADLINE = "deadline";
 
@@ -48,6 +49,7 @@ public class Database extends SQLiteOpenHelper {
                 COLUMN_SAVING_CURRENT_SAVING + " REAL NOT NULL, " +
                 COLUMN_SAVING_GOAL + " REAL NOT NULL, " +
                 COLUMN_SAVING_NOTES + " TEXT, " +
+                COLUMN_SAVING_CATEGORY + " TEXT, " +
                 COLUMN_SAVING_IS_ARCHIVED + " INTEGER NOT NULL, " +
                 COLUMN_SAVING_DEADLINE + " INTEGER);";
 
@@ -75,11 +77,22 @@ public class Database extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
         }
+        if (oldVersion < 3) {
+            try {
+                sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_SAVING + " ADD COLUMN " + COLUMN_SAVING_CATEGORY + " TEXT;");
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Override
     public void onOpen(SQLiteDatabase sqLiteDatabase) {
         super.onOpen(sqLiteDatabase);
         sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
+        try {
+            sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_SAVING + " ADD COLUMN " + COLUMN_SAVING_CATEGORY + " TEXT;");
+        } catch (Exception ignored) {
+            // Column already exists
+        }
     }
 }

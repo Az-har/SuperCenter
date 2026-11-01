@@ -35,6 +35,7 @@ import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.saving.SavingSort;
 import com.eipna.centsation.databinding.ActivityMainBinding;
 import com.eipna.centsation.ui.adapters.SavingAdapter;
+import com.eipna.centsation.ui.dialogs.AnalyticsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.TransactionBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.MainViewModel;
@@ -43,6 +44,7 @@ import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.CrashReporter;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.HapticUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -142,6 +144,31 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         // Fluid touch animations
         AnimationUtil.applySpringPressEffect(binding.createSaving);
         AnimationUtil.applySpringPressEffect(binding.dashboardCard);
+        AnimationUtil.applySpringPressEffect(binding.btnDashboardAnalytics);
+
+        // Status Filter Chips
+        binding.filterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            HapticUtil.performTap(group);
+            if (checkedIds.isEmpty() || checkedIds.contains(R.id.chip_filter_all)) {
+                viewModel.setStatusFilter(MainViewModel.StatusFilter.ALL);
+            } else if (checkedIds.contains(R.id.chip_filter_in_progress)) {
+                viewModel.setStatusFilter(MainViewModel.StatusFilter.IN_PROGRESS);
+            } else if (checkedIds.contains(R.id.chip_filter_due_soon)) {
+                viewModel.setStatusFilter(MainViewModel.StatusFilter.DUE_SOON);
+            } else if (checkedIds.contains(R.id.chip_filter_completed)) {
+                viewModel.setStatusFilter(MainViewModel.StatusFilter.COMPLETED);
+            }
+        });
+
+        // Insights / Analytics Triggers
+        binding.dashboardCard.setOnClickListener(v -> {
+            HapticUtil.performTap(v);
+            showAnalytics();
+        });
+        binding.btnDashboardAnalytics.setOnClickListener(v -> {
+            HapticUtil.performTap(v);
+            showAnalytics();
+        });
 
         viewModel.getSavings().observe(this, this::onSavingsChanged);
 
@@ -404,6 +431,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
+        if (id == R.id.action_analytics) {
+            showAnalytics();
+            return true;
+        }
         if (id == R.id.archive) {
             startActivity(new Intent(this, ArchiveActivity.class));
             return true;
@@ -556,15 +587,30 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         sheet.setOnTransactionListener(new TransactionBottomSheetDialogFragment.OnTransactionListener() {
             @Override
             public void onDeposit(Saving saving, double amount) {
+                double prev = saving.getCurrentSaving();
+                double next = prev + amount;
+                if (prev < saving.getGoal() && next >= saving.getGoal()) {
+                    HapticUtil.performCelebration(MainActivity.this);
+                    binding.confettiView.startConfetti();
+                    Toast.makeText(MainActivity.this, "🎉 Goal Achieved! Outstanding work!", Toast.LENGTH_LONG).show();
+                } else {
+                    HapticUtil.performSuccess(binding.getRoot());
+                }
                 viewModel.deposit(saving, amount);
             }
 
             @Override
             public boolean onWithdraw(Saving saving, double amount) {
+                HapticUtil.performTap(binding.getRoot());
                 return viewModel.withdraw(saving, amount);
             }
         });
         sheet.show(getSupportFragmentManager(), "transaction_bottom_sheet");
+    }
+
+    private void showAnalytics() {
+        AnalyticsBottomSheetDialogFragment sheet = AnalyticsBottomSheetDialogFragment.newInstance();
+        sheet.show(getSupportFragmentManager(), "analytics_sheet");
     }
 
     private void showHistoryActivity(Saving saving) {

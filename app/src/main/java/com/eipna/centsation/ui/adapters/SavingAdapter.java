@@ -18,10 +18,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.HapticUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.button.MaterialButton;
@@ -33,20 +35,27 @@ import java.util.Objects;
 
 public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder> {
 
+    public interface Listener {
+        void onClick(int position);
+        void onOperationClick(SavingOperation operation, int position);
+    }
+
     private final Context context;
-    private final Listener listener;
     private final PreferenceUtil preferences;
+    private final Listener listener;
 
     public SavingAdapter(Context context, Listener listener) {
         super(DIFF_CALLBACK);
         this.context = context;
-        this.listener = listener;
         this.preferences = new PreferenceUtil(context);
+        this.listener = listener;
     }
 
-    public interface Listener {
-        void onClick(int position);
-        void onOperationClick(SavingOperation operation, int position);
+    public SavingAdapter(Context context, PreferenceUtil preferences, Listener listener) {
+        super(DIFF_CALLBACK);
+        this.context = context;
+        this.preferences = preferences;
+        this.listener = listener;
     }
 
     public Saving getSavingAt(int position) {
@@ -65,6 +74,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                     && oldItem.getCurrentSaving() == newItem.getCurrentSaving()
                     && oldItem.getGoal() == newItem.getGoal()
                     && Objects.equals(oldItem.getNotes(), newItem.getNotes())
+                    && Objects.equals(oldItem.getCategory(), newItem.getCategory())
                     && oldItem.getDeadline() == newItem.getDeadline()
                     && oldItem.getIsArchived() == newItem.getIsArchived();
         }
@@ -86,22 +96,25 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
         MaterialCardView parent;
-        MaterialTextView name, saving, goal, percent, deadline, notesPreview;
+        MaterialTextView name, saving, goal, percent, deadline, notesPreview, categoryBadge, pace;
         MaterialButton update, history, archive, unarchive, delete, share;
 
-        LinearLayout description, notesContainer;
+        LinearLayout description, notesContainer, paceContainer;
         LinearProgressIndicator progress;
 
         public ViewHolder(@NonNull View itemView, Listener listener) {
             super(itemView);
             parent = itemView.findViewById(R.id.saving_parent);
             name = itemView.findViewById(R.id.saving_name);
+            categoryBadge = itemView.findViewById(R.id.saving_category_badge);
             saving = itemView.findViewById(R.id.saving_current_saving);
             goal = itemView.findViewById(R.id.saving_goal);
             percent = itemView.findViewById(R.id.saving_percent);
             description = itemView.findViewById(R.id.saving_description);
             progress = itemView.findViewById(R.id.saving_progress);
             deadline = itemView.findViewById(R.id.saving_deadline);
+            paceContainer = itemView.findViewById(R.id.saving_pace_container);
+            pace = itemView.findViewById(R.id.saving_pace);
             notesContainer = itemView.findViewById(R.id.saving_notes_container);
             notesPreview = itemView.findViewById(R.id.saving_notes_preview);
 
@@ -116,18 +129,37 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
             AnimationUtil.applySpringPressEffect(update);
 
             itemView.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
                 int pos = getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION && listener != null) {
                     listener.onClick(pos);
                 }
             });
 
-            delete.setOnClickListener(v -> dispatchOp(listener, SavingOperation.DELETE));
-            share.setOnClickListener(v -> dispatchOp(listener, SavingOperation.SHARE));
-            update.setOnClickListener(v -> dispatchOp(listener, SavingOperation.TRANSACTION));
-            archive.setOnClickListener(v -> dispatchOp(listener, SavingOperation.ARCHIVE));
-            unarchive.setOnClickListener(v -> dispatchOp(listener, SavingOperation.UNARCHIVE));
-            history.setOnClickListener(v -> dispatchOp(listener, SavingOperation.HISTORY));
+            delete.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.DELETE);
+            });
+            share.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.SHARE);
+            });
+            update.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.TRANSACTION);
+            });
+            archive.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.ARCHIVE);
+            });
+            unarchive.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.UNARCHIVE);
+            });
+            history.setOnClickListener(v -> {
+                HapticUtil.performTap(v);
+                dispatchOp(listener, SavingOperation.HISTORY);
+            });
         }
 
         private void dispatchOp(Listener listener, SavingOperation op) {
@@ -169,6 +201,12 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                 name.setText(currentSaving.getName());
             }
 
+            // Category badge
+            if (categoryBadge != null) {
+                SavingCategory cat = SavingCategory.fromId(currentSaving.getCategory());
+                categoryBadge.setText(cat.getFormattedLabel());
+            }
+
             share.setVisibility(View.VISIBLE);
 
             boolean isCompleted = SavingsCalculator.isCompleted(currentSaving);
@@ -186,6 +224,23 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                     deadline.setText(String.format("📅 Due today! (%s)", dateStr));
                 } else {
                     deadline.setText(String.format("📅 Deadline: %s (%d days left)", dateStr, daysLeft));
+                }
+            }
+
+            // Savings pace indicator
+            if (paceContainer != null && pace != null) {
+                if (!isCompleted && currentSaving.getDeadline() != AlarmSetter.NO_ALARM) {
+                    long daysLeft = SavingsCalculator.getDaysRemaining(currentSaving.getDeadline());
+                    double dailyRate = SavingsCalculator.getDailySavingsRate(currentSaving);
+                    if (daysLeft > 0 && dailyRate > 0) {
+                        paceContainer.setVisibility(View.VISIBLE);
+                        pace.setText(String.format("💡 Save %s%s/day to hit target",
+                                currencySymbol, NumberFormat.getInstance().format(Math.round(dailyRate))));
+                    } else {
+                        paceContainer.setVisibility(View.GONE);
+                    }
+                } else {
+                    paceContainer.setVisibility(View.GONE);
                 }
             }
 
