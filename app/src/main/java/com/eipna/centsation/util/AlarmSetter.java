@@ -26,34 +26,57 @@ public class AlarmSetter {
             return;
         }
 
-        // Never schedule alarms for the past (AlarmManager fires immediately if time <= now)
         long now = System.currentTimeMillis();
-        if (saving.getDeadline() <= now) {
-            cancel(context, saving);
-            return;
-        }
-
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
 
-        Intent intent = new Intent(context, DeadlineReceiver.class);
-        intent.setAction(ACTION_DEADLINE_ALARM);
-        intent.setPackage(context.getPackageName());
-        intent.putExtra(Database.COLUMN_SAVING_ID, saving.getID());
-        intent.putExtra(Database.COLUMN_SAVING_NAME, saving.getName());
-        intent.putExtra(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
+        // 1. Primary Deadline Alarm (Due Today morning)
+        if (saving.getDeadline() > now) {
+            Intent intent = new Intent(context, DeadlineReceiver.class);
+            intent.setAction(ACTION_DEADLINE_ALARM);
+            intent.setPackage(context.getPackageName());
+            intent.putExtra(Database.COLUMN_SAVING_ID, saving.getID());
+            intent.putExtra(Database.COLUMN_SAVING_NAME, saving.getName());
+            intent.putExtra(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
+            intent.putExtra("is_advance_notice", false);
 
-        int requestCode = saving.getID().hashCode() & 0x7FFFFFFF;
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                requestCode,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            int requestCode = saving.getID().hashCode() & 0x7FFFFFFF;
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    requestCode,
+                    intent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        try {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, saving.getDeadline(), pendingIntent);
-        } catch (SecurityException e) {
-            Log.e(TAG, "SecurityException while scheduling deadline alarm", e);
+            try {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, saving.getDeadline(), pendingIntent);
+            } catch (SecurityException e) {
+                Log.e(TAG, "SecurityException scheduling primary deadline alarm", e);
+            }
+        }
+
+        // 2. Advance Notice Alarm (24 hours prior to deadline)
+        long advanceTime = saving.getDeadline() - 86400000L;
+        if (advanceTime > now) {
+            Intent advanceIntent = new Intent(context, DeadlineReceiver.class);
+            advanceIntent.setAction(ACTION_DEADLINE_ALARM);
+            advanceIntent.setPackage(context.getPackageName());
+            advanceIntent.putExtra(Database.COLUMN_SAVING_ID, saving.getID());
+            advanceIntent.putExtra(Database.COLUMN_SAVING_NAME, saving.getName());
+            advanceIntent.putExtra(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
+            advanceIntent.putExtra("is_advance_notice", true);
+
+            int advanceRequestCode = (saving.getID() + "_adv").hashCode() & 0x7FFFFFFF;
+            PendingIntent advancePendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    advanceRequestCode,
+                    advanceIntent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+            try {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, advanceTime, advancePendingIntent);
+            } catch (SecurityException e) {
+                Log.e(TAG, "SecurityException scheduling advance deadline alarm", e);
+            }
         }
     }
 
@@ -62,11 +85,18 @@ public class AlarmSetter {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
 
+        // Cancel Primary Alarm
+        cancelIntent(context, alarmManager, saving.getID().hashCode() & 0x7FFFFFFF);
+
+        // Cancel Advance Notice Alarm
+        cancelIntent(context, alarmManager, (saving.getID() + "_adv").hashCode() & 0x7FFFFFFF);
+    }
+
+    private static void cancelIntent(Context context, AlarmManager alarmManager, int requestCode) {
         Intent intent = new Intent(context, DeadlineReceiver.class);
         intent.setAction(ACTION_DEADLINE_ALARM);
         intent.setPackage(context.getPackageName());
 
-        int requestCode = saving.getID().hashCode() & 0x7FFFFFFF;
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
                 requestCode,

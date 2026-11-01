@@ -115,7 +115,8 @@ public class DeadlineReceiver extends BroadcastReceiver {
             }
 
             // All checks passed -> Notify
-            NotificationHandler.create(context, saving);
+            boolean isAdvanceNotice = intent.getBooleanExtra("is_advance_notice", false);
+            NotificationHandler.create(context, saving, isAdvanceNotice);
         } catch (Exception e) {
             Log.e(TAG, "Error handling deadline trigger", e);
         }

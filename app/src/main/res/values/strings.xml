@@ -165,8 +165,10 @@
     <string name="deadline_format_yyyy_mm_dd">2025/04/08</string>
 
     <!-- Notification strings -->
-    <string name="notification_deadline_title">%s Deadline!</string>
+    <string name="notification_deadline_title">%s Deadline Today!</string>
     <string name="notification_deadline_body">The deadline for your goal \"%s\" is today.</string>
+    <string name="notification_deadline_advance_title">%s Due Tomorrow!</string>
+    <string name="notification_deadline_advance_body">The deadline for your goal \"%s\" is tomorrow. Check your progress!</string>
 
     <!-- Feedback & Swipe Action strings -->
     <string name="snackbar_archived">%s archived</string>
