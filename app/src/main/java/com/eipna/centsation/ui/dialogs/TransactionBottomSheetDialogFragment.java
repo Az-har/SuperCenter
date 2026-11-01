@@ -87,6 +87,7 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
 
         setupQuickChips();
         AnimationUtil.applySpringPressEffect(binding.btnSubmit);
+        AnimationUtil.applySpringPressEffect(binding.btnCancel);
 
         binding.btnCancel.setOnClickListener(v -> dismiss());
 
@@ -130,8 +131,9 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
         });
 
         binding.fieldAmountText.post(() -> {
+            if (!isAdded() || getContext() == null || binding == null) return;
             binding.fieldAmountText.requestFocus();
-            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_SERVICE);
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.showSoftInput(binding.fieldAmountText, InputMethodManager.SHOW_IMPLICIT);
             }
@@ -146,6 +148,7 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
             final double addVal = chipValues[i];
             View chip = binding.getRoot().findViewById(chipIds[i]);
             if (chip != null) {
+                AnimationUtil.applySpringPressEffect(chip);
                 chip.setOnClickListener(v -> addAmount(addVal));
             }
         }

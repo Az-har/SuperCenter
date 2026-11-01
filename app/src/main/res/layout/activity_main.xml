@@ -199,11 +199,23 @@
             tools:ignore="HardcodedText" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_empty_create"
+            style="@style/Widget.Material3.Button"
+            android:text="@string/toolbar_create"
+            app:icon="@drawable/ic_add"
+            app:cornerRadius="16dp"
+            android:layout_marginTop="20dp"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_empty_restore"
             style="@style/Widget.Material3.Button.TonalButton"
             android:text="@string/btn_restore_from_backup"
             app:icon="@drawable/ic_unarchive"
-            android:layout_marginTop="16dp"
+            app:cornerRadius="16dp"
+            android:layout_marginTop="8dp"
             android:layout_gravity="center"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />

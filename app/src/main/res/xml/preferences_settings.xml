@@ -100,4 +100,15 @@
             android:summary="@string/preference_import_summary"
             app:iconSpaceReserved="false"/>
     </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Testing &amp; Diagnostics"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="test_notification"
+            android:title="Trigger Test Notification"
+            android:summary="Fire an immediate deadline notification to validate alert delivery and style"
+            app:iconSpaceReserved="false"/>
+    </PreferenceCategory>
 </PreferenceScreen>

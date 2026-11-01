@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.icu.text.NumberFormat;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,9 +22,13 @@ import com.eipna.centsation.databinding.DialogBottomSheetSavingDetailsBinding;
 import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -30,6 +36,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         void onTransact(Saving saving);
         void onHistory(Saving saving);
         void onEdit(Saving saving);
+        void onShare(Saving saving);
         void onArchive(Saving saving);
         void onDelete(Saving saving);
     }
@@ -37,6 +44,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
     private DialogBottomSheetSavingDetailsBinding binding;
     private Saving saving;
     private OnDetailsActionListener listener;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public static SavingDetailsBottomSheetDialogFragment newInstance(String savingID) {
         SavingDetailsBottomSheetDialogFragment fragment = new SavingDetailsBottomSheetDialogFragment();
@@ -66,17 +74,24 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             return;
         }
 
-        try (SavingRepository repo = new SavingRepository(requireContext())) {
-            saving = repo.getSaving(savingID);
-        }
-
-        if (saving == null) {
-            dismiss();
-            return;
-        }
-
-        bindSavingDetails();
-        setupActionListeners();
+        final Context appContext = requireContext().getApplicationContext();
+        final Handler mainHandler = new Handler(Looper.getMainLooper());
+        executor.execute(() -> {
+            Saving loadedSaving;
+            try (SavingRepository repo = new SavingRepository(appContext)) {
+                loadedSaving = repo.getSaving(savingID);
+            }
+            mainHandler.post(() -> {
+                if (!isAdded() || binding == null) return;
+                if (loadedSaving == null) {
+                    dismiss();
+                    return;
+                }
+                saving = loadedSaving;
+                bindSavingDetails();
+                setupActionListeners();
+            });
+        });
     }
 
     private void bindSavingDetails() {
@@ -161,6 +176,8 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         AnimationUtil.applySpringPressEffect(binding.detailsBtnTransact);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnHistory);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnEdit);
+        AnimationUtil.applySpringPressEffect(binding.detailsBtnShare);
+        AnimationUtil.applySpringPressEffect(binding.detailsBtnTestNotify);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnArchive);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnDelete);
 
@@ -179,6 +196,18 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             if (listener != null) listener.onEdit(saving);
         });
 
+        binding.detailsBtnShare.setOnClickListener(v -> {
+            dismiss();
+            if (listener != null) listener.onShare(saving);
+        });
+
+        binding.detailsBtnTestNotify.setOnClickListener(v -> {
+            if (getContext() != null && saving != null) {
+                NotificationHandler.create(requireContext(), saving);
+                android.widget.Toast.makeText(requireContext(), "Alert notification sent for " + saving.getName() + "!", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+
         binding.detailsBtnArchive.setOnClickListener(v -> {
             dismiss();
             if (listener != null) listener.onArchive(saving);
@@ -193,6 +222,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        executor.shutdown();
         binding = null;
     }
 }

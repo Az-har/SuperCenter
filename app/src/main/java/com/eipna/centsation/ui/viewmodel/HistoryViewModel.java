@@ -7,6 +7,8 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.eipna.centsation.data.saving.Saving;
+import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
 
@@ -17,18 +19,25 @@ import java.util.concurrent.Executors;
 public class HistoryViewModel extends AndroidViewModel {
 
     private final TransactionRepository transactionRepository;
+    private final SavingRepository savingRepository;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<List<Transaction>> transactionsLiveData = new MutableLiveData<>();
+    private final MutableLiveData<String> savingTitleLiveData = new MutableLiveData<>();
 
     private String savingID;
 
     public HistoryViewModel(@NonNull Application application) {
         super(application);
         transactionRepository = new TransactionRepository(application);
+        savingRepository = new SavingRepository(application);
     }
 
     public LiveData<List<Transaction>> getTransactions() {
         return transactionsLiveData;
+    }
+
+    public LiveData<String> getSavingTitle() {
+        return savingTitleLiveData;
     }
 
     public void setSavingID(String savingID) {
@@ -41,9 +50,22 @@ public class HistoryViewModel extends AndroidViewModel {
         executor.execute(() -> transactionsLiveData.postValue(transactionRepository.get(id)));
     }
 
+    public void loadSavingTitle() {
+        if (savingID == null) return;
+        final String id = savingID;
+        executor.execute(() -> {
+            Saving saving = savingRepository.getSaving(id);
+            if (saving != null) {
+                savingTitleLiveData.postValue(saving.getName());
+            }
+        });
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
         executor.shutdown();
+        savingRepository.close();
+        transactionRepository.close();
     }
 }

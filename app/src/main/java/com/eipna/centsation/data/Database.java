@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 public class Database extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "centsation.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     public static final String TABLE_SAVING = "savings";
     public static final String COLUMN_SAVING_ID = "id";
@@ -61,18 +61,25 @@ public class Database extends SQLiteOpenHelper {
 
         sqLiteDatabase.execSQL(createSavingTable);
         sqLiteDatabase.execSQL(createTransactionTable);
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
     }
 
     @Override
-    public void onOpen(SQLiteDatabase sqLiteDatabase) {
-        super.onOpen(sqLiteDatabase);
+    public void onConfigure(SQLiteDatabase sqLiteDatabase) {
+        super.onConfigure(sqLiteDatabase);
         sqLiteDatabase.setForeignKeyConstraintsEnabled(true);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
-        sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + TABLE_SAVING);
-        sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + TABLE_TRANSACTION);
-        onCreate(sqLiteDatabase);
+        if (oldVersion < 2) {
+            sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
+        }
+    }
+
+    @Override
+    public void onOpen(SQLiteDatabase sqLiteDatabase) {
+        super.onOpen(sqLiteDatabase);
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
     }
 }

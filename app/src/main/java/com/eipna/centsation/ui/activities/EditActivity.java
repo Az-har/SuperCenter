@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -27,23 +28,29 @@ import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.ActivityEditBinding;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.DateValidatorPointForward;
 import com.google.android.material.datepicker.MaterialDatePicker;
+import android.content.Context;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class EditActivity extends CentsationActivity {
 
     private ActivityEditBinding binding;
     private SavingRepository savingRepository;
     private Saving currentSaving;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private boolean isSaving = false;
 
     private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -74,13 +81,33 @@ public class EditActivity extends CentsationActivity {
         String savingIDExtra = getIntent().getStringExtra(Database.COLUMN_SAVING_ID);
 
         savingRepository = new SavingRepository(this);
-        currentSaving = savingRepository.getSaving(savingIDExtra);
-        if (currentSaving == null) {
+        loadSaving(savingIDExtra);
+    }
+
+    private void loadSaving(String savingId) {
+        if (savingId == null) {
             Toast.makeText(this, "Saving goal not found", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
+        executor.execute(() -> {
+            Saving saving = savingRepository.getSaving(savingId);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (saving == null) {
+                    Toast.makeText(this, "Saving goal not found", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+                currentSaving = saving;
+                populateUi();
+            });
+        });
+    }
+
+    private void populateUi() {
+        if (binding == null || currentSaving == null) return;
         String selectedCurrencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
         binding.fieldSavingGoalLayout.setPrefixText(selectedCurrencySymbol);
 
@@ -95,12 +122,22 @@ public class EditActivity extends CentsationActivity {
             binding.fieldSavingDeadlineText.setText(DateParser.getStringDate(currentSaving.getDeadline(), deadlineFormat));
         }
 
-        binding.fieldSavingDeadlineText.setOnClickListener(v -> hasNotificationPermission());
+        View.OnClickListener deadlineClickListener = v -> {
+            if (getSupportFragmentManager().findFragmentByTag("deadline_date_picker") != null) return;
+            hasNotificationPermission();
+        };
+        binding.fieldSavingDeadlineText.setOnClickListener(deadlineClickListener);
+        binding.fieldSavingDeadlineLayout.setOnClickListener(deadlineClickListener);
         binding.fieldSavingDeadlineLayout.setEndIconOnClickListener(v -> {
             binding.fieldSavingDeadlineText.setText("");
             binding.fieldSavingDeadlineLayout.setEndIconVisible(false);
-            currentSaving.setDeadline(AlarmSetter.NO_ALARM);
+            if (currentSaving != null) {
+                currentSaving.setDeadline(AlarmSetter.NO_ALARM);
+            }
         });
+
+        binding.btnSave.setOnClickListener(v -> editSaving());
+        AnimationUtil.applySpringPressEffect(binding.btnSave);
     }
 
     private void hasNotificationPermission() {
@@ -123,6 +160,10 @@ public class EditActivity extends CentsationActivity {
     }
 
     private void showDeadlineDialog() {
+        if (getSupportFragmentManager().findFragmentByTag("deadline_date_picker") != null) {
+            return;
+        }
+
         CalendarConstraints.Builder calendarConstraints = new CalendarConstraints.Builder()
                 .setValidator(DateValidatorPointForward.now());
 
@@ -151,13 +192,15 @@ public class EditActivity extends CentsationActivity {
                 calculatedDeadline = fallback.getTimeInMillis();
             }
 
-            currentSaving.setDeadline(calculatedDeadline);
+            if (currentSaving != null) {
+                currentSaving.setDeadline(calculatedDeadline);
+            }
             String deadlineFormat = preferenceUtil.getDeadlineFormat();
 
             binding.fieldSavingDeadlineText.setText(DateParser.getStringDate(calculatedDeadline, deadlineFormat));
             binding.fieldSavingDeadlineLayout.setEndIconVisible(true);
         });
-        datePicker.show(getSupportFragmentManager(), null);
+        datePicker.show(getSupportFragmentManager(), "deadline_date_picker");
     }
 
     @Override
@@ -171,6 +214,9 @@ public class EditActivity extends CentsationActivity {
     }
 
     private void editSaving() {
+        if (currentSaving == null) return;
+        if (isSaving) return;
+
         String nameText = Objects.requireNonNull(binding.fieldSavingNameText.getText()).toString();
         String goalText = Objects.requireNonNull(binding.fieldSavingGoalText.getText()).toString();
         String notesText = Objects.requireNonNull(binding.fieldSavingNotesText.getText()).toString();
@@ -194,6 +240,8 @@ public class EditActivity extends CentsationActivity {
             return;
         }
 
+        isSaving = true;
+
         Saving editedSaving = new Saving();
         editedSaving.setID(currentSaving.getID());
         editedSaving.setName(nameText);
@@ -211,10 +259,15 @@ public class EditActivity extends CentsationActivity {
             AlarmSetter.set(this, editedSaving);
         }
 
-        savingRepository.edit(editedSaving);
-        BackupManager.triggerAutoBackup(this);
-        setResult(RESULT_OK);
-        finish();
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            savingRepository.edit(editedSaving);
+            BackupManager.triggerAutoBackup(appContext);
+            runOnUiThread(() -> {
+                setResult(RESULT_OK);
+                finish();
+            });
+        });
     }
 
     @Override
@@ -226,6 +279,10 @@ public class EditActivity extends CentsationActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        executor.shutdown();
+        if (savingRepository != null) {
+            savingRepository.close();
+        }
         binding = null;
     }
 }

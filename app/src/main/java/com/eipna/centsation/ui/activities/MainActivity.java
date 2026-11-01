@@ -1,6 +1,8 @@
 package com.eipna.centsation.ui.activities;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.icu.text.NumberFormat;
 import android.net.Uri;
@@ -14,6 +16,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.graphics.Insets;
 import androidx.core.view.MenuCompat;
 import androidx.core.view.ViewCompat;
@@ -25,6 +28,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.Database;
+import com.eipna.centsation.data.Theme;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.data.saving.SavingRepository;
@@ -34,15 +38,19 @@ import com.eipna.centsation.ui.adapters.SavingAdapter;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.TransactionBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.MainViewModel;
+import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.CrashReporter;
+import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends CentsationActivity implements SavingAdapter.Listener {
@@ -51,6 +59,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     private MainViewModel viewModel;
     private SavingAdapter savingAdapter;
     private double previousTotalSaved = 0.0;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private final ActivityResultLauncher<Intent> saveCrashLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -137,6 +146,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         viewModel.getSavings().observe(this, this::onSavingsChanged);
 
         binding.createSaving.setOnClickListener(v -> startActivity(new Intent(this, CreateActivity.class)));
+        binding.btnEmptyCreate.setOnClickListener(v -> startActivity(new Intent(this, CreateActivity.class)));
+        AnimationUtil.applySpringPressEffect(binding.btnEmptyCreate);
         binding.btnEmptyRestore.setOnClickListener(v -> onRestoreBackupClicked());
         AnimationUtil.applySpringPressEffect(binding.btnEmptyRestore);
 
@@ -148,8 +159,9 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     private void checkForReinstallBackup() {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try (SavingRepository repo = new SavingRepository(this)) {
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            try (SavingRepository repo = new SavingRepository(appContext)) {
                 if (!repo.getAllSavings().isEmpty()) {
                     return;
                 }
@@ -158,9 +170,13 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 return;
             }
 
-            BackupManager.BackupInfo backupInfo = BackupManager.detectExistingBackup(this);
+            BackupManager.BackupInfo backupInfo = BackupManager.detectExistingBackup(appContext);
             if (backupInfo != null && backupInfo.savingsCount > 0) {
-                runOnUiThread(() -> showReinstallRestoreDialog(backupInfo));
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        showReinstallRestoreDialog(backupInfo);
+                    }
+                });
             }
         });
     }
@@ -190,50 +206,59 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     private void restoreBackup(BackupManager.BackupInfo backupInfo) {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
             boolean success = false;
             if (backupInfo.sourceFile != null) {
-                success = BackupManager.restoreFromFile(this, backupInfo.sourceFile);
+                success = BackupManager.restoreFromFile(appContext, backupInfo.sourceFile);
             } else if (backupInfo.sourceUri != null) {
-                success = BackupManager.restoreFromUri(this, backupInfo.sourceUri);
+                success = BackupManager.restoreFromUri(appContext, backupInfo.sourceUri);
             }
             final boolean ok = success;
             runOnUiThread(() -> {
-                if (ok) {
-                    Toast.makeText(this, "Savings restored successfully!", Toast.LENGTH_SHORT).show();
-                    viewModel.loadSavings();
-                } else {
-                    Toast.makeText(this, "Could not restore backup", Toast.LENGTH_SHORT).show();
+                if (!isFinishing() && !isDestroyed()) {
+                    if (ok) {
+                        Toast.makeText(this, "Savings restored successfully!", Toast.LENGTH_SHORT).show();
+                        viewModel.loadSavings();
+                    } else {
+                        Toast.makeText(this, "Could not restore backup", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         });
     }
 
     private void onRestoreBackupClicked() {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            BackupManager.BackupInfo info = BackupManager.detectExistingBackup(this);
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            BackupManager.BackupInfo info = BackupManager.detectExistingBackup(appContext);
             runOnUiThread(() -> {
-                if (info != null && info.savingsCount > 0) {
-                    showReinstallRestoreDialog(info);
-                } else {
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("application/json");
-                    restoreDocumentLauncher.launch(intent);
+                if (!isFinishing() && !isDestroyed()) {
+                    if (info != null && info.savingsCount > 0) {
+                        showReinstallRestoreDialog(info);
+                    } else {
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        intent.setType("application/json");
+                        restoreDocumentLauncher.launch(intent);
+                    }
                 }
             });
         });
     }
 
     private void importBackupUri(Uri uri) {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            boolean success = BackupManager.restoreFromUri(this, uri);
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            boolean success = BackupManager.restoreFromUri(appContext, uri);
             runOnUiThread(() -> {
-                if (success) {
-                    Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
-                    viewModel.loadSavings();
-                } else {
-                    Toast.makeText(this, "Failed to restore backup", Toast.LENGTH_SHORT).show();
+                if (!isFinishing() && !isDestroyed()) {
+                    if (success) {
+                        Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
+                        viewModel.loadSavings();
+                    } else {
+                        Toast.makeText(this, "Failed to restore backup", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         });
@@ -264,6 +289,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        executor.shutdown();
         binding = null;
     }
 
@@ -355,6 +381,22 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         return true;
     }
 
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem themeItem = menu.findItem(R.id.action_theme_toggle);
+        if (themeItem != null) {
+            boolean isDark = isDarkModeActive();
+            themeItem.setIcon(isDark ? R.drawable.ic_light_mode : R.drawable.ic_dark_mode);
+            themeItem.setTitle(isDark ? "Switch to Light Mode" : "Switch to Dark Mode");
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    private boolean isDarkModeActive() {
+        int nightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        return nightMode == Configuration.UI_MODE_NIGHT_YES;
+    }
+
     private void loadSortingMenu(Menu menu) {
         String criteria = viewModel.getSortCriteria();
         if (SavingSort.NAME.SORT.equals(criteria)) {
@@ -377,6 +419,14 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+
+        if (id == R.id.action_theme_toggle) {
+            boolean isDark = isDarkModeActive();
+            String newTheme = isDark ? Theme.LIGHT.VALUE : Theme.DARK.VALUE;
+            preferenceUtil.setTheme(newTheme);
+            AppCompatDelegate.setDefaultNightMode(isDark ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES);
+            return true;
+        }
 
         if (id == R.id.archive) {
             startActivity(new Intent(this, ArchiveActivity.class));
@@ -441,6 +491,11 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
 
             @Override
+            public void onShare(Saving s) {
+                shareSaving(s);
+            }
+
+            @Override
             public void onArchive(Saving s) {
                 archiveWithUndo(s);
             }
@@ -458,7 +513,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         Saving selectedSaving = savingAdapter.getSavingAt(position);
         switch (operation) {
             case DELETE:      showDeleteDialog(selectedSaving); break;
-            case SHARE:       showShareIntent(selectedSaving.getNotes()); break;
+            case SHARE:       shareSaving(selectedSaving); break;
             case TRANSACTION: showTransactionBottomSheet(selectedSaving); break;
             case ARCHIVE:     archiveWithUndo(selectedSaving); break;
             case HISTORY:     showHistoryActivity(selectedSaving); break;
@@ -484,12 +539,35 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         builder.create().show();
     }
 
-    private void showShareIntent(String notes) {
-        Intent sendIntent = new Intent();
+    private void shareSaving(Saving saving) {
+        if (saving == null) return;
+        String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
+        int percent = SavingsCalculator.getPercent(saving);
+
+        StringBuilder shareText = new StringBuilder();
+        shareText.append("🎯 Goal: ").append(saving.getName()).append("\n");
+        shareText.append("💰 Saved: ").append(currencySymbol)
+                .append(NumberFormat.getInstance().format(saving.getCurrentSaving()))
+                .append(" of ")
+                .append(currencySymbol)
+                .append(NumberFormat.getInstance().format(saving.getGoal()))
+                .append(" (").append(percent).append("%)\n");
+
+        if (saving.getDeadline() != AlarmSetter.NO_ALARM) {
+            shareText.append("📅 Target Date: ")
+                    .append(DateParser.getStringDate(saving.getDeadline(), preferenceUtil.getDeadlineFormat()))
+                    .append("\n");
+        }
+        if (saving.getNotes() != null && !saving.getNotes().trim().isEmpty()) {
+            shareText.append("📝 Notes: ").append(saving.getNotes().trim()).append("\n");
+        }
+        shareText.append("\nTracked with Centsation ✨");
+
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
         sendIntent.setType("text/plain");
-        sendIntent.setAction(Intent.ACTION_SEND);
-        sendIntent.putExtra(Intent.EXTRA_TEXT, notes);
-        startActivity(Intent.createChooser(sendIntent, null));
+        sendIntent.putExtra(Intent.EXTRA_SUBJECT, "Savings Goal: " + saving.getName());
+        sendIntent.putExtra(Intent.EXTRA_TEXT, shareText.toString());
+        startActivity(Intent.createChooser(sendIntent, "Share Savings Goal"));
     }
 
     private void showTransactionBottomSheet(Saving selectedSaving) {

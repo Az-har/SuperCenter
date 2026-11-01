@@ -163,18 +163,33 @@ public class SavingRepository implements AutoCloseable {
         database.beginTransaction();
         try {
             for (Saving saving : savings) {
+                if (saving == null || saving.getID() == null) {
+                    continue;
+                }
                 ContentValues values = new ContentValues();
                 values.put(Database.COLUMN_SAVING_ID, saving.getID());
                 values.put(Database.COLUMN_SAVING_NAME, saving.getName());
                 values.put(Database.COLUMN_SAVING_CURRENT_SAVING, saving.getCurrentSaving());
                 values.put(Database.COLUMN_SAVING_GOAL, saving.getGoal());
-                values.put(Database.COLUMN_SAVING_NOTES, saving.getNotes());
+                values.put(Database.COLUMN_SAVING_NOTES, saving.getNotes() != null ? saving.getNotes() : "");
                 values.put(Database.COLUMN_SAVING_IS_ARCHIVED, saving.getIsArchived());
                 values.put(Database.COLUMN_SAVING_DEADLINE, saving.getDeadline());
-                database.insert(Database.TABLE_SAVING, null, values);
+
+                int updatedRows = database.update(
+                        Database.TABLE_SAVING,
+                        values,
+                        Database.COLUMN_SAVING_ID + " = ?",
+                        new String[]{saving.getID()}
+                );
+                if (updatedRows == 0) {
+                    database.insert(Database.TABLE_SAVING, null, values);
+                }
             }
 
             for (Transaction transaction : transactions) {
+                if (transactionExists(database, transaction)) {
+                    continue;
+                }
                 ContentValues values = new ContentValues();
                 values.put(Database.COLUMN_TRANSACTION_SAVING_ID, transaction.getSavingID());
                 values.put(Database.COLUMN_TRANSACTION_AMOUNT, transaction.getAmount());
@@ -199,6 +214,25 @@ public class SavingRepository implements AutoCloseable {
             } else {
                 AlarmSetter.cancel(context, saving);
             }
+        }
+    }
+
+    private boolean transactionExists(SQLiteDatabase database, Transaction transaction) {
+        if (transaction == null || transaction.getSavingID() == null) {
+            return false;
+        }
+        String selection = Database.COLUMN_TRANSACTION_SAVING_ID + " = ? AND "
+                + Database.COLUMN_TRANSACTION_AMOUNT + " = ? AND "
+                + Database.COLUMN_TRANSACTION_TYPE + " = ? AND "
+                + Database.COLUMN_TRANSACTION_DATE + " = ?";
+        String[] args = new String[]{
+                transaction.getSavingID(),
+                String.valueOf(transaction.getAmount()),
+                transaction.getType() != null ? transaction.getType() : "",
+                String.valueOf(transaction.getDate())
+        };
+        try (Cursor cursor = database.query(Database.TABLE_TRANSACTION, new String[]{Database.COLUMN_TRANSACTION_ID}, selection, args, null, null, null, "1")) {
+            return cursor != null && cursor.moveToFirst();
         }
     }
 

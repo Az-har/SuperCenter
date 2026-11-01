@@ -105,4 +105,17 @@ public class NotificationHandler {
         saving.setName(savingName);
         create(context, saving);
     }
+
+    public static void showTestNotification(Context context) {
+        if (context == null) return;
+        createChannels(context);
+
+        Saving sample = new Saving();
+        sample.setID("centsation-test-notification");
+        sample.setName("Japan Vacation Fund 🎌");
+        sample.setCurrentSaving(820.0);
+        sample.setGoal(1200.0);
+        sample.setDeadline(System.currentTimeMillis() + 86400000L * 2);
+        create(context, sample);
+    }
 }

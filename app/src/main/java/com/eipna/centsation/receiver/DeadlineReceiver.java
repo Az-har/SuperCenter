@@ -12,10 +12,13 @@ import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.NotificationHandler;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class DeadlineReceiver extends BroadcastReceiver {
 
     private static final String TAG = "DeadlineReceiver";
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -23,18 +26,33 @@ public class DeadlineReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if (action == null) return;
 
-        if (Intent.ACTION_BOOT_COMPLETED.equals(action)
+        final boolean isBootOrReplaced = Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.LOCKED_BOOT_COMPLETED".equals(action)
                 || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
-                || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
-            Log.d(TAG, "Device booted or package replaced (" + action + "), rescheduling active deadlines");
-            rescheduleDeadlines(context);
-        } else if (AlarmSetter.ACTION_DEADLINE_ALARM.equals(action)) {
-            handleDeadlineTrigger(context, intent);
-        } else {
+                || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action);
+        final boolean isDeadlineAlarm = AlarmSetter.ACTION_DEADLINE_ALARM.equals(action);
+
+        if (!isBootOrReplaced && !isDeadlineAlarm) {
             Log.w(TAG, "Ignoring unexpected action: " + action);
+            return;
         }
+
+        final Context appContext = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        final PendingResult pendingResult = goAsync();
+
+        EXECUTOR.execute(() -> {
+            try {
+                if (isBootOrReplaced) {
+                    Log.d(TAG, "Device booted or package replaced (" + action + "), rescheduling active deadlines");
+                    rescheduleDeadlines(appContext);
+                } else {
+                    handleDeadlineTrigger(appContext, intent);
+                }
+            } finally {
+                pendingResult.finish();
+            }
+        });
     }
 
     private void rescheduleDeadlines(Context context) {

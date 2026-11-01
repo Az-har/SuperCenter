@@ -1,8 +1,11 @@
 package com.eipna.centsation.ui.activities;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -18,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -36,6 +40,7 @@ import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
 import com.eipna.centsation.databinding.ActivitySettingsBinding;
 import com.eipna.centsation.util.BackupManager;
+import com.eipna.centsation.util.NotificationHandler;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -135,6 +140,30 @@ public class SettingsActivity extends CentsationActivity {
                     }
                 });
 
+        private final ActivityResultLauncher<String> requestNotifPermissionLauncher =
+                registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                    if (isGranted) {
+                        NotificationHandler.showTestNotification(requireContext());
+                        Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(requireContext(), "Notification permission denied.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        private void triggerTestNotification() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    NotificationHandler.showTestNotification(requireContext());
+                    Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
+                } else {
+                    requestNotifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                }
+            } else {
+                NotificationHandler.showTestNotification(requireContext());
+                Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
+            }
+        }
+
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.preferences_settings, rootKey);
@@ -162,6 +191,14 @@ public class SettingsActivity extends CentsationActivity {
             if (restoreAuto != null) {
                 restoreAuto.setOnPreferenceClickListener(preference -> {
                     checkAndPromptAutoRestore();
+                    return true;
+                });
+            }
+
+            Preference testNotification = findPreference("test_notification");
+            if (testNotification != null) {
+                testNotification.setOnPreferenceClickListener(preference -> {
+                    triggerTestNotification();
                     return true;
                 });
             }

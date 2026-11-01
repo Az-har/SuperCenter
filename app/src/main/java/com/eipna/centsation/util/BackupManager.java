@@ -343,7 +343,7 @@ public class BackupManager {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Downloads.DISPLAY_NAME, AUTO_BACKUP_FILE_NAME);
             values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
-            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/" + BACKUP_DIR_NAME);
+            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + BACKUP_DIR_NAME);
             values.put(MediaStore.Downloads.IS_PENDING, 1);
 
             Uri uri = resolver.insert(collection, values);

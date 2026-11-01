@@ -54,6 +54,7 @@
     <string name="dialog_button_create">Create</string>
     <string name="dialog_button_close">Close</string>
     <string name="dialog_button_edit">Save</string>
+    <string name="dialog_button_save">Save Goal</string>
     <string name="dialog_button_delete">Delete</string>
     <string name="dialog_button_submit">Submit</string>
 

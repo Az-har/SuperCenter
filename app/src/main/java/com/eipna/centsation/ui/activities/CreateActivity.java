@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -26,7 +27,9 @@ import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.databinding.ActivityCreateBinding;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
+import android.content.Context;
 import com.eipna.centsation.util.DateParser;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.DateValidatorPointForward;
@@ -37,11 +40,15 @@ import java.util.Calendar;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CreateActivity extends CentsationActivity {
 
     private ActivityCreateBinding binding;
     private SavingRepository savingRepository;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private boolean isSaving = false;
     private long selectedDeadline;
     private String selectedCurrencySymbol;
 
@@ -79,12 +86,20 @@ public class CreateActivity extends CentsationActivity {
         binding.fieldSavingGoalLayout.setPrefixText(selectedCurrencySymbol);
 
         binding.fieldSavingDeadlineLayout.setEndIconVisible(false);
-        binding.fieldSavingDeadlineText.setOnClickListener(v -> hasNotificationPermission());
+        View.OnClickListener deadlineClickListener = v -> {
+            if (getSupportFragmentManager().findFragmentByTag("deadline_date_picker") != null) return;
+            hasNotificationPermission();
+        };
+        binding.fieldSavingDeadlineText.setOnClickListener(deadlineClickListener);
+        binding.fieldSavingDeadlineLayout.setOnClickListener(deadlineClickListener);
         binding.fieldSavingDeadlineLayout.setEndIconOnClickListener(v -> {
             binding.fieldSavingDeadlineText.setText("");
             binding.fieldSavingDeadlineLayout.setEndIconVisible(false);
             selectedDeadline = AlarmSetter.NO_ALARM;
         });
+
+        binding.btnSave.setOnClickListener(v -> createSaving());
+        AnimationUtil.applySpringPressEffect(binding.btnSave);
     }
 
     @Override
@@ -142,14 +157,22 @@ public class CreateActivity extends CentsationActivity {
         createdSaving.setIsArchived(Saving.NOT_ARCHIVE);
         createdSaving.setDeadline(deadlineText.isEmpty() ? AlarmSetter.NO_ALARM : selectedDeadline);
 
+        if (isSaving) return;
+        isSaving = true;
+
         if (!deadlineText.isEmpty() && createdSaving.getCurrentSaving() < createdSaving.getGoal()) {
             AlarmSetter.set(this, createdSaving);
         }
 
-        savingRepository.create(createdSaving);
-        BackupManager.triggerAutoBackup(this);
-        setResult(RESULT_OK);
-        finish();
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            savingRepository.create(createdSaving);
+            BackupManager.triggerAutoBackup(appContext);
+            runOnUiThread(() -> {
+                setResult(RESULT_OK);
+                finish();
+            });
+        });
     }
 
     private void hasNotificationPermission() {
@@ -172,6 +195,10 @@ public class CreateActivity extends CentsationActivity {
     }
 
     private void showDeadlineDialog() {
+        if (getSupportFragmentManager().findFragmentByTag("deadline_date_picker") != null) {
+            return;
+        }
+
         CalendarConstraints.Builder calendarConstraints = new CalendarConstraints.Builder()
                 .setValidator(DateValidatorPointForward.now());
 
@@ -206,7 +233,7 @@ public class CreateActivity extends CentsationActivity {
             binding.fieldSavingDeadlineText.setText(DateParser.getStringDate(calculatedDeadline, deadlineFormat));
             binding.fieldSavingDeadlineLayout.setEndIconVisible(true);
         });
-        datePicker.show(getSupportFragmentManager(), null);
+        datePicker.show(getSupportFragmentManager(), "deadline_date_picker");
     }
 
     @Override
@@ -218,6 +245,10 @@ public class CreateActivity extends CentsationActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        executor.shutdown();
+        if (savingRepository != null) {
+            savingRepository.close();
+        }
         binding = null;
     }
 }

@@ -167,14 +167,28 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                 name.setText(currentSaving.getName());
             }
 
-            String notes = currentSaving.getNotes();
-            share.setVisibility((notes == null || notes.isEmpty()) ? View.GONE : View.VISIBLE);
+            share.setVisibility(View.VISIBLE);
 
-            deadline.setVisibility(currentSaving.getDeadline() == AlarmSetter.NO_ALARM ? View.GONE : View.VISIBLE);
-            deadline.setText(String.format("Deadline: %s", DateParser.getStringDate(currentSaving.getDeadline(), deadlineFormat)));
+            boolean isCompleted = SavingsCalculator.isCompleted(currentSaving);
+            if (currentSaving.getDeadline() == AlarmSetter.NO_ALARM) {
+                deadline.setVisibility(View.GONE);
+            } else {
+                deadline.setVisibility(View.VISIBLE);
+                long daysLeft = SavingsCalculator.getDaysRemaining(currentSaving.getDeadline());
+                String dateStr = DateParser.getStringDate(currentSaving.getDeadline(), deadlineFormat);
+                if (isCompleted) {
+                    deadline.setText(String.format("📅 Goal reached! Target was %s", dateStr));
+                } else if (daysLeft < 0) {
+                    deadline.setText(String.format("⚠️ Overdue by %d days (%s)", Math.abs(daysLeft), dateStr));
+                } else if (daysLeft == 0) {
+                    deadline.setText(String.format("📅 Due today! (%s)", dateStr));
+                } else {
+                    deadline.setText(String.format("📅 Deadline: %s (%d days left)", dateStr, daysLeft));
+                }
+            }
 
-            percent.setText(String.format("%d%%", percentValue));
-            parent.setChecked(SavingsCalculator.isCompleted(currentSaving));
+            percent.setText(isCompleted ? "100% 🎉" : String.format("%d%%", percentValue));
+            parent.setChecked(isCompleted);
             saving.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getCurrentSaving())));
             goal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getGoal())));
             progress.setProgressCompat(Math.min(percentValue, 100), false);

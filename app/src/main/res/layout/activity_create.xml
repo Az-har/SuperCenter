@@ -28,6 +28,8 @@
     <ScrollView
         android:id="@+id/scrollView"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:clipToPadding="false"
+        android:paddingBottom="96dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -120,7 +122,8 @@
                     android:maxLines="1"
                     android:inputType="none"
                     android:focusable="false"
-                    android:clickable="false"
+                    android:cursorVisible="false"
+                    android:clickable="true"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
             </com.google.android.material.textfield.TextInputLayout>
@@ -145,4 +148,32 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </ScrollView>
+
+    <!-- Bottom Bar with Big Save Button -->
+    <LinearLayout
+        android:id="@+id/bottom_save_container"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="?attr/colorSurfaceContainerLow"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:elevation="6dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save"
+            style="@style/Widget.Material3.Button"
+            android:text="@string/dialog_button_save"
+            app:icon="@drawable/ic_check"
+            app:iconGravity="textStart"
+            app:iconSize="20dp"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="18dp"
+            android:layout_width="match_parent"
+            android:layout_height="56dp" />
+    </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

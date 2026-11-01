@@ -13,8 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Database;
-import com.eipna.centsation.data.saving.Saving;
-import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.databinding.ActivityHistoryBinding;
 import com.eipna.centsation.ui.adapters.TransactionAdapter;
@@ -22,7 +20,6 @@ import com.eipna.centsation.ui.viewmodel.HistoryViewModel;
 import com.eipna.centsation.util.AnimationUtil;
 
 import java.util.List;
-import java.util.concurrent.Executors;
 
 public class HistoryActivity extends CentsationActivity {
 
@@ -56,23 +53,13 @@ public class HistoryActivity extends CentsationActivity {
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerView.setAdapter(transactionAdapter);
 
-        loadSavingTitle(selectedSavingID);
         viewModel.getTransactions().observe(this, this::onTransactionsChanged);
-    }
-
-    private void loadSavingTitle(String savingID) {
-        if (savingID == null) return;
-        Executors.newSingleThreadExecutor().execute(() -> {
-            SavingRepository repo = new SavingRepository(this);
-            Saving saving = repo.getSaving(savingID);
-            if (saving != null) {
-                runOnUiThread(() -> {
-                    if (binding != null && binding.toolbar != null) {
-                        binding.toolbar.setTitle(saving.getName());
-                    }
-                });
+        viewModel.getSavingTitle().observe(this, title -> {
+            if (binding != null && binding.toolbar != null && title != null) {
+                binding.toolbar.setTitle(title);
             }
         });
+        viewModel.loadSavingTitle();
     }
 
     @Override

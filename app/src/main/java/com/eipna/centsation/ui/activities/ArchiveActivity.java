@@ -2,6 +2,7 @@ package com.eipna.centsation.ui.activities;
 
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
+import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.view.View;
 
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.eipna.centsation.R;
+import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.Database;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingOperation;
@@ -21,7 +23,10 @@ import com.eipna.centsation.databinding.ActivityArchiveBinding;
 import com.eipna.centsation.ui.adapters.SavingAdapter;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.ArchiveViewModel;
+import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
+import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.shape.MaterialShapeDrawable;
@@ -138,6 +143,11 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
             }
 
             @Override
+            public void onShare(Saving s) {
+                shareSaving(s);
+            }
+
+            @Override
             public void onArchive(Saving s) {
                 unarchiveWithUndo(s);
             }
@@ -154,7 +164,7 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
     public void onOperationClick(SavingOperation operation, int position) {
         Saving selectedSaving = savingAdapter.getSavingAt(position);
         if (operation.equals(SavingOperation.UNARCHIVE)) unarchiveWithUndo(selectedSaving);
-        if (operation.equals(SavingOperation.SHARE)) showShareIntent(selectedSaving.getNotes());
+        if (operation.equals(SavingOperation.SHARE)) shareSaving(selectedSaving);
         if (operation.equals(SavingOperation.DELETE)) showDeleteDialog(selectedSaving);
         if (operation.equals(SavingOperation.HISTORY)) showHistoryActivity(selectedSaving);
     }
@@ -166,12 +176,35 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
                 .show();
     }
 
-    private void showShareIntent(String notes) {
-        Intent sendIntent = new Intent();
-        sendIntent.setAction(Intent.ACTION_SEND);
+    private void shareSaving(Saving saving) {
+        if (saving == null) return;
+        String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
+        int percent = SavingsCalculator.getPercent(saving);
+
+        StringBuilder shareText = new StringBuilder();
+        shareText.append("🎯 Goal: ").append(saving.getName()).append(" (Archived)\n");
+        shareText.append("💰 Saved: ").append(currencySymbol)
+                .append(NumberFormat.getInstance().format(saving.getCurrentSaving()))
+                .append(" of ")
+                .append(currencySymbol)
+                .append(NumberFormat.getInstance().format(saving.getGoal()))
+                .append(" (").append(percent).append("%)\n");
+
+        if (saving.getDeadline() != AlarmSetter.NO_ALARM) {
+            shareText.append("📅 Target Date: ")
+                    .append(DateParser.getStringDate(saving.getDeadline(), preferenceUtil.getDeadlineFormat()))
+                    .append("\n");
+        }
+        if (saving.getNotes() != null && !saving.getNotes().trim().isEmpty()) {
+            shareText.append("📝 Notes: ").append(saving.getNotes().trim()).append("\n");
+        }
+        shareText.append("\nTracked with Centsation ✨");
+
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
         sendIntent.setType("text/plain");
-        sendIntent.putExtra(Intent.EXTRA_TEXT, notes);
-        startActivity(Intent.createChooser(sendIntent, null));
+        sendIntent.putExtra(Intent.EXTRA_SUBJECT, "Savings Goal: " + saving.getName());
+        sendIntent.putExtra(Intent.EXTRA_TEXT, shareText.toString());
+        startActivity(Intent.createChooser(sendIntent, "Share Savings Goal"));
     }
 
     private void showDeleteDialog(Saving saving) {

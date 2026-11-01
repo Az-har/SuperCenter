@@ -194,5 +194,6 @@ public class MainViewModel extends AndroidViewModel {
     protected void onCleared() {
         super.onCleared();
         executor.shutdown();
+        savingRepository.close();
     }
 }
