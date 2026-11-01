@@ -199,7 +199,6 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         AnimationUtil.applySpringPressEffect(binding.detailsBtnHistory);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnEdit);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnShare);
-        AnimationUtil.applySpringPressEffect(binding.detailsBtnTestNotify);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnArchive);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnDelete);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnCopyNote);
@@ -230,12 +229,6 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             if (listener != null) listener.onShare(saving);
         });
 
-        binding.detailsBtnTestNotify.setOnClickListener(v -> {
-            if (getContext() != null && saving != null) {
-                NotificationHandler.create(requireContext(), saving);
-                Toast.makeText(requireContext(), "Alert notification sent for " + saving.getName() + "!", Toast.LENGTH_SHORT).show();
-            }
-        });
 
         binding.detailsBtnArchive.setOnClickListener(v -> {
             dismiss();

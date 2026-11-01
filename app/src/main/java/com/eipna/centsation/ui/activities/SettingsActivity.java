@@ -1,6 +1,5 @@
 package com.eipna.centsation.ui.activities;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -140,29 +139,6 @@ public class SettingsActivity extends CentsationActivity {
                     }
                 });
 
-        private final ActivityResultLauncher<String> requestNotifPermissionLauncher =
-                registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                    if (isGranted) {
-                        NotificationHandler.showTestNotification(requireContext());
-                        Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(requireContext(), "Notification permission denied.", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-        private void triggerTestNotification() {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                    NotificationHandler.showTestNotification(requireContext());
-                    Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
-                } else {
-                    requestNotifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-                }
-            } else {
-                NotificationHandler.showTestNotification(requireContext());
-                Toast.makeText(requireContext(), "Test notification sent! Check your notification shade.", Toast.LENGTH_LONG).show();
-            }
-        }
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -195,13 +171,6 @@ public class SettingsActivity extends CentsationActivity {
                 });
             }
 
-            Preference testNotification = findPreference("test_notification");
-            if (testNotification != null) {
-                testNotification.setOnPreferenceClickListener(preference -> {
-                    triggerTestNotification();
-                    return true;
-                });
-            }
 
             listCurrency.setEntries(Currency.getNames());
             listCurrency.setEntryValues(Currency.getCodes());
