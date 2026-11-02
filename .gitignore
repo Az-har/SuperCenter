@@ -18,3 +18,5 @@ keystore.properties
 
 *.apk
 *.aab
+*.jks
+*.keystore
