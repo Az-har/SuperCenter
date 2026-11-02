@@ -40,8 +40,10 @@ import java.util.concurrent.Executors;
 public class BackupManager {
 
     private static final String TAG = "BackupManager";
-    public static final String BACKUP_DIR_NAME = "Centsation";
-    public static final String AUTO_BACKUP_FILE_NAME = "centsation_auto_backup.json";
+    public static final String BACKUP_DIR_NAME = "SuperCenter";
+    public static final String LEGACY_BACKUP_DIR_NAME = "Centsation";
+    public static final String AUTO_BACKUP_FILE_NAME = "supercenter_auto_backup.json";
+    public static final String LEGACY_AUTO_BACKUP_FILE_NAME = "centsation_auto_backup.json";
     public static final int CURRENT_BACKUP_VERSION = 1;
 
     private static final ExecutorService BACKUP_EXECUTOR = Executors.newSingleThreadExecutor();
@@ -145,7 +147,7 @@ public class BackupManager {
             }
 
             JSONObject root = new JSONObject();
-            root.put("app", "Centsation");
+            root.put("app", "Super Center");
             root.put("version", CURRENT_BACKUP_VERSION);
             root.put("timestamp", System.currentTimeMillis());
             root.put("savings_count", savings.size());
@@ -185,6 +187,8 @@ public class BackupManager {
                 if (docsDir != null) {
                     candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
                     candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/exported_savings.json"));
+                    candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
+                    candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/exported_savings.json"));
                 }
             } catch (Throwable ignored) {
             }
@@ -193,6 +197,7 @@ public class BackupManager {
                 File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (downloadsDir != null) {
                     candidates.add(new File(downloadsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
+                    candidates.add(new File(downloadsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
                     candidates.add(new File(downloadsDir, AUTO_BACKUP_FILE_NAME));
                     candidates.add(new File(downloadsDir, "exported_savings.json"));
                 }

@@ -54,7 +54,7 @@ jobs:
       - name: Rename APK for Release
         run: |
           mkdir -p release-output
-          cp app/build/outputs/apk/release/app-release.apk release-output/Centsation-${{ github.ref_name }}.apk 2>/dev/null || cp app/build/outputs/apk/release/app-release.apk release-output/Centsation.apk
+          cp app/build/outputs/apk/release/app-release.apk release-output/SuperCenter-${{ github.ref_name }}.apk 2>/dev/null || cp app/build/outputs/apk/release/app-release.apk release-output/SuperCenter.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

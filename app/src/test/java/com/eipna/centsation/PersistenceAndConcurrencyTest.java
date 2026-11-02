@@ -63,8 +63,8 @@ public class PersistenceAndConcurrencyTest {
 
     @Test
     public void backupManagerConstants_areCorrect() {
-        assertEquals("Centsation", BackupManager.BACKUP_DIR_NAME);
-        assertEquals("centsation_auto_backup.json", BackupManager.AUTO_BACKUP_FILE_NAME);
+        assertEquals("SuperCenter", BackupManager.BACKUP_DIR_NAME);
+        assertEquals("supercenter_auto_backup.json", BackupManager.AUTO_BACKUP_FILE_NAME);
         assertEquals(1, BackupManager.CURRENT_BACKUP_VERSION);
     }
 

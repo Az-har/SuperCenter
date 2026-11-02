@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Centsation</string>
+    <string name="app_name">Super Center</string>
     <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>
     <string name="app_license">GNU General Public License v3.0</string>
     <string name="app_author">Az-har</string>
@@ -94,7 +94,7 @@
     <string name="snack_bar_permission_notifications">Deadlines requires notification permissions to work.</string>
 
     <!-- Crash reporting -->
-    <string name="crash_email_subject">Centsation crash report</string>
+    <string name="crash_email_subject">Super Center crash report</string>
     <string name="crash_email_chooser_title">Send report via…</string>
     <string name="crash_save_toast_success">Crash report saved</string>
     <string name="crash_save_toast_failure">Couldn\'t save crash report</string>
@@ -120,23 +120,23 @@
     <!-- Backup Preference Category -->
     <string name="preference_category_backup">Backup</string>
     <string name="preference_auto_backup_title">Auto-Backup to Storage</string>
-    <string name="preference_auto_backup_summary">Keep a persistent backup in Documents/Centsation that survives app uninstall</string>
+    <string name="preference_auto_backup_summary">Keep a persistent backup in Documents/SuperCenter that survives app uninstall</string>
     <string name="preference_backup_now_title">Back Up Now</string>
-    <string name="preference_backup_now_summary">Save an immediate backup to Documents/Centsation</string>
+    <string name="preference_backup_now_summary">Save an immediate backup to Documents/SuperCenter</string>
     <string name="preference_restore_auto_title">Restore from Auto-Backup</string>
     <string name="preference_restore_auto_summary">Restore savings from persistent local backup</string>
     <string name="preference_import_title">Import</string>
     <string name="preference_import_summary">Import back your savings</string>
     <string name="preference_export_title">Export</string>
     <string name="preference_export_summary">Export your savings</string>
-    <string name="toast_backup_successful">Backup saved to Documents/Centsation</string>
+    <string name="toast_backup_successful">Backup saved to Documents/SuperCenter</string>
     <string name="toast_backup_failed">Could not create backup</string>
     <string name="toast_no_auto_backup">No auto-backup file found</string>
     <string name="btn_restore_from_backup">Restore from Backup</string>
 
     <!--About Preference Category -->
     <string name="preference_support_title">Support the developer</string>
-    <string name="preference_support_summary">If you enjoy using Centsation, you can support its development</string>
+    <string name="preference_support_summary">If you enjoy using Super Center, you can support its development</string>
     <string name="preference_category_about">About</string>
     <string name="preference_app_version">Version</string>
     <string name="preference_app_license">License</string>
