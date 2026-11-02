@@ -200,7 +200,6 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         AnimationUtil.applySpringPressEffect(binding.detailsBtnEdit);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnShare);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnArchive);
-        AnimationUtil.applySpringPressEffect(binding.detailsBtnDelete);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnCopyNote);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnEditNote);
         AnimationUtil.applySpringPressEffect(binding.detailsBtnAddNote);
@@ -235,10 +234,6 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
             if (listener != null) listener.onArchive(saving);
         });
 
-        binding.detailsBtnDelete.setOnClickListener(v -> {
-            dismiss();
-            if (listener != null) listener.onDelete(saving);
-        });
     }
 
     private void copyNotesToClipboard() {

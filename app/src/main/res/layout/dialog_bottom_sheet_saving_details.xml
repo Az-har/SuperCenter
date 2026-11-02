@@ -318,7 +318,8 @@
             android:text="Edit"
             app:cornerRadius="14dp"
             android:layout_marginEnd="6dp"
-            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             tools:ignore="HardcodedText" />
 
@@ -329,10 +330,10 @@
             android:text="Share"
             app:cornerRadius="14dp"
             android:layout_marginEnd="6dp"
-            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             tools:ignore="HardcodedText" />
-
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/details_btn_archive"
@@ -340,21 +341,8 @@
             app:icon="@drawable/ic_archive"
             android:text="Archive"
             app:cornerRadius="14dp"
-            android:layout_marginEnd="6dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            tools:ignore="HardcodedText" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/details_btn_delete"
-            style="?attr/materialButtonOutlinedStyle"
-            app:icon="@drawable/ic_delete"
-            app:iconTint="?attr/colorError"
-            android:textColor="?attr/colorError"
-            app:strokeColor="?attr/colorError"
-            android:text="Delete"
-            app:cornerRadius="14dp"
-            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             tools:ignore="HardcodedText" />
     </LinearLayout>
