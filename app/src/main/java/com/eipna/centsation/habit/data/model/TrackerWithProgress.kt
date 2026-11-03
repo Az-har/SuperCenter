@@ -2,17 +2,14 @@ package com.eipna.centsation.habit.data.model
 
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import com.eipna.centsation.habit.util.TrackerDateUtil
 import kotlin.math.max
 import kotlin.math.min
 
 data class TrackerWithProgress(
     val tracker: TrackerEntity,
     val logs: List<TrackerLogEntity> = emptyList(),
-    val todayDate: String = LocalDate.now().toString()
+    val todayDate: String = TrackerDateUtil.getTodayDateString()
 ) {
     val totalCompletedReps: Int
         get() = logs.sumOf { it.completedCount }
@@ -21,14 +18,7 @@ data class TrackerWithProgress(
         get() = logs.firstOrNull { it.date == todayDate }?.completedCount ?: 0
 
     val daysActive: Long
-        get() {
-            val startDate = Instant.ofEpochMilli(tracker.createdAt)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-            val today = LocalDate.parse(todayDate)
-            val diff = ChronoUnit.DAYS.between(startDate, today)
-            return max(1L, diff + 1L)
-        }
+        get() = TrackerDateUtil.calculateDaysActive(tracker.createdAt, todayDate)
 
     val totalExpectedQuota: Int
         get() = (daysActive * tracker.baseDailyTarget).toInt()

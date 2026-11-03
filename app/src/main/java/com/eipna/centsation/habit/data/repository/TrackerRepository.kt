@@ -7,9 +7,9 @@ import com.eipna.centsation.habit.data.db.HabitDatabase
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
+import com.eipna.centsation.habit.util.TrackerDateUtil
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import java.time.LocalDate
 
 class TrackerRepository(
     private val trackerDao: TrackerDao,
@@ -19,7 +19,7 @@ class TrackerRepository(
     fun getTrackersWithProgress(): Flow<List<TrackerWithProgress>> {
         return trackerDao.getActiveTrackers().combine(trackerLogDao.getAllLogs()) { trackers, logs ->
             val logsByTracker = logs.groupBy { it.trackerId }
-            val today = LocalDate.now().toString()
+            val today = TrackerDateUtil.getTodayDateString()
             trackers.map { tracker ->
                 TrackerWithProgress(
                     tracker = tracker,
@@ -37,7 +37,7 @@ class TrackerRepository(
     suspend fun getTrackerWithProgressById(id: Long): TrackerWithProgress? {
         val tracker = trackerDao.getTrackerById(id) ?: return null
         val logs = trackerLogDao.getLogsSync(id)
-        return TrackerWithProgress(tracker, logs, LocalDate.now().toString())
+        return TrackerWithProgress(tracker, logs, TrackerDateUtil.getTodayDateString())
     }
 
     suspend fun insertTracker(tracker: TrackerEntity): Long {
@@ -59,7 +59,11 @@ class TrackerRepository(
     /**
      * Increment completed count for a given date by additionalCount
      */
-    suspend fun logReps(trackerId: Long, additionalCount: Int, date: String = LocalDate.now().toString()): TrackerWithProgress? {
+    suspend fun logReps(
+        trackerId: Long,
+        additionalCount: Int,
+        date: String = TrackerDateUtil.getTodayDateString()
+    ): TrackerWithProgress? {
         val existingLog = trackerLogDao.getLogForDate(trackerId, date)
         val currentCount = existingLog?.completedCount ?: 0
         val newCount = (currentCount + additionalCount).coerceAtLeast(0)
@@ -74,7 +78,11 @@ class TrackerRepository(
     /**
      * Directly set completed count for a given date
      */
-    suspend fun setReps(trackerId: Long, totalCount: Int, date: String = LocalDate.now().toString()): TrackerWithProgress? {
+    suspend fun setReps(
+        trackerId: Long,
+        totalCount: Int,
+        date: String = TrackerDateUtil.getTodayDateString()
+    ): TrackerWithProgress? {
         val count = totalCount.coerceAtLeast(0)
         val existingLog = trackerLogDao.getLogForDate(trackerId, date)
         val logEntity = existingLog?.copy(completedCount = count, timestamp = System.currentTimeMillis())
