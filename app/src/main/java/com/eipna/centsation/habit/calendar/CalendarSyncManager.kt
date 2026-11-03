@@ -20,6 +20,20 @@ data class UserCalendar(
     val isPrimary: Boolean
 )
 
+data class CalendarEventItem(
+    val id: Long,
+    val calendarId: Long,
+    val calendarDisplayName: String,
+    val accountName: String,
+    val title: String,
+    val description: String?,
+    val startMillis: Long,
+    val endMillis: Long,
+    val isAllDay: Boolean,
+    val rrule: String?,
+    val parsedDetails: ParsedHabitDetails
+)
+
 object CalendarSyncManager {
 
     private const val TAG = "CalendarSyncManager"
@@ -80,6 +94,108 @@ object CalendarSyncManager {
         }
 
         return calendars
+    }
+
+    fun readCalendarEvents(
+        context: Context,
+        calendarId: Long? = null,
+        limit: Int = 120
+    ): List<CalendarEventItem> {
+        if (!hasCalendarPermissions(context)) {
+            return emptyList()
+        }
+
+        val calendars = getAvailableCalendars(context).associateBy { it.id }
+        if (calendars.isEmpty()) return emptyList()
+
+        val events = mutableListOf<CalendarEventItem>()
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.CALENDAR_ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DESCRIPTION,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.RRULE
+        )
+
+        val selection: String
+        val selectionArgs: Array<String>?
+        if (calendarId != null && calendarId > 0) {
+            selection = "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0"
+            selectionArgs = arrayOf(calendarId.toString())
+        } else {
+            selection = "${CalendarContract.Events.DELETED} = 0"
+            selectionArgs = null
+        }
+
+        try {
+            val cursor = context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "${CalendarContract.Events.DTSTART} DESC"
+            )
+
+            cursor?.use {
+                val idIdx = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
+                val calIdIdx = it.getColumnIndexOrThrow(CalendarContract.Events.CALENDAR_ID)
+                val titleIdx = it.getColumnIndexOrThrow(CalendarContract.Events.TITLE)
+                val descIdx = it.getColumnIndex(CalendarContract.Events.DESCRIPTION)
+                val startIdx = it.getColumnIndex(CalendarContract.Events.DTSTART)
+                val endIdx = it.getColumnIndex(CalendarContract.Events.DTEND)
+                val allDayIdx = it.getColumnIndex(CalendarContract.Events.ALL_DAY)
+                val rruleIdx = it.getColumnIndex(CalendarContract.Events.RRULE)
+
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    val rawTitle = it.getString(titleIdx)?.trim()
+                    if (rawTitle.isNullOrEmpty()) continue
+
+                    val eventId = it.getLong(idIdx)
+                    val eventCalId = it.getLong(calIdIdx)
+                    val cal = calendars[eventCalId]
+                    val calDisplayName = cal?.displayName ?: "Calendar $eventCalId"
+                    val accountName = cal?.accountName ?: ""
+
+                    val desc = if (descIdx >= 0) it.getString(descIdx) else null
+                    val startMillis = if (startIdx >= 0 && !it.isNull(startIdx)) it.getLong(startIdx) else 0L
+                    val endMillis = if (endIdx >= 0 && !it.isNull(endIdx)) it.getLong(endIdx) else 0L
+                    val isAllDay = if (allDayIdx >= 0) it.getInt(allDayIdx) == 1 else false
+                    val rrule = if (rruleIdx >= 0) it.getString(rruleIdx) else null
+
+                    val parsed = CalendarHabitParser.parse(
+                        rawTitle = rawTitle,
+                        description = desc,
+                        startMillis = startMillis,
+                        isAllDay = isAllDay
+                    )
+
+                    events.add(
+                        CalendarEventItem(
+                            id = eventId,
+                            calendarId = eventCalId,
+                            calendarDisplayName = calDisplayName,
+                            accountName = accountName,
+                            title = rawTitle,
+                            description = desc,
+                            startMillis = startMillis,
+                            endMillis = endMillis,
+                            isAllDay = isAllDay,
+                            rrule = rrule,
+                            parsedDetails = parsed
+                        )
+                    )
+                    count++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading calendar events", e)
+        }
+
+        return events
     }
 
     suspend fun syncTrackerEvent(context: Context, item: TrackerWithProgress): Long? {
@@ -159,9 +275,30 @@ object CalendarSyncManager {
         return null
     }
 
-    fun deleteEvent(context: Context, eventId: Long?) {
+    fun deleteEvent(context: Context, eventId: Long?, onlyIfManagedByApp: Boolean = true) {
         if (eventId == null || eventId <= 0 || !hasCalendarPermissions(context)) return
         try {
+            if (onlyIfManagedByApp) {
+                val cursor = context.contentResolver.query(
+                    ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
+                    arrayOf(CalendarContract.Events.DESCRIPTION),
+                    null,
+                    null,
+                    null
+                )
+                val desc = cursor?.use {
+                    if (it.moveToNext()) {
+                        val idx = it.getColumnIndex(CalendarContract.Events.DESCRIPTION)
+                        if (idx >= 0) it.getString(idx) else null
+                    } else null
+                }
+                // Only delete if the event was created or tagged by Super Center
+                if (desc == null || !desc.contains("Super Center")) {
+                    Log.d(TAG, "Preserving external calendar event $eventId (not created exclusively by Super Center)")
+                    return
+                }
+            }
+
             val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
             context.contentResolver.delete(deleteUri, null, null)
             Log.d(TAG, "Deleted calendar event $eventId")

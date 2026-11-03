@@ -1,5 +1,6 @@
 package com.eipna.centsation.habit.ui
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,9 +56,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eipna.centsation.habit.calendar.CalendarSyncManager
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import java.util.Locale
@@ -69,10 +72,15 @@ fun HabitDashboardScreen(
     onRequestCalendarPermission: () -> Unit,
     onBackClicked: () -> Unit
 ) {
+    val context = LocalContext.current
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val calendars by viewModel.calendars.collectAsStateWithLifecycle()
+    val calendarEvents by viewModel.calendarEvents.collectAsStateWithLifecycle()
+    val isLoadingCalendarEvents by viewModel.isLoadingCalendarEvents.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var showCalendarImportDialog by remember { mutableStateOf(false) }
+    var draftTrackerFromImport by remember { mutableStateOf<TrackerEntity?>(null) }
     var editingTracker by remember { mutableStateOf<TrackerEntity?>(null) }
 
     Scaffold(
@@ -100,6 +108,23 @@ fun HabitDashboardScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (CalendarSyncManager.hasCalendarPermissions(context)) {
+                                viewModel.loadCalendarEvents()
+                                showCalendarImportDialog = true
+                            } else {
+                                onRequestCalendarPermission()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Import Calendar Tasks"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -107,7 +132,10 @@ fun HabitDashboardScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    draftTrackerFromImport = null
+                    showAddDialog = true
+                },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Add Habit") }
             )
@@ -131,7 +159,20 @@ fun HabitDashboardScreen(
 
                 if (trackers.isEmpty()) {
                     item {
-                        EmptyHabitsCard(onAddClick = { showAddDialog = true })
+                        EmptyHabitsCard(
+                            onAddClick = {
+                                draftTrackerFromImport = null
+                                showAddDialog = true
+                            },
+                            onImportClick = {
+                                if (CalendarSyncManager.hasCalendarPermissions(context)) {
+                                    viewModel.loadCalendarEvents()
+                                    showCalendarImportDialog = true
+                                } else {
+                                    onRequestCalendarPermission()
+                                }
+                            }
+                        )
                     }
                 } else {
                     item {
@@ -167,13 +208,26 @@ fun HabitDashboardScreen(
 
     if (showAddDialog) {
         AddEditTrackerDialog(
-            initialTracker = null,
+            initialTracker = draftTrackerFromImport,
             availableCalendars = calendars,
             onRequestCalendarPermission = onRequestCalendarPermission,
-            onDismiss = { showAddDialog = false },
-            onSave = { title, target, unit, hour, minute, syncCal, calId ->
-                viewModel.addTracker(title, target, unit, hour, minute, syncCal, calId)
+            onOpenCalendarImport = {
                 showAddDialog = false
+                if (CalendarSyncManager.hasCalendarPermissions(context)) {
+                    viewModel.loadCalendarEvents()
+                    showCalendarImportDialog = true
+                } else {
+                    onRequestCalendarPermission()
+                }
+            },
+            onDismiss = {
+                showAddDialog = false
+                draftTrackerFromImport = null
+            },
+            onSave = { title, target, unit, hour, minute, syncCal, calId, calEventId ->
+                viewModel.addTracker(title, target, unit, hour, minute, syncCal, calId, calEventId)
+                showAddDialog = false
+                draftTrackerFromImport = null
             }
         )
     }
@@ -183,8 +237,9 @@ fun HabitDashboardScreen(
             initialTracker = tracker,
             availableCalendars = calendars,
             onRequestCalendarPermission = onRequestCalendarPermission,
+            onOpenCalendarImport = null,
             onDismiss = { editingTracker = null },
-            onSave = { title, target, unit, hour, minute, syncCal, calId ->
+            onSave = { title, target, unit, hour, minute, syncCal, calId, calEventId ->
                 val updated = tracker.copy(
                     title = title,
                     baseDailyTarget = target,
@@ -192,7 +247,8 @@ fun HabitDashboardScreen(
                     scheduledHour = hour,
                     scheduledMinute = minute,
                     syncCalendar = syncCal,
-                    calendarId = calId
+                    calendarId = calId,
+                    calendarEventId = calEventId
                 )
                 viewModel.updateTracker(
                     updated,
@@ -202,6 +258,40 @@ fun HabitDashboardScreen(
                 )
                 editingTracker = null
             }
+        )
+    }
+
+    if (showCalendarImportDialog) {
+        ImportCalendarTasksDialog(
+            availableCalendars = calendars,
+            events = calendarEvents,
+            isLoading = isLoadingCalendarEvents,
+            onRequestCalendarPermission = onRequestCalendarPermission,
+            onRefresh = { calId -> viewModel.loadCalendarEvents(calId) },
+            onCustomizeEvent = { event ->
+                draftTrackerFromImport = TrackerEntity(
+                    title = event.parsedDetails.title,
+                    baseDailyTarget = event.parsedDetails.baseDailyTarget,
+                    unit = event.parsedDetails.unit,
+                    scheduledHour = event.parsedDetails.scheduledHour,
+                    scheduledMinute = event.parsedDetails.scheduledMinute,
+                    syncCalendar = true,
+                    calendarId = event.calendarId,
+                    calendarEventId = event.id
+                )
+                showCalendarImportDialog = false
+                showAddDialog = true
+            },
+            onQuickAddEvent = { event ->
+                viewModel.importCalendarEvent(event)
+                Toast.makeText(
+                    context,
+                    "Imported '${event.parsedDetails.title}' (${event.parsedDetails.baseDailyTarget} ${event.parsedDetails.unit})",
+                    Toast.LENGTH_SHORT
+                ).show()
+                showCalendarImportDialog = false
+            },
+            onDismiss = { showCalendarImportDialog = false }
         )
     }
 }
@@ -585,7 +675,10 @@ private fun DetailBadge(label: String, value: String, modifier: Modifier = Modif
 }
 
 @Composable
-fun EmptyHabitsCard(onAddClick: () -> Unit) {
+fun EmptyHabitsCard(
+    onAddClick: () -> Unit,
+    onImportClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -618,10 +711,21 @@ fun EmptyHabitsCard(onAddClick: () -> Unit) {
                 lineHeight = 20.sp
             )
             Spacer(modifier = Modifier.height(18.dp))
-            Button(onClick = onAddClick) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Create First Habit")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(onClick = onAddClick) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Create Habit")
+                }
+
+                OutlinedButton(onClick = onImportClick) {
+                    Icon(Icons.Default.DateRange, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Import Tasks")
+                }
             }
         }
     }

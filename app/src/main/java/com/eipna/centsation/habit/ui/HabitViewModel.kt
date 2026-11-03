@@ -3,6 +3,7 @@ package com.eipna.centsation.habit.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.eipna.centsation.habit.calendar.CalendarEventItem
 import com.eipna.centsation.habit.calendar.CalendarSyncManager
 import com.eipna.centsation.habit.calendar.UserCalendar
 import com.eipna.centsation.habit.data.entity.TrackerEntity
@@ -33,6 +34,12 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
     private val _calendars = MutableStateFlow<List<UserCalendar>>(emptyList())
     val calendars: StateFlow<List<UserCalendar>> = _calendars.asStateFlow()
 
+    private val _calendarEvents = MutableStateFlow<List<CalendarEventItem>>(emptyList())
+    val calendarEvents: StateFlow<List<CalendarEventItem>> = _calendarEvents.asStateFlow()
+
+    private val _isLoadingCalendarEvents = MutableStateFlow(false)
+    val isLoadingCalendarEvents: StateFlow<Boolean> = _isLoadingCalendarEvents.asStateFlow()
+
     init {
         loadCalendars()
     }
@@ -44,6 +51,20 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun loadCalendarEvents(calendarId: Long? = null) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoadingCalendarEvents.value = true
+            try {
+                val events = CalendarSyncManager.readCalendarEvents(getApplication(), calendarId)
+                _calendarEvents.value = events
+            } catch (e: Exception) {
+                _calendarEvents.value = emptyList()
+            } finally {
+                _isLoadingCalendarEvents.value = false
+            }
+        }
+    }
+
     fun addTracker(
         title: String,
         baseDailyTarget: Int,
@@ -51,7 +72,8 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         hour: Int,
         minute: Int,
         syncCalendar: Boolean,
-        calendarId: Long?
+        calendarId: Long?,
+        calendarEventId: Long? = null
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val tracker = TrackerEntity(
@@ -61,7 +83,8 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
                 scheduledHour = hour,
                 scheduledMinute = minute,
                 syncCalendar = syncCalendar,
-                calendarId = calendarId
+                calendarId = calendarId,
+                calendarEventId = calendarEventId
             )
             val newId = repository.insertTracker(tracker)
             val createdTracker = tracker.copy(id = newId)
@@ -74,6 +97,23 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
             }
             updateAllHabitWidgets(getApplication())
         }
+    }
+
+    fun importCalendarEvent(
+        event: CalendarEventItem,
+        target: Int = event.parsedDetails.baseDailyTarget,
+        unit: String = event.parsedDetails.unit
+    ) {
+        addTracker(
+            title = event.parsedDetails.title,
+            baseDailyTarget = target,
+            unit = unit,
+            hour = event.parsedDetails.scheduledHour,
+            minute = event.parsedDetails.scheduledMinute,
+            syncCalendar = true,
+            calendarId = event.calendarId,
+            calendarEventId = event.id
+        )
     }
 
     fun updateTracker(

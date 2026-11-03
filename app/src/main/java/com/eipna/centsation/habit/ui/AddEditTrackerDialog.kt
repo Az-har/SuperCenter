@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +50,7 @@ fun AddEditTrackerDialog(
     initialTracker: TrackerEntity? = null,
     availableCalendars: List<UserCalendar>,
     onRequestCalendarPermission: () -> Unit,
+    onOpenCalendarImport: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSave: (
         title: String,
@@ -56,7 +59,8 @@ fun AddEditTrackerDialog(
         hour: Int,
         minute: Int,
         syncCalendar: Boolean,
-        calendarId: Long?
+        calendarId: Long?,
+        calendarEventId: Long?
     ) -> Unit
 ) {
     val context = LocalContext.current
@@ -72,6 +76,9 @@ fun AddEditTrackerDialog(
                 ?: availableCalendars.firstOrNull { it.isPrimary }?.id
                 ?: availableCalendars.firstOrNull()?.id
         )
+    }
+    var selectedCalendarEventId by remember {
+        mutableStateOf(initialTracker?.calendarEventId)
     }
 
     var calendarDropdownExpanded by remember { mutableStateOf(false) }
@@ -100,6 +107,46 @@ fun AddEditTrackerDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
+                if (initialTracker == null && onOpenCalendarImport != null) {
+                    OutlinedButton(
+                        onClick = onOpenCalendarImport,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.DateRange, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Import from Calendar Tasks")
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                if (selectedCalendarEventId != null) {
+                    Surface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Linked to Calendar Event #$selectedCalendarEventId",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = {
@@ -306,7 +353,8 @@ fun AddEditTrackerDialog(
                         hour,
                         minute,
                         syncCalendar,
-                        if (syncCalendar) selectedCalendarId else null
+                        if (syncCalendar) selectedCalendarId else null,
+                        if (syncCalendar) selectedCalendarEventId else null
                     )
                 }
             ) {
