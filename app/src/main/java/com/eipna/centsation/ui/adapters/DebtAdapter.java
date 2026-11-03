@@ -2,7 +2,6 @@ package com.eipna.centsation.ui.adapters;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.icu.text.NumberFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +14,7 @@ import com.eipna.centsation.data.debt.Debt;
 import com.eipna.centsation.data.debt.DebtCategory;
 import com.eipna.centsation.databinding.RecyclerDebtBinding;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 
 import java.util.ArrayList;
@@ -78,7 +78,25 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
         }
 
         public void bind(Debt debt) {
+            Context context = itemView.getContext();
             binding.debtName.setText(debt.getName());
+
+            boolean isOwed = debt.isOwedToMe();
+            if (isOwed) {
+                binding.debtTypeBadge.setText("📥 Owed to Me");
+                binding.debtTypeBadge.setTextColor(Color.parseColor("#1B6B50"));
+                binding.debtRemainingAmount.setTextColor(Color.parseColor("#1B6B50"));
+                binding.debtRemainingLabel.setText(" pending");
+                binding.debtPercent.setText(debt.isPaidOff() ? "Settled 🎉" : debt.getProgressPercent() + "% Collected");
+                binding.btnDebtPay.setText("Record Received");
+            } else {
+                binding.debtTypeBadge.setText("💸 I Owe");
+                binding.debtTypeBadge.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.debtRemainingAmount.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.debtRemainingLabel.setText(" remaining");
+                binding.debtPercent.setText(debt.isPaidOff() ? "Paid Off 🎉" : debt.getProgressPercent() + "% Paid");
+                binding.btnDebtPay.setText("Record Payment");
+            }
 
             DebtCategory category = DebtCategory.fromId(debt.getCategory());
             binding.debtCategoryBadge.setText(category.getFormattedLabel());
@@ -87,21 +105,26 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
             } catch (Exception ignored) {}
 
             int progressPercent = debt.getProgressPercent();
-            binding.debtPercent.setText(progressPercent + "% Paid");
             binding.debtProgress.setProgress(progressPercent);
 
             double remaining = debt.getRemainingDebt();
             binding.debtRemainingAmount.setText(String.format("%s%s", currencySymbol,
-                    NumberFormat.getInstance().format(remaining)));
+                    FormatUtil.formatAmount(remaining, context)));
 
-            binding.debtSubtext.setText(String.format("Total: %s%s | Paid: %s%s",
-                    currencySymbol, NumberFormat.getInstance().format(debt.getTotalAmount()),
-                    currencySymbol, NumberFormat.getInstance().format(debt.getAmountPaid())));
+            if (isOwed) {
+                binding.debtSubtext.setText(String.format("Lent: %s%s | Collected: %s%s",
+                        currencySymbol, FormatUtil.formatAmount(debt.getTotalAmount(), context),
+                        currencySymbol, FormatUtil.formatAmount(debt.getAmountPaid(), context)));
+            } else {
+                binding.debtSubtext.setText(String.format("Total: %s%s | Paid: %s%s",
+                        currencySymbol, FormatUtil.formatAmount(debt.getTotalAmount(), context),
+                        currencySymbol, FormatUtil.formatAmount(debt.getAmountPaid(), context)));
+            }
 
             if (debt.getDeadline() > 0) {
                 binding.debtDeadline.setVisibility(View.VISIBLE);
                 String formattedDate = DateParser.format(debt.getDeadline(), deadlineFormat);
-                binding.debtDeadline.setText("Target Payoff: " + formattedDate);
+                binding.debtDeadline.setText((isOwed ? "Target Return: " : "Target Payoff: ") + formattedDate);
             } else {
                 binding.debtDeadline.setVisibility(View.GONE);
             }

@@ -230,7 +230,7 @@ public class EditActivity extends CentsationActivity {
 
         double goal;
         try {
-            goal = Double.parseDouble(goalText);
+            goal = com.eipna.centsation.util.FormatUtil.parseDouble(goalText);
             if (goal <= 0) {
                 binding.fieldSavingGoalLayout.setError(getString(R.string.field_error_positive_goal));
                 return;

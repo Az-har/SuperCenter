@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 public class Database extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "centsation.db";
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
 
     public static final String TABLE_SAVING = "savings";
     public static final String COLUMN_SAVING_ID = "id";
@@ -38,6 +38,7 @@ public class Database extends SQLiteOpenHelper {
     public static final String COLUMN_DEBT_IS_ARCHIVED = "is_archived";
     public static final String COLUMN_DEBT_DEADLINE = "deadline";
     public static final String COLUMN_DEBT_CREATED_AT = "created_at";
+    public static final String COLUMN_DEBT_TYPE = "debt_type";
 
     public static final String TABLE_DEBT_TRANSACTION = "debt_transactions";
     public static final String COLUMN_DEBT_TRANSACTION_ID = "id";
@@ -88,7 +89,8 @@ public class Database extends SQLiteOpenHelper {
                 COLUMN_DEBT_CATEGORY + " TEXT, " +
                 COLUMN_DEBT_IS_ARCHIVED + " INTEGER NOT NULL, " +
                 COLUMN_DEBT_DEADLINE + " INTEGER, " +
-                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL);";
+                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_TYPE + " INTEGER NOT NULL DEFAULT 0);";
 
         String createDebtTransactionTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT_TRANSACTION + "(" +
                 COLUMN_DEBT_TRANSACTION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -126,6 +128,12 @@ public class Database extends SQLiteOpenHelper {
         if (oldVersion < 4) {
             createDebtTables(sqLiteDatabase);
         }
+        if (oldVersion < 5) {
+            try {
+                sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_DEBT + " ADD COLUMN " + COLUMN_DEBT_TYPE + " INTEGER NOT NULL DEFAULT 0;");
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void createDebtTables(SQLiteDatabase sqLiteDatabase) {
@@ -138,7 +146,8 @@ public class Database extends SQLiteOpenHelper {
                 COLUMN_DEBT_CATEGORY + " TEXT, " +
                 COLUMN_DEBT_IS_ARCHIVED + " INTEGER NOT NULL, " +
                 COLUMN_DEBT_DEADLINE + " INTEGER, " +
-                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL);";
+                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_TYPE + " INTEGER NOT NULL DEFAULT 0);";
 
         String createDebtTransactionTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT_TRANSACTION + "(" +
                 COLUMN_DEBT_TRANSACTION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +

@@ -40,6 +40,7 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/create_debt_subtitle"
                 android:text="Track liabilities, loans, and payoff velocity"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant"
@@ -69,6 +70,31 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Debt Type: I Owe vs Owed to Me -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/debt_type_chip_group"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                android:layout_marginBottom="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_type_i_owe"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="💸 I Owe (Borrowed)"
+                    android:checked="true"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_type_owed_to_me"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="📥 Owed to Me (Lent)"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.chip.ChipGroup>
+
             <!-- Debt Name -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/debt_name_layout"
@@ -93,6 +119,7 @@
             <!-- Total Amount & Initial Paid -->
             <LinearLayout
                 android:orientation="horizontal"
+                android:baselineAligned="false"
                 android:layout_marginTop="12dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">

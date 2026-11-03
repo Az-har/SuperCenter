@@ -199,10 +199,10 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
         StringBuilder shareText = new StringBuilder();
         shareText.append("🎯 Goal: ").append(saving.getName()).append(" (Archived)\n");
         shareText.append("💰 Saved: ").append(currencySymbol)
-                .append(NumberFormat.getInstance().format(saving.getCurrentSaving()))
+                .append(com.eipna.centsation.util.FormatUtil.formatAmount(saving.getCurrentSaving(), this))
                 .append(" of ")
                 .append(currencySymbol)
-                .append(NumberFormat.getInstance().format(saving.getGoal()))
+                .append(com.eipna.centsation.util.FormatUtil.formatAmount(saving.getGoal(), this))
                 .append(" (").append(percent).append("%)\n");
 
         if (saving.getDeadline() != AlarmSetter.NO_ALARM) {

@@ -18,6 +18,7 @@ import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.databinding.DialogBottomSheetTransactionBinding;
 import com.eipna.centsation.util.AnimationUtil;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
@@ -80,9 +81,9 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.transactionSubtitle.setText(String.format("%s • %s%s / %s%s",
                 saving.getName(),
                 currencySymbol,
-                NumberFormat.getInstance().format(saving.getCurrentSaving()),
+                FormatUtil.formatAmount(saving.getCurrentSaving(), requireContext()),
                 currencySymbol,
-                NumberFormat.getInstance().format(saving.getGoal())));
+                FormatUtil.formatAmount(saving.getGoal(), requireContext())));
 
         binding.fieldAmountLayout.setPrefixText(currencySymbol);
         binding.toggleType.check(R.id.btn_type_deposit);
@@ -122,7 +123,7 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
 
             double amount;
             try {
-                amount = Double.parseDouble(text);
+                amount = FormatUtil.parseDouble(text);
                 if (amount <= 0 || Double.isNaN(amount) || Double.isInfinite(amount)) {
                     binding.fieldAmountLayout.setError(getString(R.string.field_error_empty_saving));
                     return;
@@ -185,7 +186,7 @@ public class TransactionBottomSheetDialogFragment extends BottomSheetDialogFragm
         double currentVal = 0.0;
         if (!current.isEmpty()) {
             try {
-                currentVal = Double.parseDouble(current);
+                currentVal = FormatUtil.parseDouble(current);
             } catch (NumberFormatException ignored) {}
         }
         double newVal = currentVal + addVal;

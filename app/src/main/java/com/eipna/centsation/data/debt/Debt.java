@@ -4,6 +4,9 @@ import java.util.Comparator;
 
 public class Debt {
 
+    public static final int TYPE_I_OWE = 0;       // Money I owe to others (Liability)
+    public static final int TYPE_OWED_TO_ME = 1;  // Money owed to me by others (Receivable)
+
     private String id;
     private String name;
     private double totalAmount;
@@ -13,6 +16,7 @@ public class Debt {
     private int isArchived;
     private long deadline;
     private long createdAt;
+    private int debtType;
 
     public static final int IS_ARCHIVE = 1;
     public static final int NOT_ARCHIVE = 0;
@@ -27,6 +31,7 @@ public class Debt {
         this.isArchived = NOT_ARCHIVE;
         this.deadline = 0;
         this.createdAt = System.currentTimeMillis();
+        this.debtType = TYPE_I_OWE;
     }
 
     public Debt(Debt other) {
@@ -39,9 +44,14 @@ public class Debt {
         this.isArchived = other.isArchived;
         this.deadline = other.deadline;
         this.createdAt = other.createdAt;
+        this.debtType = other.debtType;
     }
 
     public Debt(String id, String name, double totalAmount, double amountPaid, String category, int isArchived, long deadline, long createdAt) {
+        this(id, name, totalAmount, amountPaid, category, isArchived, deadline, createdAt, TYPE_I_OWE);
+    }
+
+    public Debt(String id, String name, double totalAmount, double amountPaid, String category, int isArchived, long deadline, long createdAt, int debtType) {
         this.id = id;
         this.name = name;
         this.totalAmount = totalAmount;
@@ -51,6 +61,7 @@ public class Debt {
         this.isArchived = isArchived;
         this.deadline = deadline;
         this.createdAt = createdAt;
+        this.debtType = debtType;
     }
 
     public static final Comparator<Debt> SORT_NAME =
@@ -77,6 +88,26 @@ public class Debt {
         if (totalAmount <= 0) return 100;
         double pct = (amountPaid / totalAmount) * 100.0;
         return (int) Math.min(100, Math.max(0, Math.round(pct)));
+    }
+
+    public boolean isOwedToMe() {
+        return debtType == TYPE_OWED_TO_ME;
+    }
+
+    public boolean isIOwe() {
+        return debtType == TYPE_I_OWE;
+    }
+
+    public String getTypeLabel() {
+        return isOwedToMe() ? "Owed to Me" : "I Owe";
+    }
+
+    public int getDebtType() {
+        return debtType;
+    }
+
+    public void setDebtType(int debtType) {
+        this.debtType = debtType;
     }
 
     public String getId() {

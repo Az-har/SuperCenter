@@ -3,7 +3,9 @@ package com.eipna.centsation.ui.activities;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import com.eipna.centsation.util.FormatUtil;
 import android.icu.text.NumberFormat;
 import android.net.Uri;
 import android.os.Bundle;
@@ -68,6 +70,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     private SavingAdapter savingAdapter;
     private DebtAdapter debtAdapter;
     private boolean isDebtMode = false;
+    private final List<Debt> cachedDebts = new java.util.ArrayList<>();
     private double previousTotalSaved = 0.0;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -181,6 +184,11 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             } else if (checkedIds.contains(R.id.chip_filter_completed)) {
                 viewModel.setStatusFilter(MainViewModel.StatusFilter.COMPLETED);
             }
+        });
+
+        binding.debtFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            HapticUtil.performTap(group);
+            filterAndDisplayDebts();
         });
 
         // Insights / Analytics Triggers
@@ -424,7 +432,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         AnimationUtil.animateCurrencyValue(binding.dashboardTotalSaved, previousTotalSaved, totalSaved, currencySymbol, 550);
         previousTotalSaved = totalSaved;
 
-        binding.dashboardTotalGoal.setText(String.format("Target: %s%s", currencySymbol, NumberFormat.getInstance().format(totalGoal)));
+        binding.dashboardTotalGoal.setText(String.format("Target: %s%s", currencySymbol, FormatUtil.formatAmount(totalGoal, this)));
         binding.dashboardOverallPercent.setText(String.format("%d%%", overallPercent));
         AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(overallPercent, 100), 500);
 
@@ -439,6 +447,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             binding.savingList.setVisibility(View.VISIBLE);
             binding.debtList.setVisibility(View.GONE);
             binding.debtEmptyIndicator.setVisibility(View.GONE);
+            binding.debtFilterScroll.setVisibility(View.GONE);
             binding.filterChipGroup.setVisibility(View.VISIBLE);
             binding.dashboardCardHeader.setText("TOTAL SAVINGS");
             try {
@@ -446,15 +455,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             } catch (Exception ignored) {}
             viewModel.loadSavings();
         } else {
-            binding.toolbar.setTitle("Debts & Loans");
+            binding.toolbar.setTitle("Debts & Owed");
             binding.savingList.setVisibility(View.GONE);
             binding.emptyIndicator.setVisibility(View.GONE);
             binding.debtList.setVisibility(View.VISIBLE);
             binding.filterChipGroup.setVisibility(View.GONE);
-            binding.dashboardCardHeader.setText("TOTAL OUTSTANDING DEBT");
-            try {
-                binding.dashboardTotalSaved.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, android.R.attr.colorError));
-            } catch (Exception ignored) {}
+            binding.debtFilterScroll.setVisibility(View.VISIBLE);
             loadDebts();
         }
     }
@@ -466,16 +472,47 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 List<Debt> debts = repo.getDebts(Debt.NOT_ARCHIVE);
                 runOnUiThread(() -> {
                     if (binding != null && isDebtMode) {
-                        updateDebtDashboard(debts);
+                        cachedDebts.clear();
+                        cachedDebts.addAll(debts);
+                        filterAndDisplayDebts();
                     }
                 });
             }
         });
     }
 
-    private void updateDebtDashboard(List<Debt> debts) {
+    private void filterAndDisplayDebts() {
         if (binding == null) return;
-        debtAdapter.setDebts(debts, this);
+        List<Integer> checkedIds = binding.debtFilterChipGroup.getCheckedChipIds();
+        int filterMode = 0; // 0 = all, 1 = i owe, 2 = owed to me
+        if (checkedIds.contains(R.id.chip_debt_filter_i_owe)) {
+            filterMode = 1;
+        } else if (checkedIds.contains(R.id.chip_debt_filter_owed_to_me)) {
+            filterMode = 2;
+        }
+
+        List<Debt> filtered = new java.util.ArrayList<>();
+        for (Debt d : cachedDebts) {
+            if (filterMode == 1 && !d.isIOwe()) continue;
+            if (filterMode == 2 && !d.isOwedToMe()) continue;
+            filtered.add(d);
+        }
+
+        debtAdapter.setDebts(filtered, this);
+
+        if (filtered.isEmpty()) {
+            binding.debtEmptyIndicator.setVisibility(View.VISIBLE);
+            binding.debtList.setVisibility(View.GONE);
+        } else {
+            binding.debtEmptyIndicator.setVisibility(View.GONE);
+            binding.debtList.setVisibility(View.VISIBLE);
+        }
+
+        updateDebtDashboard(cachedDebts, filterMode);
+    }
+
+    private void updateDebtDashboard(List<Debt> debts, int filterMode) {
+        if (binding == null) return;
 
         if (debts.isEmpty()) {
             binding.debtEmptyIndicator.setVisibility(View.VISIBLE);
@@ -484,40 +521,91 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             return;
         }
 
-        binding.debtEmptyIndicator.setVisibility(View.GONE);
-        binding.debtList.setVisibility(View.VISIBLE);
         binding.dashboardCard.setVisibility(View.VISIBLE);
 
         String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
-        double totalRemaining = 0.0;
-        double totalOriginal = 0.0;
-        double totalPaid = 0.0;
-        int activeCount = 0;
-        int completedCount = 0;
+        double totalIOweRemaining = 0.0;
+        double totalIOweOriginal = 0.0;
+        double totalIOwePaid = 0.0;
+        int iOweActive = 0;
+        int iOweCompleted = 0;
+
+        double totalOwedRemaining = 0.0;
+        double totalOwedOriginal = 0.0;
+        double totalOwedPaid = 0.0;
+        int owedActive = 0;
+        int owedCompleted = 0;
 
         for (Debt d : debts) {
-            totalRemaining += d.getRemainingDebt();
-            totalOriginal += d.getTotalAmount();
-            totalPaid += d.getAmountPaid();
-            if (d.isPaidOff()) {
-                completedCount++;
+            if (d.isOwedToMe()) {
+                totalOwedRemaining += d.getRemainingDebt();
+                totalOwedOriginal += d.getTotalAmount();
+                totalOwedPaid += d.getAmountPaid();
+                if (d.isPaidOff()) owedCompleted++; else owedActive++;
             } else {
-                activeCount++;
+                totalIOweRemaining += d.getRemainingDebt();
+                totalIOweOriginal += d.getTotalAmount();
+                totalIOwePaid += d.getAmountPaid();
+                if (d.isPaidOff()) iOweCompleted++; else iOweActive++;
             }
         }
 
-        int percentPaid = totalOriginal > 0 ? (int) Math.round((totalPaid / totalOriginal) * 100.0) : 100;
+        if (filterMode == 1) { // Only I Owe
+            binding.dashboardCardHeader.setText("TOTAL DEBT (I OWE)");
+            binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
+                    FormatUtil.formatAmount(totalIOweRemaining, this)));
+            binding.dashboardTotalSaved.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.dashboardTotalGoal.setText(String.format("Borrowed: %s%s | Paid: %s%s",
+                    currencySymbol, FormatUtil.formatAmount(totalIOweOriginal, this),
+                    currencySymbol, FormatUtil.formatAmount(totalIOwePaid, this)));
+            int pct = totalIOweOriginal > 0 ? (int) Math.round((totalIOwePaid / totalIOweOriginal) * 100.0) : 100;
+            binding.dashboardOverallPercent.setText(String.format("%d%% Paid", pct));
+            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
+            binding.dashboardChipActive.setText(String.format("%d Active Debts", iOweActive));
+            binding.dashboardChipCompleted.setText(String.format("%d Paid Off", iOweCompleted));
+        } else if (filterMode == 2) { // Only Owed to Me
+            binding.dashboardCardHeader.setText("TOTAL OWED TO YOU");
+            binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
+                    FormatUtil.formatAmount(totalOwedRemaining, this)));
+            binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+            binding.dashboardTotalGoal.setText(String.format("Lent: %s%s | Collected: %s%s",
+                    currencySymbol, FormatUtil.formatAmount(totalOwedOriginal, this),
+                    currencySymbol, FormatUtil.formatAmount(totalOwedPaid, this)));
+            int pct = totalOwedOriginal > 0 ? (int) Math.round((totalOwedPaid / totalOwedOriginal) * 100.0) : 100;
+            binding.dashboardOverallPercent.setText(String.format("%d%% Collected", pct));
+            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
+            binding.dashboardChipActive.setText(String.format("%d Pending Owed", owedActive));
+            binding.dashboardChipCompleted.setText(String.format("%d Settled", owedCompleted));
+        } else { // All / Net Balance
+            double netDebt = totalIOweRemaining - totalOwedRemaining;
+            binding.dashboardCardHeader.setText("NET BALANCE (I OWE vs OWED TO ME)");
+            if (netDebt > 0) {
+                binding.dashboardTotalSaved.setText(String.format("-%s%s", currencySymbol,
+                        FormatUtil.formatAmount(netDebt, this)));
+                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#BA1A1A"));
+            } else if (netDebt < 0) {
+                binding.dashboardTotalSaved.setText(String.format("+%s%s", currencySymbol,
+                        FormatUtil.formatAmount(Math.abs(netDebt), this)));
+                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+            } else {
+                binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
+                        FormatUtil.formatAmount(0, this)));
+                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+            }
 
-        binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
-                NumberFormat.getInstance().format(totalRemaining)));
-        binding.dashboardTotalGoal.setText(String.format("Total: %s%s | Paid: %s%s",
-                currencySymbol, NumberFormat.getInstance().format(totalOriginal),
-                currencySymbol, NumberFormat.getInstance().format(totalPaid)));
-        binding.dashboardOverallPercent.setText(String.format("%d%% Paid", percentPaid));
-        AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(percentPaid, 100), 500);
+            binding.dashboardTotalGoal.setText(String.format("You Owe: %s%s | Owed to You: %s%s",
+                    currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, this),
+                    currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, this)));
 
-        binding.dashboardChipActive.setText(String.format("%d Active Debts", activeCount));
-        binding.dashboardChipCompleted.setText(String.format("%d Paid Off", completedCount));
+            double totalAll = totalIOweOriginal + totalOwedOriginal;
+            double totalSettled = totalIOwePaid + totalOwedPaid;
+            int pct = totalAll > 0 ? (int) Math.round((totalSettled / totalAll) * 100.0) : 100;
+            binding.dashboardOverallPercent.setText(String.format("%d%% Settled", pct));
+            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
+
+            binding.dashboardChipActive.setText(String.format("%d I Owe (%d Active)", iOweActive + iOweCompleted, iOweActive));
+            binding.dashboardChipCompleted.setText(String.format("%d Owed to Me (%d Active)", owedActive + owedCompleted, owedActive));
+        }
     }
 
     private void showCreateDebtDialog() {
@@ -767,10 +855,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         StringBuilder shareText = new StringBuilder();
         shareText.append("🎯 Goal: ").append(saving.getName()).append("\n");
         shareText.append("💰 Saved: ").append(currencySymbol)
-                .append(NumberFormat.getInstance().format(saving.getCurrentSaving()))
+                .append(FormatUtil.formatAmount(saving.getCurrentSaving(), this))
                 .append(" of ")
                 .append(currencySymbol)
-                .append(NumberFormat.getInstance().format(saving.getGoal()))
+                .append(FormatUtil.formatAmount(saving.getGoal(), this))
                 .append(" (").append(percent).append("%)\n");
 
         if (saving.getDeadline() != AlarmSetter.NO_ALARM) {

@@ -181,6 +181,7 @@ public class BackupManager {
                 obj.put(Database.COLUMN_DEBT_IS_ARCHIVED, debt.getIsArchived());
                 obj.put(Database.COLUMN_DEBT_DEADLINE, debt.getDeadline());
                 obj.put(Database.COLUMN_DEBT_CREATED_AT, debt.getCreatedAt());
+                obj.put(Database.COLUMN_DEBT_TYPE, debt.getDebtType());
                 debtJsonArray.put(obj);
             }
 
@@ -504,6 +505,7 @@ public class BackupManager {
             debt.setIsArchived(obj.optInt(Database.COLUMN_DEBT_IS_ARCHIVED, 0));
             debt.setDeadline(obj.optLong(Database.COLUMN_DEBT_DEADLINE, AlarmSetter.NO_ALARM));
             debt.setCreatedAt(obj.optLong(Database.COLUMN_DEBT_CREATED_AT, System.currentTimeMillis()));
+            debt.setDebtType(obj.optInt(Database.COLUMN_DEBT_TYPE, Debt.TYPE_I_OWE));
             result.add(debt);
         }
         return result;

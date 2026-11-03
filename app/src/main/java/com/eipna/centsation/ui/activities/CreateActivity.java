@@ -125,7 +125,7 @@ public class CreateActivity extends CentsationActivity {
 
         double currentSaving;
         try {
-            currentSaving = Double.parseDouble(currentSavingText);
+            currentSaving = com.eipna.centsation.util.FormatUtil.parseDouble(currentSavingText);
             if (currentSaving < 0) {
                 binding.fieldSavingCurrentSavingLayout.setError(getString(R.string.field_error_negative_saving));
                 return;
@@ -137,7 +137,7 @@ public class CreateActivity extends CentsationActivity {
 
         double goal;
         try {
-            goal = Double.parseDouble(goalText);
+            goal = com.eipna.centsation.util.FormatUtil.parseDouble(goalText);
             if (goal <= 0) {
                 binding.fieldSavingGoalLayout.setError(getString(R.string.field_error_positive_goal));
                 return;

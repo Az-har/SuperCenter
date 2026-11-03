@@ -2,7 +2,6 @@ package com.eipna.centsation.ui.dialogs;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,11 +23,10 @@ import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
-import com.eipna.centsation.data.transaction.TransactionType;
 import com.eipna.centsation.databinding.DialogBottomSheetAnalyticsBinding;
 import com.eipna.centsation.util.AlarmSetter;
-import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -39,17 +37,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private DialogBottomSheetAnalyticsBinding binding;
-    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private List<Saving> cachedSavings = new ArrayList<>();
-    private List<Transaction> cachedTransactions = new ArrayList<>();
-    private List<Debt> cachedDebts = new ArrayList<>();
-    private List<DebtTransaction> cachedDebtTransactions = new ArrayList<>();
-    private String selectedDebtId = null; // null means Total Debt view
+    private final List<Saving> cachedSavings = new ArrayList<>();
+    private final List<Transaction> cachedTransactions = new ArrayList<>();
+    private final List<Debt> cachedDebts = new ArrayList<>();
+    private final List<DebtTransaction> cachedDebtTransactions = new ArrayList<>();
+
+    private String selectedDebtId = null; // null = Total Debt Analytics
 
     public static AnalyticsBottomSheetDialogFragment newInstance() {
         return new AnalyticsBottomSheetDialogFragment();
@@ -67,16 +67,16 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         super.onViewCreated(view, savedInstanceState);
         binding.btnAnalyticsClose.setOnClickListener(v -> dismiss());
 
-        // Toggle between Savings and Debt modes
+        // Mode Switcher: Savings vs Debts
         binding.analyticsModeToggleGroup.check(R.id.btn_analytics_tab_savings);
         binding.analyticsModeToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
-            if (checkedId == R.id.btn_analytics_tab_savings) {
-                binding.analyticsSavingsContainer.setVisibility(View.VISIBLE);
-                binding.analyticsDebtContainer.setVisibility(View.GONE);
-            } else if (checkedId == R.id.btn_analytics_tab_debt) {
+            if (checkedId == R.id.btn_analytics_tab_debt) {
                 binding.analyticsSavingsContainer.setVisibility(View.GONE);
                 binding.analyticsDebtContainer.setVisibility(View.VISIBLE);
+            } else {
+                binding.analyticsSavingsContainer.setVisibility(View.VISIBLE);
+                binding.analyticsDebtContainer.setVisibility(View.GONE);
             }
         });
 
@@ -84,40 +84,50 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
     }
 
     private void loadAllData() {
-        final Context context = requireContext().getApplicationContext();
+        Context context = getContext();
+        if (context == null) return;
+        final Context appContext = context.getApplicationContext();
+
         executor.execute(() -> {
             List<Saving> savings;
             List<Transaction> transactions;
             List<Debt> debts;
-            List<DebtTransaction> debtTxs;
+            List<DebtTransaction> debtTransactions;
 
-            try (SavingRepository savingRepo = new SavingRepository(context);
-                 TransactionRepository txRepo = new TransactionRepository(context);
-                 DebtRepository debtRepo = new DebtRepository(context)) {
-                savings = savingRepo.getSavings(Saving.NOT_ARCHIVE);
-                transactions = txRepo.getAll();
-                debts = debtRepo.getDebts(Debt.NOT_ARCHIVE);
-                debtTxs = debtRepo.getAllTransactions();
+            try (SavingRepository sRepo = new SavingRepository(appContext);
+                 TransactionRepository tRepo = new TransactionRepository(appContext);
+                 DebtRepository dRepo = new DebtRepository(appContext)) {
+
+                savings = sRepo.getSavings(Saving.NOT_ARCHIVE);
+                transactions = tRepo.getAll();
+                debts = dRepo.getDebts(Debt.NOT_ARCHIVE);
+                debtTransactions = dRepo.getAllTransactions();
             }
 
             if (isAdded() && getActivity() != null) {
                 requireActivity().runOnUiThread(() -> {
-                    if (binding != null && isAdded()) {
-                        cachedSavings = savings != null ? savings : new ArrayList<>();
-                        cachedTransactions = transactions != null ? transactions : new ArrayList<>();
-                        cachedDebts = debts != null ? debts : new ArrayList<>();
-                        cachedDebtTransactions = debtTxs != null ? debtTxs : new ArrayList<>();
+                    if (binding == null) return;
+                    cachedSavings.clear();
+                    cachedSavings.addAll(savings);
 
-                        bindSavingsAnalyticsData();
-                        setupDebtOptionsChips();
-                        bindTotalDebtData();
-                    }
+                    cachedTransactions.clear();
+                    cachedTransactions.addAll(transactions);
+
+                    cachedDebts.clear();
+                    cachedDebts.addAll(debts);
+
+                    cachedDebtTransactions.clear();
+                    cachedDebtTransactions.addAll(debtTransactions);
+
+                    bindSavingsData();
+                    setupDebtOptionsChips();
+                    bindTotalDebtData();
                 });
             }
         });
     }
 
-    private void bindSavingsAnalyticsData() {
+    private void bindSavingsData() {
         Context context = getContext();
         if (context == null || binding == null) return;
 
@@ -134,8 +144,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         int depositCount = 0;
 
         for (Transaction tx : cachedTransactions) {
-            if (TransactionType.DEPOSIT.VALUE.equalsIgnoreCase(tx.getType())
-                    || TransactionType.CREATED.VALUE.equalsIgnoreCase(tx.getType())) {
+            if ("deposit".equalsIgnoreCase(tx.getType())) {
                 double amt = tx.getAmount();
                 if (tx.getDate() >= sevenDaysAgo) {
                     total7Days += amt;
@@ -150,10 +159,10 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         double avgDeposit = depositCount > 0 ? (totalAllDeposits / depositCount) : 0.0;
 
-        binding.analytics7dayTotal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(total7Days))));
-        binding.analytics30dayTotal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(total30Days))));
+        binding.analytics7dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(total7Days), context)));
+        binding.analytics30dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(total30Days), context)));
         binding.analyticsTxCount.setText(String.format("%d Total Deposits", depositCount));
-        binding.analyticsAvgDeposit.setText(String.format("Avg: %s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(avgDeposit))));
+        binding.analyticsAvgDeposit.setText(String.format("Avg: %s%s", currencySymbol, FormatUtil.formatAmount(Math.round(avgDeposit), context)));
 
         // Category breakdown
         Map<SavingCategory, Double> categoryTotals = new HashMap<>();
@@ -196,7 +205,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
                 ProgressBar bar = row.findViewById(R.id.category_progress);
 
                 label.setText(String.format("%s (%d%%)", cat.getFormattedLabel(), pct));
-                amountTv.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(amount))));
+                amountTv.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(amount), context)));
                 bar.setProgress(pct);
 
                 try {
@@ -210,7 +219,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         // Daily Pace Advisor
         if (paceGoalsCount > 0 && totalDailyPace > 0) {
             binding.analyticsTotalDailyPace.setText(String.format("Save %s%s / day",
-                    currencySymbol, NumberFormat.getInstance().format(Math.round(totalDailyPace))));
+                    currencySymbol, FormatUtil.formatAmount(Math.round(totalDailyPace), context)));
             binding.analyticsPaceSubtext.setText(String.format("Recommended pace across %d active goal(s) to hit all deadlines on time.", paceGoalsCount));
         } else {
             binding.analyticsTotalDailyPace.setText("All active deadlines achieved!");
@@ -226,7 +235,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         // 1. Total Debt Option Chip
         Chip totalChip = new Chip(context);
-        totalChip.setText("📊 Total Debt (All Combined)");
+        totalChip.setText("📊 Total Debt & Owed");
         totalChip.setCheckable(true);
         totalChip.setChecked(selectedDebtId == null);
         totalChip.setOnClickListener(v -> {
@@ -241,7 +250,8 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         for (Debt debt : cachedDebts) {
             Chip debtChip = new Chip(context);
             DebtCategory cat = DebtCategory.fromId(debt.getCategory());
-            debtChip.setText(cat.getEmoji() + " " + debt.getName());
+            String prefix = debt.isOwedToMe() ? "📥 " : "💸 ";
+            debtChip.setText(prefix + cat.getEmoji() + " " + debt.getName());
             debtChip.setCheckable(true);
             debtChip.setTag(debt.getId());
             if (debt.getId().equals(selectedDebtId)) {
@@ -268,6 +278,9 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         double totalPaid = 0.0;
         double totalRemaining = 0.0;
 
+        double totalIOweRemaining = 0.0;
+        double totalOwedToMeRemaining = 0.0;
+
         Map<DebtCategory, Double> categoryDebtTotals = new HashMap<>();
 
         for (Debt d : cachedDebts) {
@@ -276,6 +289,12 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
             double rem = d.getRemainingDebt();
             totalRemaining += rem;
 
+            if (d.isOwedToMe()) {
+                totalOwedToMeRemaining += rem;
+            } else {
+                totalIOweRemaining += rem;
+            }
+
             DebtCategory cat = DebtCategory.fromId(d.getCategory());
             categoryDebtTotals.put(cat, categoryDebtTotals.getOrDefault(cat, 0.0) + rem);
         }
@@ -283,28 +302,29 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         int overallProgress = totalOriginal > 0 ? (int) Math.round((totalPaid / totalOriginal) * 100.0) : 100;
 
         binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol,
-                NumberFormat.getInstance().format(totalRemaining)));
-        binding.analyticsTotalDebtSubtext.setText(String.format("Total Borrowed: %s%s | Paid Off: %s%s (%d%%)",
-                currencySymbol, NumberFormat.getInstance().format(totalOriginal),
-                currencySymbol, NumberFormat.getInstance().format(totalPaid),
-                overallProgress));
+                FormatUtil.formatAmount(totalRemaining, context)));
+        binding.analyticsTotalDebtSubtext.setText(String.format("You Owe: %s%s | Owed to You: %s%s",
+                currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context),
+                currencySymbol, FormatUtil.formatAmount(totalOwedToMeRemaining, context)));
         binding.analyticsTotalDebtProgress.setProgress(overallProgress);
 
         // Net Financial Position
+        // Formula: Net Worth = Savings (Cash) + Owed to Me (Receivables) - Debts (Payables)
         double totalSavings = 0.0;
         for (Saving s : cachedSavings) {
             totalSavings += s.getCurrentSaving();
         }
-        double netWorth = totalSavings - totalRemaining;
+        double netWorth = totalSavings + totalOwedToMeRemaining - totalIOweRemaining;
 
-        binding.analyticsNetSavings.setText(String.format("+%s%s", currencySymbol, NumberFormat.getInstance().format(totalSavings)));
-        binding.analyticsNetDebt.setText(String.format("-%s%s", currencySymbol, NumberFormat.getInstance().format(totalRemaining)));
+        binding.analyticsNetSavings.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(totalSavings, context)));
+        binding.analyticsNetOwed.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(totalOwedToMeRemaining, context)));
+        binding.analyticsNetDebt.setText(String.format("-%s%s", currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context)));
 
         if (netWorth >= 0) {
-            binding.analyticsNetWorth.setText(String.format("+%s%s", currencySymbol, NumberFormat.getInstance().format(netWorth)));
+            binding.analyticsNetWorth.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(netWorth, context)));
             binding.analyticsNetWorth.setTextColor(Color.parseColor("#1B6B50"));
         } else {
-            binding.analyticsNetWorth.setText(String.format("-%s%s", currencySymbol, NumberFormat.getInstance().format(Math.abs(netWorth))));
+            binding.analyticsNetWorth.setText(String.format("-%s%s", currencySymbol, FormatUtil.formatAmount(Math.abs(netWorth), context)));
             binding.analyticsNetWorth.setTextColor(Color.parseColor("#BA1A1A"));
         }
 
@@ -332,10 +352,10 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         double avgDebtPayment = debtPaymentCount > 0 ? (debtAllRepayments / debtPaymentCount) : 0.0;
 
-        binding.analyticsDebt7dayTotal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(debt7Days))));
-        binding.analyticsDebt30dayTotal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(debt30Days))));
+        binding.analyticsDebt7dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt7Days), context)));
+        binding.analyticsDebt30dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt30Days), context)));
         binding.analyticsDebtTxCount.setText(String.format("%d Total Repayments", debtPaymentCount));
-        binding.analyticsDebtAvgPayment.setText(String.format("Avg: %s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(avgDebtPayment))));
+        binding.analyticsDebtAvgPayment.setText(String.format("Avg: %s%s", currencySymbol, FormatUtil.formatAmount(Math.round(avgDebtPayment), context)));
 
         // Debt by Category
         binding.analyticsDebtCategoryContainer.removeAllViews();
@@ -358,7 +378,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
                 ProgressBar bar = row.findViewById(R.id.category_progress);
 
                 label.setText(String.format("%s (%d%%)", cat.getFormattedLabel(), pct));
-                amountTv.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(amount))));
+                amountTv.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(amount), context)));
                 bar.setProgress(pct);
 
                 try {
@@ -396,13 +416,20 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         double remaining = targetDebt.getRemainingDebt();
         binding.analyticsIndivDebtRemaining.setText(String.format("%s%s", currencySymbol,
-                NumberFormat.getInstance().format(remaining)));
+                FormatUtil.formatAmount(remaining, context)));
 
         int pct = targetDebt.getProgressPercent();
-        binding.analyticsIndivDebtSubtext.setText(String.format("Total: %s%s | Paid: %s%s (%d%%)",
-                currencySymbol, NumberFormat.getInstance().format(targetDebt.getTotalAmount()),
-                currencySymbol, NumberFormat.getInstance().format(targetDebt.getAmountPaid()),
-                pct));
+        if (targetDebt.isOwedToMe()) {
+            binding.analyticsIndivDebtSubtext.setText(String.format("Lent: %s%s | Collected: %s%s (%d%%)",
+                    currencySymbol, FormatUtil.formatAmount(targetDebt.getTotalAmount(), context),
+                    currencySymbol, FormatUtil.formatAmount(targetDebt.getAmountPaid(), context),
+                    pct));
+        } else {
+            binding.analyticsIndivDebtSubtext.setText(String.format("Total: %s%s | Paid: %s%s (%d%%)",
+                    currencySymbol, FormatUtil.formatAmount(targetDebt.getTotalAmount(), context),
+                    currencySymbol, FormatUtil.formatAmount(targetDebt.getAmountPaid(), context),
+                    pct));
+        }
         binding.analyticsIndivDebtProgress.setProgress(pct);
 
         // Repayment velocity for this specific debt
@@ -433,10 +460,10 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         double avgPayment = paymentCount > 0 ? (totalDebtPaid / paymentCount) : 0.0;
 
-        binding.analyticsIndiv7day.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(debt7Days))));
-        binding.analyticsIndiv30day.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(debt30Days))));
+        binding.analyticsIndiv7day.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt7Days), context)));
+        binding.analyticsIndiv30day.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt30Days), context)));
         binding.analyticsIndivTxCount.setText(String.format("%d Repayments", paymentCount));
-        binding.analyticsIndivAvgPayment.setText(String.format("Avg: %s%s", currencySymbol, NumberFormat.getInstance().format(Math.round(avgPayment))));
+        binding.analyticsIndivAvgPayment.setText(String.format("Avg: %s%s", currencySymbol, FormatUtil.formatAmount(Math.round(avgPayment), context)));
 
         // Payoff Pace Advisor for this debt
         if (targetDebt.getDeadline() > 0 && remaining > 0) {
@@ -444,46 +471,44 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
             if (daysRemaining > 0) {
                 double dailyRate = remaining / daysRemaining;
                 double monthlyRate = dailyRate * 30.0;
-                binding.analyticsIndivPaceTitle.setText(String.format("Pay %s%s / month (%s%s / day)",
-                        currencySymbol, NumberFormat.getInstance().format(Math.round(monthlyRate)),
-                        currencySymbol, NumberFormat.getInstance().format(Math.round(dailyRate))));
-                binding.analyticsIndivPaceSubtext.setText(String.format("Payoff deadline in %d days (%s).",
+                binding.analyticsIndivPaceTitle.setText(String.format((targetDebt.isOwedToMe() ? "Collect %s%s / month (%s%s / day)" : "Pay %s%s / month (%s%s / day)"),
+                        currencySymbol, FormatUtil.formatAmount(Math.round(monthlyRate), context),
+                        currencySymbol, FormatUtil.formatAmount(Math.round(dailyRate), context)));
+                binding.analyticsIndivPaceSubtext.setText(String.format((targetDebt.isOwedToMe() ? "Expected return in %d days (%s)." : "Payoff deadline in %d days (%s)."),
                         daysRemaining, DateParser.format(targetDebt.getDeadline(), deadlineFormat)));
             } else {
-                binding.analyticsIndivPaceTitle.setText("Payoff target deadline reached!");
+                binding.analyticsIndivPaceTitle.setText(targetDebt.isOwedToMe() ? "Target return deadline reached!" : "Payoff target deadline reached!");
                 binding.analyticsIndivPaceSubtext.setText("Recommended to clear the remaining balance as soon as possible.");
             }
-        } else if (remaining == 0) {
-            binding.analyticsIndivPaceTitle.setText("🎉 Debt 100% Paid Off!");
-            binding.analyticsIndivPaceSubtext.setText("Congratulations! You have completely cleared this liability.");
         } else {
-            binding.analyticsIndivPaceTitle.setText("No target payoff date configured");
-            binding.analyticsIndivPaceSubtext.setText("Edit this debt to set a target payoff date and calculate daily/monthly required payment rates.");
+            binding.analyticsIndivPaceTitle.setText(targetDebt.isOwedToMe() ? "No return deadline configured" : "No payoff deadline configured");
+            binding.analyticsIndivPaceSubtext.setText("Set a target deadline on this record to see pacing velocity.");
         }
 
-        // Recent Payments for this debt
+        // Recent Repayments History for this debt
         binding.analyticsIndivPaymentsContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(context);
 
         if (indivTxs.isEmpty()) {
             TextView emptyTv = new TextView(context);
-            emptyTv.setText("No payments recorded yet for this debt.");
+            emptyTv.setText(targetDebt.isOwedToMe() ? "No received payments logged yet." : "No repayments logged yet.");
             emptyTv.setTextColor(Color.GRAY);
             binding.analyticsIndivPaymentsContainer.addView(emptyTv);
         } else {
-            for (DebtTransaction dt : indivTxs) {
+            for (int i = 0; i < Math.min(indivTxs.size(), 5); i++) {
+                DebtTransaction dt = indivTxs.get(i);
                 View row = inflater.inflate(R.layout.recycler_transaction, binding.analyticsIndivPaymentsContainer, false);
                 TextView typeTv = row.findViewById(R.id.transaction_type);
                 TextView amountTv = row.findViewById(R.id.transaction_amount);
                 TextView dateTv = row.findViewById(R.id.transaction_date);
 
                 if (typeTv != null) {
-                    typeTv.setText(dt.getNotes() != null && !dt.getNotes().isEmpty() ? dt.getNotes() : "Payment");
+                    typeTv.setText(dt.getNotes() != null && !dt.getNotes().isEmpty() ? dt.getNotes() : (targetDebt.isOwedToMe() ? "Received" : "Repayment"));
                     typeTv.setVisibility(View.VISIBLE);
                 }
                 if (amountTv != null) {
-                    amountTv.setText(String.format("-%s%s", currencySymbol, NumberFormat.getInstance().format(dt.getAmount())));
-                    amountTv.setTextColor(Color.parseColor("#1B6B50"));
+                    amountTv.setText(String.format((targetDebt.isOwedToMe() ? "+%s%s" : "-%s%s"), currencySymbol, FormatUtil.formatAmount(dt.getAmount(), context)));
+                    amountTv.setTextColor(Color.parseColor(targetDebt.isOwedToMe() ? "#006874" : "#1B6B50"));
                 }
                 if (dateTv != null) {
                     dateTv.setText(DateParser.format(dt.getDate(), deadlineFormat));
@@ -498,11 +523,5 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        executor.shutdown();
     }
 }

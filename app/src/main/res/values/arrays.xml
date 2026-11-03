@@ -43,4 +43,18 @@
         <item>yyyy/MM/dd</item>
     </string-array>
 
+    <!-- Regional number formatting -->
+    <string-array name="number_format_entries">
+        <item>Auto (Follow Currency / Regional System)</item>
+        <item>Indian System (1,00,000 - Lakhs &amp; Crores)</item>
+        <item>Western System (100,000 - Millions)</item>
+        <item>Device System Default</item>
+    </string-array>
+    <string-array name="number_format_entry_values" translatable="false">
+        <item>auto</item>
+        <item>indian</item>
+        <item>western</item>
+        <item>system</item>
+    </string-array>
+
 </resources>

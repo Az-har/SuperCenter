@@ -23,6 +23,7 @@ import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.HapticUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
@@ -235,7 +236,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
                     if (daysLeft > 0 && dailyRate > 0) {
                         paceContainer.setVisibility(View.VISIBLE);
                         pace.setText(String.format("💡 Save %s%s/day to hit target",
-                                currencySymbol, NumberFormat.getInstance().format(Math.round(dailyRate))));
+                                currencySymbol, FormatUtil.formatAmount(Math.round(dailyRate), parent.getContext())));
                     } else {
                         paceContainer.setVisibility(View.GONE);
                     }
@@ -246,8 +247,8 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
 
             percent.setText(isCompleted ? "100% 🎉" : String.format("%d%%", percentValue));
             parent.setChecked(isCompleted);
-            saving.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getCurrentSaving())));
-            goal.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(currentSaving.getGoal())));
+            saving.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(currentSaving.getCurrentSaving(), parent.getContext())));
+            goal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(currentSaving.getGoal(), parent.getContext())));
             progress.setProgressCompat(Math.min(percentValue, 100), false);
 
             if (notesContainer != null && notesPreview != null) {

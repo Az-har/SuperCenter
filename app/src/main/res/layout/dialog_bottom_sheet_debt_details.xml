@@ -40,15 +40,38 @@
                 android:layout_height="wrap_content"
                 tools:ignore="HardcodedText" />
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/detail_debt_category_badge"
-                android:text="💳 Credit Card"
-                android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textColor="?attr/colorError"
+            <LinearLayout
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:layout_marginTop="2dp"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:ignore="HardcodedText" />
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/detail_debt_type_badge"
+                    android:text="💸 I Owe"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorError"
+                    android:background="@drawable/bg_pill_accent"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/detail_debt_category_badge"
+                    android:text="💳 Credit Card"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorError"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+            </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -87,6 +110,7 @@
                     android:layout_height="wrap_content">
 
                     <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/detail_debt_remaining_label"
                         android:text="REMAINING DEBT"
                         android:textAppearance="?attr/textAppearanceLabelMedium"
                         android:textStyle="bold"

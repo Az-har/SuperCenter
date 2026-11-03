@@ -106,4 +106,12 @@ public class PreferenceUtil {
     public void setDismissedReinstallRestore(boolean value) {
         sharedPreferences.edit().putBoolean("dismissed_reinstall_restore", value).apply();
     }
+
+    public String getRegionalNumberFormat() {
+        return sharedPreferences.getString("regional_number_format", "auto");
+    }
+
+    public void setRegionalNumberFormat(String value) {
+        sharedPreferences.edit().putString("regional_number_format", value).apply();
+    }
 }

@@ -38,6 +38,7 @@ public class DebtRepository implements AutoCloseable {
             values.put(Database.COLUMN_DEBT_IS_ARCHIVED, debt.getIsArchived());
             values.put(Database.COLUMN_DEBT_DEADLINE, debt.getDeadline());
             values.put(Database.COLUMN_DEBT_CREATED_AT, debt.getCreatedAt());
+            values.put(Database.COLUMN_DEBT_TYPE, debt.getDebtType());
             database.insert(Database.TABLE_DEBT, null, values);
 
             if (debt.getAmountPaid() > 0) {
@@ -66,6 +67,7 @@ public class DebtRepository implements AutoCloseable {
         values.put(Database.COLUMN_DEBT_CATEGORY, debt.getCategory());
         values.put(Database.COLUMN_DEBT_IS_ARCHIVED, debt.getIsArchived());
         values.put(Database.COLUMN_DEBT_DEADLINE, debt.getDeadline());
+        values.put(Database.COLUMN_DEBT_TYPE, debt.getDebtType());
 
         database.update(Database.TABLE_DEBT, values, Database.COLUMN_DEBT_ID + " = ?", new String[]{debt.getId()});
     }
@@ -188,6 +190,12 @@ public class DebtRepository implements AutoCloseable {
         debt.setIsArchived(cursor.getInt(cursor.getColumnIndexOrThrow(Database.COLUMN_DEBT_IS_ARCHIVED)));
         debt.setDeadline(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_DEBT_DEADLINE)));
         debt.setCreatedAt(cursor.getLong(cursor.getColumnIndexOrThrow(Database.COLUMN_DEBT_CREATED_AT)));
+        int typeIdx = cursor.getColumnIndex(Database.COLUMN_DEBT_TYPE);
+        if (typeIdx != -1) {
+            debt.setDebtType(cursor.getInt(typeIdx));
+        } else {
+            debt.setDebtType(Debt.TYPE_I_OWE);
+        }
         return debt;
     }
 
@@ -218,6 +226,7 @@ public class DebtRepository implements AutoCloseable {
                 values.put(Database.COLUMN_DEBT_IS_ARCHIVED, debt.getIsArchived());
                 values.put(Database.COLUMN_DEBT_DEADLINE, debt.getDeadline());
                 values.put(Database.COLUMN_DEBT_CREATED_AT, debt.getCreatedAt());
+                values.put(Database.COLUMN_DEBT_TYPE, debt.getDebtType());
 
                 int updated = database.update(
                         Database.TABLE_DEBT,

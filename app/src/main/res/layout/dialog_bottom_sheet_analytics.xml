@@ -134,6 +134,7 @@
 
                         <LinearLayout
                             android:orientation="horizontal"
+                            android:baselineAligned="false"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
 
@@ -200,6 +201,7 @@
 
                         <LinearLayout
                             android:orientation="horizontal"
+                            android:baselineAligned="false"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
 
@@ -447,6 +449,7 @@
 
                             <LinearLayout
                                 android:orientation="horizontal"
+                                android:baselineAligned="false"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content">
 
@@ -457,7 +460,7 @@
                                     android:layout_height="wrap_content">
 
                                     <com.google.android.material.textview.MaterialTextView
-                                        android:text="Total Savings"
+                                        android:text="Savings (Cash)"
                                         android:textAppearance="?attr/textAppearanceBodySmall"
                                         android:textColor="?attr/colorOnSurfaceVariant"
                                         android:layout_width="wrap_content"
@@ -483,7 +486,41 @@
                                     android:layout_height="wrap_content">
 
                                     <com.google.android.material.textview.MaterialTextView
-                                        android:text="Total Debt"
+                                        android:text="Owed to Me"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_net_owed"
+                                        android:text="+$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                                        android:textStyle="bold"
+                                        android:textColor="#006874"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:baselineAligned="false"
+                                android:layout_marginTop="10dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Debts (I Owe)"
                                         android:textAppearance="?attr/textAppearanceBodySmall"
                                         android:textColor="?attr/colorOnSurfaceVariant"
                                         android:layout_width="wrap_content"
@@ -504,7 +541,7 @@
 
                                 <LinearLayout
                                     android:orientation="vertical"
-                                    android:layout_weight="1.2"
+                                    android:layout_weight="1"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content">
 

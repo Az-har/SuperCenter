@@ -106,7 +106,7 @@ public final class AnimationUtil {
     public static void animateCurrencyValue(TextView textView, double from, double to, String currencySymbol, long duration) {
         if (textView == null) return;
         if (Math.abs(from - to) < 0.001 || isPowerSaveMode(textView.getContext())) {
-            textView.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(to)));
+            textView.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(to, textView.getContext())));
             return;
         }
 
@@ -115,7 +115,7 @@ public final class AnimationUtil {
         animator.setInterpolator(FAST_OUT_SLOW_IN);
         animator.addUpdateListener(animation -> {
             float val = (float) animation.getAnimatedValue();
-            textView.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(val)));
+            textView.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(val, textView.getContext())));
         });
         animator.start();
     }

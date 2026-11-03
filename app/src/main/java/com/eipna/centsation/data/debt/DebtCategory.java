@@ -13,7 +13,10 @@ public enum DebtCategory {
     MORTGAGE("mortgage", "Mortgage", "🏡", "#2E6B47"),
     CAR_LOAN("car_loan", "Auto Loan", "🚗", "#A04000"),
     MEDICAL("medical", "Medical", "🏥", "#BA1A1A"),
-    FAMILY_FRIEND("family_friend", "Family / Friend", "👥", "#6750A4");
+    FAMILY_FRIEND("family_friend", "Family / Friend", "👥", "#6750A4"),
+    LENT_TO_OTHERS("lent_to_others", "Lent to Friend / Person", "🤝", "#1B6B50"),
+    CLIENT_INVOICE("client_invoice", "Client / Freelance", "💼", "#006874"),
+    REIMBURSEMENT("reimbursement", "Reimbursement", "🧾", "#735C00");
 
     private final String id;
     private final String displayName;

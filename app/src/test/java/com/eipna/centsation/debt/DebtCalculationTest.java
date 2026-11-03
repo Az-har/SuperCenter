@@ -107,6 +107,38 @@ public class DebtCalculationTest {
     }
 
     @Test
+    public void testDebtTypeIOweVsOwedToMe() {
+        Debt iOwe = new Debt("d1", "Car Loan", 15000.0, 5000.0, "car_loan", 0, 0, System.currentTimeMillis());
+        iOwe.setDebtType(Debt.TYPE_I_OWE);
+        Assert.assertTrue(iOwe.isIOwe());
+        Assert.assertFalse(iOwe.isOwedToMe());
+        Assert.assertEquals("I Owe", iOwe.getTypeLabel());
+
+        Debt owedToMe = new Debt("d2", "Lent to Bob", 8000.0, 2000.0, "lent_to_others", 0, 0, System.currentTimeMillis());
+        owedToMe.setDebtType(Debt.TYPE_OWED_TO_ME);
+        Assert.assertFalse(owedToMe.isIOwe());
+        Assert.assertTrue(owedToMe.isOwedToMe());
+        Assert.assertEquals("Owed to Me", owedToMe.getTypeLabel());
+        Assert.assertEquals(6000.0, owedToMe.getRemainingDebt(), 0.001);
+    }
+
+    @Test
+    public void testNetFinancialPositionWithReceivables() {
+        // Balance sheet formula: Net Worth = Savings + Owed to Me (Receivables) - Debts (Payables)
+        double savings = 50000.0;
+        double owedToMe = 20000.0; // Asset
+        double iOwe = 30000.0;     // Liability
+
+        double netWorth = savings + owedToMe - iOwe;
+        Assert.assertEquals(40000.0, netWorth, 0.001);
+
+        // Heavy debt scenario
+        double heavyDebt = 80000.0;
+        double negativeNetWorth = savings + owedToMe - heavyDebt;
+        Assert.assertEquals(-10000.0, negativeNetWorth, 0.001);
+    }
+
+    @Test
     public void testPayoffPaceAdvisor() {
         double remainingDebt = 30000.0;
         long now = System.currentTimeMillis();
@@ -131,6 +163,18 @@ public class DebtCalculationTest {
         DebtCategory auto = DebtCategory.fromId("car_loan");
         Assert.assertEquals(DebtCategory.CAR_LOAN, auto);
         Assert.assertEquals("🚗", auto.getEmoji());
+
+        DebtCategory lent = DebtCategory.fromId("lent_to_others");
+        Assert.assertEquals(DebtCategory.LENT_TO_OTHERS, lent);
+        Assert.assertEquals("🤝", lent.getEmoji());
+
+        DebtCategory invoice = DebtCategory.fromId("client_invoice");
+        Assert.assertEquals(DebtCategory.CLIENT_INVOICE, invoice);
+        Assert.assertEquals("💼", invoice.getEmoji());
+
+        DebtCategory reimb = DebtCategory.fromId("reimbursement");
+        Assert.assertEquals(DebtCategory.REIMBURSEMENT, reimb);
+        Assert.assertEquals("🧾", reimb.getEmoji());
 
         DebtCategory unknown = DebtCategory.fromId("non_existent_category");
         Assert.assertEquals(DebtCategory.GENERAL, unknown);

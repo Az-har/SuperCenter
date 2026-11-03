@@ -31,6 +31,7 @@ import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
@@ -142,8 +143,8 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         }
 
         // Amount & Progress
-        binding.detailsCurrentAmount.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(saving.getCurrentSaving())));
-        binding.detailsGoalAmount.setText(String.format(" of %s%s", currencySymbol, NumberFormat.getInstance().format(saving.getGoal())));
+        binding.detailsCurrentAmount.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(saving.getCurrentSaving(), context)));
+        binding.detailsGoalAmount.setText(String.format(" of %s%s", currencySymbol, FormatUtil.formatAmount(saving.getGoal(), context)));
         binding.detailsPercent.setText(String.format("%d%%", percent));
 
         AnimationUtil.animateProgress(binding.detailsProgress, Math.min(100, percent), 500);
@@ -151,7 +152,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
         if (isCompleted) {
             binding.detailsRemainingSubtext.setText("Goal achieved! Outstanding work! 🎉");
         } else {
-            binding.detailsRemainingSubtext.setText(String.format("%s%s left to reach target goal", currencySymbol, NumberFormat.getInstance().format(remaining)));
+            binding.detailsRemainingSubtext.setText(String.format("%s%s left to reach target goal", currencySymbol, FormatUtil.formatAmount(remaining, context)));
         }
 
         // Smart Insight Card (Deadline & Recommended Daily Pace)
@@ -171,12 +172,12 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
                 binding.detailsPaceText.setText("Goal deadline has passed. Continue at your own pace!");
             } else if (days == 0) {
                 binding.detailsDeadlineText.setText(String.format("📅 Deadline: %s (Due today!)", dateStr));
-                binding.detailsPaceText.setText(String.format("💡 %s%s remaining to complete goal today", currencySymbol, NumberFormat.getInstance().format(remaining)));
+                binding.detailsPaceText.setText(String.format("💡 %s%s remaining to complete goal today", currencySymbol, FormatUtil.formatAmount(remaining, context)));
             } else {
                 double dailyRate = SavingsCalculator.getDailySavingsRate(saving);
                 binding.detailsDeadlineText.setText(String.format("📅 Deadline: %s (%d days left)", dateStr, days));
                 binding.detailsPaceText.setText(String.format("💡 Recommended pace: Save %s%s / day to finish on time",
-                        currencySymbol, NumberFormat.getInstance().format(Math.ceil(dailyRate * 100.0) / 100.0)));
+                        currencySymbol, FormatUtil.formatAmount(Math.ceil(dailyRate * 100.0) / 100.0, context)));
             }
         } else {
             binding.detailsInsightCard.setVisibility(View.GONE);

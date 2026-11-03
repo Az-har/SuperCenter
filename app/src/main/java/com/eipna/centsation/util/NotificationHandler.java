@@ -5,7 +5,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.icu.text.NumberFormat;
 import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
@@ -83,10 +82,10 @@ public class NotificationHandler {
         int percent = savingsPercent(saving);
         PreferenceUtil preferenceUtil = new PreferenceUtil(context);
         String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
-        String savedStr = currencySymbol + NumberFormat.getInstance().format(saving.getCurrentSaving());
-        String goalStr = currencySymbol + NumberFormat.getInstance().format(saving.getGoal());
+        String savedStr = currencySymbol + FormatUtil.formatAmount(saving.getCurrentSaving(), context);
+        String goalStr = currencySymbol + FormatUtil.formatAmount(saving.getGoal(), context);
         double remainingVal = Math.max(0, saving.getGoal() - saving.getCurrentSaving());
-        String remainingStr = currencySymbol + NumberFormat.getInstance().format(remainingVal);
+        String remainingStr = currencySymbol + FormatUtil.formatAmount(remainingVal, context);
 
         String expandedContent = notificationBody + "\n\n"
                 + "• Progress: " + savedStr + " / " + goalStr + " (" + percent + "% saved)\n"

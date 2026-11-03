@@ -50,6 +50,15 @@
             android:defaultValue="MM/dd/yyyy"
             app:useSimpleSummaryProvider="true"
             app:iconSpaceReserved="false"/>
+
+        <ListPreference
+            android:key="regional_number_format"
+            android:title="Number &amp; Comma Formatting"
+            android:entries="@array/number_format_entries"
+            android:entryValues="@array/number_format_entry_values"
+            android:defaultValue="auto"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false"/>
     </PreferenceCategory>
 
     <PreferenceCategory

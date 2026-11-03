@@ -49,6 +49,22 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/debt_type_badge"
+                android:text="💸 I Owe"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textStyle="bold"
+                android:textColor="?attr/colorError"
+                android:background="@drawable/bg_pill_accent"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:layout_marginStart="6dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/debt_category_badge"
                 android:text="💳 Credit Card"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
@@ -101,6 +117,7 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/debt_remaining_label"
                 android:text=" remaining"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textAppearance="?attr/textAppearanceBodyMedium"

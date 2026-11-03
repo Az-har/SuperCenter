@@ -20,6 +20,7 @@ import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionType;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 
 import java.util.Objects;
@@ -92,12 +93,12 @@ public class TransactionAdapter extends ListAdapter<Transaction, TransactionAdap
                 parent.setCardBackgroundColor(depositCardColor);
                 amount.setTextColor(depositTextColor);
                 date.setTextColor(depositTextColor);
-                amount.setText(String.format("%c%s%s", '+', selectedCurrencySymbol, NumberFormat.getInstance().format(currentTransaction.getAmount())));
+                amount.setText(String.format("%c%s%s", '+', selectedCurrencySymbol, FormatUtil.formatAmount(currentTransaction.getAmount(), parent.getContext())));
             } else if (currentTransaction.getType().equals(TransactionType.WITHDRAW.VALUE)) {
                 parent.setCardBackgroundColor(withdrawCardColor);
                 amount.setTextColor(withdrawTextColor);
                 date.setTextColor(withdrawTextColor);
-                amount.setText(String.format("%c%s%s", '-', selectedCurrencySymbol, NumberFormat.getInstance().format(currentTransaction.getAmount())));
+                amount.setText(String.format("%c%s%s", '-', selectedCurrencySymbol, FormatUtil.formatAmount(currentTransaction.getAmount(), parent.getContext())));
             }
         }
     }

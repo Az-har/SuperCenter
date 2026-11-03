@@ -250,6 +250,47 @@
                     tools:ignore="HardcodedText" />
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>
+
+        <HorizontalScrollView
+            android:id="@+id/debt_filter_scroll"
+            android:scrollbars="none"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/debt_filter_chip_group"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_all"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:checked="true"
+                    android:text="All"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_i_owe"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="💸 I Owe"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_owed_to_me"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="📥 Owed to Me"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Empty State -->
