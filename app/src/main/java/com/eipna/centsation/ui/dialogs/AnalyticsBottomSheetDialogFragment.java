@@ -37,12 +37,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import com.eipna.centsation.util.AppExecutors;
 
 public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private DialogBottomSheetAnalyticsBinding binding;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
 
     private final List<Saving> cachedSavings = new ArrayList<>();
     private final List<Transaction> cachedTransactions = new ArrayList<>();

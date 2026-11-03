@@ -145,7 +145,7 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
 
     private void loadExistingDebt(String id) {
         final Context context = requireContext().getApplicationContext();
-        executor.execute(() -> {
+        Runnable loadTask = () -> {
             try (DebtRepository repo = new DebtRepository(context)) {
                 Debt debt = repo.getDebt(id);
                 if (debt != null && isAdded() && getActivity() != null) {
@@ -182,8 +182,15 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
                         }
                     });
                 }
+            } catch (Exception ignored) {
             }
-        });
+        };
+
+        try {
+            AppExecutors.getInstance().diskIO().execute(loadTask);
+        } catch (Exception e) {
+            new Thread(loadTask, "fallback-load-debt").start();
+        }
     }
 
     private void showDeadlinePicker() {
@@ -261,7 +268,7 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
         final double finalPaid = paidAmount;
         final int finalType = selectedDebtType;
 
-        executor.execute(() -> {
+        Runnable saveTask = () -> {
             try (DebtRepository repo = new DebtRepository(appContext)) {
                 if (debtIdToEdit != null) {
                     Debt existing = repo.getDebt(debtIdToEdit);
@@ -288,6 +295,7 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
                     newDebt.setDebtType(finalType);
                     repo.create(newDebt);
                 }
+            } catch (Exception ignored) {
             }
 
             if (isAdded() && getActivity() != null) {
@@ -300,7 +308,13 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
                     dismiss();
                 });
             }
-        });
+        };
+
+        try {
+            AppExecutors.getInstance().diskIO().execute(saveTask);
+        } catch (Exception e) {
+            new Thread(saveTask, "fallback-save-debt").start();
+        }
     }
 
     @Override

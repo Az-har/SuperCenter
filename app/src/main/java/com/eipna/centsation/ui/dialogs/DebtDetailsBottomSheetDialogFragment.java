@@ -27,7 +27,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import com.eipna.centsation.util.AppExecutors;
 
 public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -40,7 +40,7 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
     private Debt currentDebt;
     private DialogBottomSheetDebtDetailsBinding binding;
     private OnDebtUpdatedListener listener;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
 
     public static DebtDetailsBottomSheetDialogFragment newInstance(String debtId) {
         DebtDetailsBottomSheetDialogFragment fragment = new DebtDetailsBottomSheetDialogFragment();
