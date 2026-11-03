@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group
+        android:id="@+id/group_apps"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_savings"
+            android:icon="@drawable/ic_savings"
+            android:title="Savings Goals"
+            android:checked="true" />
+        <item
+            android:id="@+id/nav_debts"
+            android:icon="@drawable/ic_debt"
+            android:title="Debts, Loans &amp; Owed" />
+        <item
+            android:id="@+id/nav_habits"
+            android:icon="@drawable/ic_habits"
+            android:title="Habits &amp; Quotas" />
+        <item
+            android:id="@+id/nav_analytics"
+            android:icon="@drawable/ic_insights"
+            android:title="Insights &amp; Analytics" />
+    </group>
+
+    <item android:title="Tools &amp; Settings">
+        <menu>
+            <item
+                android:id="@+id/nav_archive"
+                android:icon="@drawable/ic_archive"
+                android:title="@string/menu_item_archive" />
+            <item
+                android:id="@+id/nav_settings"
+                android:icon="@drawable/ic_settings"
+                android:title="@string/menu_item_settings" />
+            <item
+                android:id="@+id/nav_about"
+                android:icon="@drawable/ic_info"
+                android:title="@string/menu_item_about" />
+        </menu>
+    </item>
+
+</menu>

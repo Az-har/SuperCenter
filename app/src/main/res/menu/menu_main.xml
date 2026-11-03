@@ -59,11 +59,6 @@
         </menu>
     </item>
 
-    <item
-        android:id="@+id/action_habits"
-        android:title="@string/menu_item_habits"
-        android:icon="@drawable/ic_habits"
-        app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/action_analytics"

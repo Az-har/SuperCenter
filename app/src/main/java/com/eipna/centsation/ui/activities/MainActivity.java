@@ -15,11 +15,13 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -142,6 +144,55 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 setAppMode(false);
             } else if (checkedId == R.id.btn_main_tab_debts) {
                 setAppMode(true);
+            }
+        });
+
+        // Setup Side Navigation Drawer
+        binding.toolbar.setNavigationOnClickListener(v -> {
+            if (binding != null) {
+                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START);
+                } else {
+                    binding.drawerLayout.openDrawer(GravityCompat.START);
+                }
+            }
+        });
+
+        binding.navigationView.setCheckedItem(R.id.nav_savings);
+        binding.navigationView.setNavigationItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_savings) {
+                setAppMode(false);
+            } else if (id == R.id.nav_debts) {
+                setAppMode(true);
+            } else if (id == R.id.nav_habits) {
+                startActivity(new Intent(MainActivity.this, HabitTrackerActivity.class));
+            } else if (id == R.id.nav_analytics) {
+                showAnalytics();
+            } else if (id == R.id.nav_archive) {
+                startActivity(new Intent(MainActivity.this, ArchiveActivity.class));
+            } else if (id == R.id.nav_settings) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            } else if (id == R.id.nav_about) {
+                startActivity(new Intent(MainActivity.this, AboutActivity.class));
+            }
+            if (binding != null) {
+                binding.drawerLayout.closeDrawer(GravityCompat.START);
+            }
+            return true;
+        });
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (binding != null && binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START);
+                } else if (isDebtMode) {
+                    setAppMode(false);
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
             }
         });
 
@@ -383,6 +434,9 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     protected void onResume() {
         super.onResume();
+        if (binding != null) {
+            binding.navigationView.setCheckedItem(isDebtMode ? R.id.nav_debts : R.id.nav_savings);
+        }
         if (isDebtMode) {
             loadDebts();
         } else {
@@ -450,6 +504,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         this.isDebtMode = debtMode;
         if (!debtMode) {
             binding.toolbar.setTitle(R.string.toolbar_main);
+            binding.navigationView.setCheckedItem(R.id.nav_savings);
+            binding.mainModeToggleGroup.check(R.id.btn_main_tab_savings);
             binding.savingList.setVisibility(View.VISIBLE);
             binding.debtList.setVisibility(View.GONE);
             binding.debtEmptyIndicator.setVisibility(View.GONE);
@@ -462,6 +518,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             viewModel.loadSavings();
         } else {
             binding.toolbar.setTitle("Debts & Owed");
+            binding.navigationView.setCheckedItem(R.id.nav_debts);
+            binding.mainModeToggleGroup.check(R.id.btn_main_tab_debts);
             binding.savingList.setVisibility(View.GONE);
             binding.emptyIndicator.setVisibility(View.GONE);
             binding.debtList.setVisibility(View.VISIBLE);
@@ -727,10 +785,6 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_habits) {
-            startActivity(new Intent(this, HabitTrackerActivity.class));
-            return true;
-        }
         if (id == R.id.action_analytics) {
             showAnalytics();
             return true;
