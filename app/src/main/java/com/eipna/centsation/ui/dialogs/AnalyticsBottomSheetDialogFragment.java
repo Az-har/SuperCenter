@@ -233,9 +233,9 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         binding.debtAnalyticsChipGroup.removeAllViews();
 
-        // 1. Total Debt Option Chip
+        // 1. Total Combined Option Chip
         Chip totalChip = new Chip(context);
-        totalChip.setText("📊 Total Debt & Owed");
+        totalChip.setText("📊 Combined & Net Position");
         totalChip.setCheckable(true);
         totalChip.setChecked(selectedDebtId == null);
         totalChip.setOnClickListener(v -> {
@@ -246,7 +246,33 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         });
         binding.debtAnalyticsChipGroup.addView(totalChip);
 
-        // 2. Individual Debt Option Chips
+        // 2. Liabilities (I Owe) Only Chip
+        Chip iOweChip = new Chip(context);
+        iOweChip.setText("💸 Liabilities (I Owe)");
+        iOweChip.setCheckable(true);
+        iOweChip.setChecked("filter_i_owe".equals(selectedDebtId));
+        iOweChip.setOnClickListener(v -> {
+            selectedDebtId = "filter_i_owe";
+            binding.layoutTotalDebtView.setVisibility(View.VISIBLE);
+            binding.layoutIndividualDebtView.setVisibility(View.GONE);
+            bindTotalDebtData();
+        });
+        binding.debtAnalyticsChipGroup.addView(iOweChip);
+
+        // 3. Receivables (Owed to Me) Only Chip
+        Chip owedToMeChip = new Chip(context);
+        owedToMeChip.setText("📥 Receivables (Owed to Me)");
+        owedToMeChip.setCheckable(true);
+        owedToMeChip.setChecked("filter_owed_to_me".equals(selectedDebtId));
+        owedToMeChip.setOnClickListener(v -> {
+            selectedDebtId = "filter_owed_to_me";
+            binding.layoutTotalDebtView.setVisibility(View.VISIBLE);
+            binding.layoutIndividualDebtView.setVisibility(View.GONE);
+            bindTotalDebtData();
+        });
+        binding.debtAnalyticsChipGroup.addView(owedToMeChip);
+
+        // 4. Individual Debt Option Chips
         for (Debt debt : cachedDebts) {
             Chip debtChip = new Chip(context);
             DebtCategory cat = DebtCategory.fromId(debt.getCategory());
@@ -273,51 +299,132 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         PreferenceUtil prefUtil = new PreferenceUtil(context);
         String currencySymbol = Currency.getSymbol(prefUtil.getCurrency());
+        String deadlineFormat = prefUtil.getDeadlineFormat();
+        long now = System.currentTimeMillis();
 
-        double totalOriginal = 0.0;
-        double totalPaid = 0.0;
-        double totalRemaining = 0.0;
-
+        double totalIOweOriginal = 0.0;
+        double totalIOwePaid = 0.0;
         double totalIOweRemaining = 0.0;
-        double totalOwedToMeRemaining = 0.0;
+        int activeIOweCount = 0;
+
+        double totalOwedOriginal = 0.0;
+        double totalOwedPaid = 0.0;
+        double totalOwedRemaining = 0.0;
+        int activeOwedCount = 0;
 
         Map<DebtCategory, Double> categoryDebtTotals = new HashMap<>();
 
+        Debt snowballCandidate = null;
+        Debt nextDueCandidate = null;
+        long nextDueDiffMin = Long.MAX_VALUE;
+
+        double totalDailyPace = 0.0;
+        int paceGoalsCount = 0;
+
+        boolean filterIOweOnly = "filter_i_owe".equals(selectedDebtId);
+        boolean filterOwedOnly = "filter_owed_to_me".equals(selectedDebtId);
+
         for (Debt d : cachedDebts) {
-            totalOriginal += d.getTotalAmount();
-            totalPaid += d.getAmountPaid();
+            double orig = d.getTotalAmount();
+            double paid = d.getAmountPaid();
             double rem = d.getRemainingDebt();
-            totalRemaining += rem;
 
             if (d.isOwedToMe()) {
-                totalOwedToMeRemaining += rem;
-            } else {
-                totalIOweRemaining += rem;
-            }
+                totalOwedOriginal += orig;
+                totalOwedPaid += paid;
+                totalOwedRemaining += rem;
+                if (!d.isPaidOff()) activeOwedCount++;
 
-            DebtCategory cat = DebtCategory.fromId(d.getCategory());
-            categoryDebtTotals.put(cat, categoryDebtTotals.getOrDefault(cat, 0.0) + rem);
+                if (!filterIOweOnly) {
+                    DebtCategory cat = DebtCategory.fromId(d.getCategory());
+                    categoryDebtTotals.put(cat, categoryDebtTotals.getOrDefault(cat, 0.0) + rem);
+                }
+            } else {
+                totalIOweOriginal += orig;
+                totalIOwePaid += paid;
+                totalIOweRemaining += rem;
+                if (!d.isPaidOff()) activeIOweCount++;
+
+                if (!filterOwedOnly) {
+                    DebtCategory cat = DebtCategory.fromId(d.getCategory());
+                    categoryDebtTotals.put(cat, categoryDebtTotals.getOrDefault(cat, 0.0) + rem);
+                }
+
+                // Snowball Candidate: active liability with lowest positive remaining balance
+                if (rem > 0) {
+                    if (snowballCandidate == null || rem < snowballCandidate.getRemainingDebt()) {
+                        snowballCandidate = d;
+                    }
+                }
+
+                // Pacing & Due Date
+                if (d.getDeadline() > 0 && rem > 0) {
+                    long days = (d.getDeadline() - now) / (24L * 60 * 60 * 1000);
+                    if (days > 0) {
+                        totalDailyPace += (rem / days);
+                        paceGoalsCount++;
+                    }
+                    if (d.getDeadline() < nextDueDiffMin) {
+                        nextDueDiffMin = d.getDeadline();
+                        nextDueCandidate = d;
+                    }
+                }
+            }
         }
 
-        int overallProgress = totalOriginal > 0 ? (int) Math.round((totalPaid / totalOriginal) * 100.0) : 100;
+        // 1. Overview Card Customization based on Selected Filter
+        if (filterIOweOnly) {
+            int pct = totalIOweOriginal > 0 ? (int) Math.round((totalIOwePaid / totalIOweOriginal) * 100.0) : 100;
+            binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context)));
+            binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.analyticsTotalDebtSubtext.setText(String.format("Borrowed: %s%s | Repaid: %s%s (%d%%) • %d Active",
+                    currencySymbol, FormatUtil.formatAmount(totalIOweOriginal, context),
+                    currencySymbol, FormatUtil.formatAmount(totalIOwePaid, context),
+                    pct, activeIOweCount));
+            binding.analyticsTotalDebtProgress.setProgress(pct);
+            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#BA1A1A"));
+        } else if (filterOwedOnly) {
+            int pct = totalOwedOriginal > 0 ? (int) Math.round((totalOwedPaid / totalOwedOriginal) * 100.0) : 100;
+            binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, context)));
+            binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#006874"));
+            binding.analyticsTotalDebtSubtext.setText(String.format("Lent Out: %s%s | Recovered: %s%s (%d%%) • %d Active",
+                    currencySymbol, FormatUtil.formatAmount(totalOwedOriginal, context),
+                    currencySymbol, FormatUtil.formatAmount(totalOwedPaid, context),
+                    pct, activeOwedCount));
+            binding.analyticsTotalDebtProgress.setProgress(pct);
+            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#006874"));
+        } else {
+            // Combined View
+            double netDebt = totalIOweRemaining - totalOwedRemaining;
+            int overallPct = (totalIOweOriginal + totalOwedOriginal) > 0
+                    ? (int) Math.round(((totalIOwePaid + totalOwedPaid) / (totalIOweOriginal + totalOwedOriginal)) * 100.0)
+                    : 100;
 
-        binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol,
-                FormatUtil.formatAmount(totalRemaining, context)));
-        binding.analyticsTotalDebtSubtext.setText(String.format("You Owe: %s%s | Owed to You: %s%s",
-                currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context),
-                currencySymbol, FormatUtil.formatAmount(totalOwedToMeRemaining, context)));
-        binding.analyticsTotalDebtProgress.setProgress(overallProgress);
+            binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.abs(netDebt), context)));
+            if (netDebt > 0) {
+                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#BA1A1A"));
+            } else if (netDebt < 0) {
+                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#1B6B50"));
+            } else {
+                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#006874"));
+            }
 
-        // Net Financial Position
-        // Formula: Net Worth = Savings (Cash) + Owed to Me (Receivables) - Debts (Payables)
+            binding.analyticsTotalDebtSubtext.setText(String.format("You Owe: %s%s (%d active) | Owed to You: %s%s (%d active)",
+                    currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context), activeIOweCount,
+                    currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, context), activeOwedCount));
+            binding.analyticsTotalDebtProgress.setProgress(overallPct);
+            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#6750A4"));
+        }
+
+        // 2. Net Financial Position (Net Worth)
         double totalSavings = 0.0;
         for (Saving s : cachedSavings) {
             totalSavings += s.getCurrentSaving();
         }
-        double netWorth = totalSavings + totalOwedToMeRemaining - totalIOweRemaining;
+        double netWorth = totalSavings + totalOwedRemaining - totalIOweRemaining;
 
         binding.analyticsNetSavings.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(totalSavings, context)));
-        binding.analyticsNetOwed.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(totalOwedToMeRemaining, context)));
+        binding.analyticsNetOwed.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, context)));
         binding.analyticsNetDebt.setText(String.format("-%s%s", currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context)));
 
         if (netWorth >= 0) {
@@ -328,8 +435,33 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
             binding.analyticsNetWorth.setTextColor(Color.parseColor("#BA1A1A"));
         }
 
-        // Debt Repayment Velocity
-        long now = System.currentTimeMillis();
+        // Debt-to-Savings Ratio Analysis
+        if (totalIOweRemaining == 0) {
+            binding.analyticsDebtSavingsRatio.setText("Debt-to-Savings: 0.00 (Debt-Free! 🎉)");
+            binding.analyticsDebtHealthBadge.setText("Excellent");
+            binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsDebtHealthAdvice.setText("100% of your liquid savings are unencumbered by liabilities.");
+        } else {
+            double ratio = totalSavings > 0 ? (totalIOweRemaining / totalSavings) : 999.0;
+            binding.analyticsDebtSavingsRatio.setText(String.format("Debt-to-Savings: %.2f", ratio));
+            if (ratio < 0.5) {
+                binding.analyticsDebtHealthBadge.setText("Very Healthy");
+                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#1B6B50"));
+                int cov = (int) Math.round((1.0 / ratio) * 100.0);
+                binding.analyticsDebtHealthAdvice.setText(String.format("Strong liquidity: Savings cover %d%% of all liabilities.", cov));
+            } else if (ratio <= 1.0) {
+                binding.analyticsDebtHealthBadge.setText("Moderate");
+                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#E65100"));
+                binding.analyticsDebtHealthAdvice.setText("Liquid savings exceed total liabilities, but maintain an emergency buffer.");
+            } else {
+                binding.analyticsDebtHealthBadge.setText("High Leverage");
+                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.analyticsDebtHealthAdvice.setText(String.format("Liabilities exceed liquid savings by %s%s. Prioritize debt payoff.",
+                        currencySymbol, FormatUtil.formatAmount(totalIOweRemaining - totalSavings, context)));
+            }
+        }
+
+        // 3. Debt Repayment Velocity
         long sevenDaysAgo = now - (7L * 24 * 60 * 60 * 1000);
         long thirtyDaysAgo = now - (30L * 24 * 60 * 60 * 1000);
 
@@ -354,23 +486,82 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         binding.analyticsDebt7dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt7Days), context)));
         binding.analyticsDebt30dayTotal.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.round(debt30Days), context)));
-        binding.analyticsDebtTxCount.setText(String.format("%d Total Repayments", debtPaymentCount));
+        binding.analyticsDebtTxCount.setText(String.format("%d Total Records", debtPaymentCount));
         binding.analyticsDebtAvgPayment.setText(String.format("Avg: %s%s", currencySymbol, FormatUtil.formatAmount(Math.round(avgDebtPayment), context)));
 
-        // Debt by Category
+        // 4. Debt Freedom Forecast
+        if (totalIOweRemaining == 0) {
+            binding.analyticsDebtFreeForecast.setText("🎉 100% Debt-Free!");
+            binding.analyticsDebtFreeSubtext.setText("Zero outstanding liabilities. Maintain your financial freedom!");
+        } else if (debt30Days > 0) {
+            double months = totalIOweRemaining / debt30Days;
+            long projectedTimestamp = now + (long) (months * 30L * 24 * 60 * 60 * 1000);
+            binding.analyticsDebtFreeForecast.setText(String.format("Debt-Free in ~%.1f months (%s)",
+                    months, DateParser.format(projectedTimestamp, "MMMM yyyy")));
+            binding.analyticsDebtFreeSubtext.setText(String.format("Based on your 30-day velocity of %s%s / month.",
+                    currencySymbol, FormatUtil.formatAmount(Math.round(debt30Days), context)));
+        } else {
+            binding.analyticsDebtFreeForecast.setText("Repayment pace needed");
+            binding.analyticsDebtFreeSubtext.setText("Log payments towards your debts to generate a debt-free completion milestone.");
+        }
+
+        if (paceGoalsCount > 0 && totalDailyPace > 0) {
+            double monthlyPace = totalDailyPace * 30.0;
+            binding.analyticsTotalPayoffPace.setText(String.format("Pay %s%s / month (%s%s / day)",
+                    currencySymbol, FormatUtil.formatAmount(Math.round(monthlyPace), context),
+                    currencySymbol, FormatUtil.formatAmount(Math.round(totalDailyPace), context)));
+            binding.analyticsTotalPayoffPaceSubtext.setText(String.format("Recommended pace across %d debt(s) with deadlines to clear on time.", paceGoalsCount));
+        } else {
+            binding.analyticsTotalPayoffPace.setText("No deadline schedules");
+            binding.analyticsTotalPayoffPaceSubtext.setText("Assign target payoff deadlines to your debts to unlock deadline pacing.");
+        }
+
+        // 5. Smart Payoff Strategy & Priorities
+        if (snowballCandidate != null) {
+            binding.analyticsSnowballRecommendation.setText(String.format("🎯 Snowball Win: Clear '%s' (%s%s left) first",
+                    snowballCandidate.getName(), currencySymbol, FormatUtil.formatAmount(snowballCandidate.getRemainingDebt(), context)));
+            binding.analyticsSnowballSubtext.setText("Knocking out your smallest balance first generates psychological momentum.");
+        } else {
+            binding.analyticsSnowballRecommendation.setText("🎯 No active liabilities to clear!");
+            binding.analyticsSnowballSubtext.setText("All loans and debts are fully paid off.");
+        }
+
+        if (nextDueCandidate != null) {
+            long diffDays = (nextDueCandidate.getDeadline() - now) / (24L * 60 * 60 * 1000);
+            if (diffDays < 0) {
+                binding.analyticsNextDueRecommendation.setText(String.format("⚠️ Overdue: '%s' was due %d day(s) ago!",
+                        nextDueCandidate.getName(), Math.abs(diffDays)));
+                binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#BA1A1A"));
+            } else {
+                binding.analyticsNextDueRecommendation.setText(String.format("⏰ Next Due: '%s' due in %d day(s) (%s)",
+                        nextDueCandidate.getName(), diffDays, DateParser.format(nextDueCandidate.getDeadline(), deadlineFormat)));
+                binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#E65100"));
+            }
+            binding.analyticsNextDueSubtext.setText(String.format("Remaining balance: %s%s",
+                    currencySymbol, FormatUtil.formatAmount(nextDueCandidate.getRemainingDebt(), context)));
+        } else {
+            binding.analyticsNextDueRecommendation.setText("⏰ No upcoming deadlines");
+            binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsNextDueSubtext.setText("All debts are on schedule or have no deadline set.");
+        }
+
+        // 6. Category Breakdown
         binding.analyticsDebtCategoryContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(context);
 
-        if (categoryDebtTotals.isEmpty() || totalRemaining <= 0) {
+        double totalCategorySum = 0.0;
+        for (double v : categoryDebtTotals.values()) totalCategorySum += v;
+
+        if (categoryDebtTotals.isEmpty() || totalCategorySum <= 0) {
             TextView emptyTv = new TextView(context);
-            emptyTv.setText(cachedDebts.isEmpty() ? "No debts added yet." : "All debts are 100% paid off!");
+            emptyTv.setText(cachedDebts.isEmpty() ? "No debts added yet." : "All tracked debts are 100% paid off!");
             emptyTv.setTextColor(Color.GRAY);
             binding.analyticsDebtCategoryContainer.addView(emptyTv);
         } else {
             for (Map.Entry<DebtCategory, Double> entry : categoryDebtTotals.entrySet()) {
                 DebtCategory cat = entry.getKey();
                 double amount = entry.getValue();
-                int pct = (int) Math.round((amount / totalRemaining) * 100.0);
+                int pct = (int) Math.round((amount / totalCategorySum) * 100.0);
 
                 View row = inflater.inflate(R.layout.item_analytics_category, binding.analyticsDebtCategoryContainer, false);
                 TextView label = row.findViewById(R.id.category_name);
@@ -406,6 +597,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         PreferenceUtil prefUtil = new PreferenceUtil(context);
         String currencySymbol = Currency.getSymbol(prefUtil.getCurrency());
         String deadlineFormat = prefUtil.getDeadlineFormat();
+        long now = System.currentTimeMillis();
 
         binding.analyticsIndivDebtName.setText(targetDebt.getName());
         DebtCategory cat = DebtCategory.fromId(targetDebt.getCategory());
@@ -432,8 +624,20 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         }
         binding.analyticsIndivDebtProgress.setProgress(pct);
 
+        // Timeline & Days Elapsed
+        long daysSinceCreated = Math.max(0, (now - targetDebt.getCreatedAt()) / (24L * 60 * 60 * 1000));
+        String timelineStr = "Created " + daysSinceCreated + " day(s) ago";
+        if (targetDebt.getDeadline() > 0) {
+            long daysLeft = (targetDebt.getDeadline() - now) / (24L * 60 * 60 * 1000);
+            if (daysLeft < 0) {
+                timelineStr += " • Overdue by " + Math.abs(daysLeft) + " day(s)";
+            } else {
+                timelineStr += " • " + daysLeft + " day(s) until deadline";
+            }
+        }
+        binding.analyticsIndivTimeline.setText(timelineStr);
+
         // Repayment velocity for this specific debt
-        long now = System.currentTimeMillis();
         long sevenDaysAgo = now - (7L * 24 * 60 * 60 * 1000);
         long thirtyDaysAgo = now - (30L * 24 * 60 * 60 * 1000);
 
@@ -483,6 +687,22 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         } else {
             binding.analyticsIndivPaceTitle.setText(targetDebt.isOwedToMe() ? "No return deadline configured" : "No payoff deadline configured");
             binding.analyticsIndivPaceSubtext.setText("Set a target deadline on this record to see pacing velocity.");
+        }
+
+        // Projected Completion Date for this debt based on actual payments
+        if (remaining <= 0) {
+            binding.analyticsIndivProjectedDate.setText("🎉 Fully Cleared! 100% completed.");
+            binding.analyticsIndivProjectedDate.setTextColor(Color.parseColor("#1B6B50"));
+        } else if (debt30Days > 0) {
+            double monthsLeft = remaining / debt30Days;
+            long projDate = now + (long) (monthsLeft * 30L * 24 * 60 * 60 * 1000);
+            binding.analyticsIndivProjectedDate.setText(String.format(
+                    "Projected completion: %s (in ~%.1f months at current pace)",
+                    DateParser.format(projDate, "MMMM yyyy"), monthsLeft));
+            binding.analyticsIndivProjectedDate.setTextColor(Color.parseColor("#006874"));
+        } else {
+            binding.analyticsIndivProjectedDate.setText("Projected completion: Log repayments to forecast date");
+            binding.analyticsIndivProjectedDate.setTextColor(Color.GRAY);
         }
 
         // Recent Repayments History for this debt
