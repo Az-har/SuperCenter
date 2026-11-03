@@ -43,6 +43,8 @@ import com.eipna.centsation.util.NotificationHandler;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import com.eipna.centsation.util.AppExecutors;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -106,7 +108,7 @@ public class SettingsActivity extends CentsationActivity {
         private static final String TAG_EXPORT = "SettingsExport";
         private static final String TAG_IMPORT = "SettingsImport";
 
-        private final ExecutorService executor = Executors.newSingleThreadExecutor();
+        private final ExecutorService executor = AppExecutors.getInstance().diskIO();
         private AlertDialog progressDialog;
 
         private ListPreference listContrast;

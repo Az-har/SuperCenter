@@ -295,6 +295,18 @@ class TrackerCompleteCallback : ActionCallback {
 }
 
 fun updateAllHabitWidgets(context: Context) {
+    try {
+        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+        val glanceComponent = android.content.ComponentName(context, TrackerGlanceReceiver::class.java)
+        val widgetIds = appWidgetManager.getAppWidgetIds(glanceComponent)
+        // If widget is not placed on the home screen, skip recomposition and IPC to save CPU and battery
+        if (widgetIds == null || widgetIds.isEmpty()) {
+            return
+        }
+    } catch (e: Exception) {
+        // Fallback if widget manager throws
+    }
+
     CoroutineScope(Dispatchers.IO).launch {
         try {
             TrackerGlanceWidget().updateAll(context)

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.repository.TrackerRepository
@@ -28,6 +29,8 @@ object TrackerAlarmScheduler {
         }
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val isPowerSave = powerManager?.isPowerSaveMode == true
 
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, tracker.scheduledHour)
@@ -54,7 +57,28 @@ object TrackerAlarmScheduler {
         )
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (isPowerSave) {
+                // In battery saver mode, allow the system to batch alarms and save CPU wakeups
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     calendar.timeInMillis,
@@ -67,7 +91,7 @@ object TrackerAlarmScheduler {
                     pendingIntent
                 )
             }
-            Log.d(TAG, "Scheduled alarm for tracker ${tracker.title} at ${calendar.time}")
+            Log.d(TAG, "Scheduled alarm for tracker ${tracker.title} at ${calendar.time} (powerSave=$isPowerSave)")
         } catch (se: SecurityException) {
             Log.w(TAG, "Cannot set exact alarm without permission, falling back to windowed alarm", se)
             alarmManager.set(
@@ -80,6 +104,8 @@ object TrackerAlarmScheduler {
 
     fun scheduleSnooze(context: Context, trackerId: Long, minutes: Int = 30) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val isPowerSave = powerManager?.isPowerSaveMode == true
         val triggerAt = System.currentTimeMillis() + (minutes * 60 * 1000L)
 
         val intent = Intent(context, TrackerNotificationReceiver::class.java).apply {
@@ -95,7 +121,11 @@ object TrackerAlarmScheduler {
         )
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (isPowerSave) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
             } else {
                 alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)

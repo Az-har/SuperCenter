@@ -31,6 +31,7 @@ import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.AppExecutors;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.DateValidatorPointForward;
 import com.google.android.material.datepicker.MaterialDatePicker;
@@ -42,14 +43,13 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class EditActivity extends CentsationActivity {
 
     private ActivityEditBinding binding;
     private SavingRepository savingRepository;
     private Saving currentSaving;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
     private boolean isSaving = false;
 
     private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =

@@ -39,6 +39,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class BackupManager {
 
@@ -49,7 +52,14 @@ public class BackupManager {
     public static final String LEGACY_AUTO_BACKUP_FILE_NAME = "centsation_auto_backup.json";
     public static final int CURRENT_BACKUP_VERSION = 1;
 
-    private static final ExecutorService BACKUP_EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final long DEBOUNCE_DELAY_MS = 2500L;
+    private static final ScheduledExecutorService BACKUP_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "backup-debounce");
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
+    private static ScheduledFuture<?> sPendingBackupTask;
+    private static final Object BACKUP_LOCK = new Object();
 
     public static class BackupInfo {
         public long timestamp;
@@ -66,15 +76,20 @@ public class BackupManager {
 
     public static void triggerAutoBackup(@NonNull Context context) {
         Context appContext = context.getApplicationContext();
-        BACKUP_EXECUTOR.execute(() -> {
-            try {
-                PreferenceUtil prefs = new PreferenceUtil(appContext);
-                if (!prefs.isAutoBackupEnabled()) return;
-                performAutoBackup(appContext);
-            } catch (Exception e) {
-                Log.e(TAG, "Error performing auto backup", e);
+        synchronized (BACKUP_LOCK) {
+            if (sPendingBackupTask != null && !sPendingBackupTask.isDone()) {
+                sPendingBackupTask.cancel(false);
             }
-        });
+            sPendingBackupTask = BACKUP_SCHEDULER.schedule(() -> {
+                try {
+                    PreferenceUtil prefs = new PreferenceUtil(appContext);
+                    if (!prefs.isAutoBackupEnabled()) return;
+                    performAutoBackup(appContext);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error performing auto backup", e);
+                }
+            }, DEBOUNCE_DELAY_MS, TimeUnit.MILLISECONDS);
+        }
     }
 
     public static boolean performAutoBackup(@NonNull Context context) {

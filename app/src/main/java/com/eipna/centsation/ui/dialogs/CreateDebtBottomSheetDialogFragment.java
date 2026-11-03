@@ -17,6 +17,7 @@ import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.databinding.DialogBottomSheetCreateDebtBinding;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.PreferenceUtil;
+import com.eipna.centsation.util.AppExecutors;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.datepicker.CalendarConstraints;
@@ -25,7 +26,6 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -36,7 +36,7 @@ public class CreateDebtBottomSheetDialogFragment extends BottomSheetDialogFragme
     }
 
     private DialogBottomSheetCreateDebtBinding binding;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
     private String debtIdToEdit = null;
     private long selectedDeadline = 0;
     private String selectedCategory = DebtCategory.GENERAL.getId();

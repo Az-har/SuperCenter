@@ -20,6 +20,7 @@ import com.eipna.centsation.data.debt.DebtCategory;
 import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.debt.DebtTransaction;
 import com.eipna.centsation.databinding.DialogBottomSheetDebtDetailsBinding;
+import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -27,7 +28,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -38,7 +38,7 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
     }
 
     private DialogBottomSheetDebtDetailsBinding binding;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
     private String debtId;
     private Debt currentDebt;
     private OnDebtUpdatedListener listener;

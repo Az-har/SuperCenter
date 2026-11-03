@@ -10,16 +10,16 @@ import androidx.lifecycle.MutableLiveData;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.BackupManager;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ArchiveViewModel extends AndroidViewModel {
 
     private final SavingRepository savingRepository;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
     private final MutableLiveData<List<Saving>> savingsLiveData = new MutableLiveData<>();
 
     public ArchiveViewModel(@NonNull Application application) {

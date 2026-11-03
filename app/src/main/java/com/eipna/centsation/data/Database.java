@@ -156,12 +156,7 @@ public class Database extends SQLiteOpenHelper {
     @Override
     public void onOpen(SQLiteDatabase sqLiteDatabase) {
         super.onOpen(sqLiteDatabase);
-        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
-        try {
-            sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_SAVING + " ADD COLUMN " + COLUMN_SAVING_CATEGORY + " TEXT;");
-        } catch (Exception ignored) {
-            // Column already exists
-        }
-        createDebtTables(sqLiteDatabase);
+        // Foreign keys and indices are configured in onConfigure, onCreate, and onUpgrade.
+        // Avoid redundant DDL execution on every connection to conserve battery and flash I/O.
     }
 }

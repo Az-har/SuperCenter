@@ -76,11 +76,15 @@ public class DeadlineWorker extends Worker {
 
     public static void enqueue(Context context) {
         if (context == null) return;
+        Constraints constraints = new Constraints.Builder()
+                .setRequiresBatteryNotLow(true)
+                .build();
+
         PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
                 DeadlineWorker.class,
                 24, TimeUnit.HOURS,
                 4, TimeUnit.HOURS
-        ).setConstraints(new Constraints.Builder().build()).build();
+        ).setConstraints(constraints).build();
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 UNIQUE_WORK_NAME,

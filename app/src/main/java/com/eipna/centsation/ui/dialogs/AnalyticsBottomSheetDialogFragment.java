@@ -27,6 +27,7 @@ import com.eipna.centsation.data.transaction.TransactionRepository;
 import com.eipna.centsation.data.transaction.TransactionType;
 import com.eipna.centsation.databinding.DialogBottomSheetAnalyticsBinding;
 import com.eipna.centsation.util.AlarmSetter;
+import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
@@ -38,12 +39,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private DialogBottomSheetAnalyticsBinding binding;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
 
     private List<Saving> cachedSavings = new ArrayList<>();
     private List<Transaction> cachedTransactions = new ArrayList<>();

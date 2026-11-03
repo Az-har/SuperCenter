@@ -5,8 +5,10 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.icu.text.NumberFormat;
 import android.os.Build;
+import android.os.PowerManager;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
@@ -24,6 +26,19 @@ public final class AnimationUtil {
     private static final OvershootInterpolator OVERSHOOT = new OvershootInterpolator(1.2f);
 
     private AnimationUtil() {
+    }
+
+    /**
+     * Checks if device is in Battery Saver mode to dynamically reduce continuous frame interpolations.
+     */
+    public static boolean isPowerSaveMode(Context context) {
+        if (context == null) return false;
+        try {
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            return pm != null && pm.isPowerSaveMode();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -55,25 +70,30 @@ public final class AnimationUtil {
     @SuppressLint("ClickableViewAccessibility")
     public static void applySpringPressEffect(View view) {
         if (view == null) return;
+        final boolean powerSave = isPowerSaveMode(view.getContext());
         view.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     performHapticFeedback(v);
-                    v.animate()
-                            .scaleX(0.965f)
-                            .scaleY(0.965f)
-                            .setDuration(110)
-                            .setInterpolator(DECELERATE)
-                            .start();
+                    if (!powerSave) {
+                        v.animate()
+                                .scaleX(0.965f)
+                                .scaleY(0.965f)
+                                .setDuration(110)
+                                .setInterpolator(DECELERATE)
+                                .start();
+                    }
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    v.animate()
-                            .scaleX(1.0f)
-                            .scaleY(1.0f)
-                            .setDuration(180)
-                            .setInterpolator(OVERSHOOT)
-                            .start();
+                    if (!powerSave) {
+                        v.animate()
+                                .scaleX(1.0f)
+                                .scaleY(1.0f)
+                                .setDuration(180)
+                                .setInterpolator(OVERSHOOT)
+                                .start();
+                    }
                     break;
             }
             return false;
@@ -85,7 +105,7 @@ public final class AnimationUtil {
      */
     public static void animateCurrencyValue(TextView textView, double from, double to, String currencySymbol, long duration) {
         if (textView == null) return;
-        if (Math.abs(from - to) < 0.001) {
+        if (Math.abs(from - to) < 0.001 || isPowerSaveMode(textView.getContext())) {
             textView.setText(String.format("%s%s", currencySymbol, NumberFormat.getInstance().format(to)));
             return;
         }
@@ -107,6 +127,10 @@ public final class AnimationUtil {
         if (progressBar == null) return;
         int currentProgress = progressBar.getProgress();
         if (currentProgress == targetProgress) return;
+        if (isPowerSaveMode(progressBar.getContext())) {
+            progressBar.setProgress(targetProgress);
+            return;
+        }
 
         ObjectAnimator animator = ObjectAnimator.ofInt(progressBar, "progress", currentProgress, targetProgress);
         animator.setDuration(duration > 0 ? duration : 500);

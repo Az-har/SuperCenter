@@ -303,6 +303,7 @@ public class SavingDetailsBottomSheetDialogFragment extends BottomSheetDialogFra
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        executor.shutdown();
         binding = null;
     }
 

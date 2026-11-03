@@ -31,6 +31,7 @@ import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import android.content.Context;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.AppExecutors;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.DateValidatorPointForward;
 import com.google.android.material.datepicker.MaterialDatePicker;
@@ -41,13 +42,12 @@ import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class CreateActivity extends CentsationActivity {
 
     private ActivityCreateBinding binding;
     private SavingRepository savingRepository;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
     private boolean isSaving = false;
     private long selectedDeadline;
     private String selectedCurrencySymbol;
