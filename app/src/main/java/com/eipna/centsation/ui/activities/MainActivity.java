@@ -124,10 +124,14 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
 
         savingAdapter = new SavingAdapter(this, this);
         binding.savingList.setLayoutManager(new LinearLayoutManager(this));
+        binding.savingList.setHasFixedSize(true);
+        binding.savingList.setItemViewCacheSize(20);
         binding.savingList.setAdapter(savingAdapter);
 
         debtAdapter = new DebtAdapter(this);
         binding.debtList.setLayoutManager(new LinearLayoutManager(this));
+        binding.debtList.setHasFixedSize(true);
+        binding.debtList.setItemViewCacheSize(20);
         binding.debtList.setAdapter(debtAdapter);
 
         binding.mainModeToggleGroup.check(R.id.btn_main_tab_savings);
@@ -401,10 +405,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         if (empty) {
             AnimationUtil.crossfade(binding.savingList, binding.emptyIndicator, 250);
             binding.dashboardCard.setVisibility(View.GONE);
+            binding.savingsFilterScroll.setVisibility(View.GONE);
             previousTotalSaved = 0.0;
         } else {
             AnimationUtil.crossfade(binding.emptyIndicator, binding.savingList, 250);
             binding.dashboardCard.setVisibility(View.VISIBLE);
+            binding.savingsFilterScroll.setVisibility(View.VISIBLE);
             updateDashboard(updated);
         }
     }
@@ -448,7 +454,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             binding.debtList.setVisibility(View.GONE);
             binding.debtEmptyIndicator.setVisibility(View.GONE);
             binding.debtFilterScroll.setVisibility(View.GONE);
-            binding.filterChipGroup.setVisibility(View.VISIBLE);
+            binding.savingsFilterScroll.setVisibility(View.VISIBLE);
             binding.dashboardCardHeader.setText("TOTAL SAVINGS");
             try {
                 binding.dashboardTotalSaved.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, android.R.attr.colorPrimary));
@@ -459,7 +465,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             binding.savingList.setVisibility(View.GONE);
             binding.emptyIndicator.setVisibility(View.GONE);
             binding.debtList.setVisibility(View.VISIBLE);
-            binding.filterChipGroup.setVisibility(View.GONE);
+            binding.savingsFilterScroll.setVisibility(View.GONE);
             binding.debtFilterScroll.setVisibility(View.VISIBLE);
             loadDebts();
         }
@@ -518,10 +524,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             binding.debtEmptyIndicator.setVisibility(View.VISIBLE);
             binding.debtList.setVisibility(View.GONE);
             binding.dashboardCard.setVisibility(View.GONE);
+            binding.debtFilterScroll.setVisibility(View.GONE);
             return;
         }
 
         binding.dashboardCard.setVisibility(View.VISIBLE);
+        binding.debtFilterScroll.setVisibility(View.VISIBLE);
 
         String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
         double totalIOweRemaining = 0.0;
