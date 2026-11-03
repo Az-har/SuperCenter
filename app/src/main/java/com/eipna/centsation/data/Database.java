@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 public class Database extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "centsation.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     public static final String TABLE_SAVING = "savings";
     public static final String COLUMN_SAVING_ID = "id";
@@ -27,6 +27,24 @@ public class Database extends SQLiteOpenHelper {
     public static final String COLUMN_TRANSACTION_AMOUNT = "amount";
     public static final String COLUMN_TRANSACTION_TYPE = "type";
     public static final String COLUMN_TRANSACTION_DATE = "date";
+
+    public static final String TABLE_DEBT = "debts";
+    public static final String COLUMN_DEBT_ID = "id";
+    public static final String COLUMN_DEBT_NAME = "name";
+    public static final String COLUMN_DEBT_TOTAL_AMOUNT = "total_amount";
+    public static final String COLUMN_DEBT_AMOUNT_PAID = "amount_paid";
+    public static final String COLUMN_DEBT_NOTES = "notes";
+    public static final String COLUMN_DEBT_CATEGORY = "category";
+    public static final String COLUMN_DEBT_IS_ARCHIVED = "is_archived";
+    public static final String COLUMN_DEBT_DEADLINE = "deadline";
+    public static final String COLUMN_DEBT_CREATED_AT = "created_at";
+
+    public static final String TABLE_DEBT_TRANSACTION = "debt_transactions";
+    public static final String COLUMN_DEBT_TRANSACTION_ID = "id";
+    public static final String COLUMN_DEBT_TRANSACTION_DEBT_ID = "debt_id";
+    public static final String COLUMN_DEBT_TRANSACTION_AMOUNT = "amount";
+    public static final String COLUMN_DEBT_TRANSACTION_DATE = "date";
+    public static final String COLUMN_DEBT_TRANSACTION_NOTES = "notes";
 
     private static volatile Database sInstance;
 
@@ -61,9 +79,31 @@ public class Database extends SQLiteOpenHelper {
                 COLUMN_TRANSACTION_DATE + " INTEGER NOT NULL, " +
                 "FOREIGN KEY (" + COLUMN_TRANSACTION_SAVING_ID + ") REFERENCES " + TABLE_SAVING + "(" + COLUMN_SAVING_ID + ") ON DELETE CASCADE);";
 
+        String createDebtTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT + "(" +
+                COLUMN_DEBT_ID + " TEXT PRIMARY KEY, " +
+                COLUMN_DEBT_NAME + " TEXT NOT NULL, " +
+                COLUMN_DEBT_TOTAL_AMOUNT + " REAL NOT NULL, " +
+                COLUMN_DEBT_AMOUNT_PAID + " REAL NOT NULL, " +
+                COLUMN_DEBT_NOTES + " TEXT, " +
+                COLUMN_DEBT_CATEGORY + " TEXT, " +
+                COLUMN_DEBT_IS_ARCHIVED + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_DEADLINE + " INTEGER, " +
+                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL);";
+
+        String createDebtTransactionTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT_TRANSACTION + "(" +
+                COLUMN_DEBT_TRANSACTION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_DEBT_TRANSACTION_DEBT_ID + " TEXT NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_AMOUNT + " REAL NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_DATE + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_NOTES + " TEXT, " +
+                "FOREIGN KEY (" + COLUMN_DEBT_TRANSACTION_DEBT_ID + ") REFERENCES " + TABLE_DEBT + "(" + COLUMN_DEBT_ID + ") ON DELETE CASCADE);";
+
         sqLiteDatabase.execSQL(createSavingTable);
         sqLiteDatabase.execSQL(createTransactionTable);
+        sqLiteDatabase.execSQL(createDebtTable);
+        sqLiteDatabase.execSQL(createDebtTransactionTable);
         sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debt_transactions_debt_id ON " + TABLE_DEBT_TRANSACTION + "(" + COLUMN_DEBT_TRANSACTION_DEBT_ID + ");");
     }
 
     @Override
@@ -83,6 +123,34 @@ public class Database extends SQLiteOpenHelper {
             } catch (Exception ignored) {
             }
         }
+        if (oldVersion < 4) {
+            createDebtTables(sqLiteDatabase);
+        }
+    }
+
+    private void createDebtTables(SQLiteDatabase sqLiteDatabase) {
+        String createDebtTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT + "(" +
+                COLUMN_DEBT_ID + " TEXT PRIMARY KEY, " +
+                COLUMN_DEBT_NAME + " TEXT NOT NULL, " +
+                COLUMN_DEBT_TOTAL_AMOUNT + " REAL NOT NULL, " +
+                COLUMN_DEBT_AMOUNT_PAID + " REAL NOT NULL, " +
+                COLUMN_DEBT_NOTES + " TEXT, " +
+                COLUMN_DEBT_CATEGORY + " TEXT, " +
+                COLUMN_DEBT_IS_ARCHIVED + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_DEADLINE + " INTEGER, " +
+                COLUMN_DEBT_CREATED_AT + " INTEGER NOT NULL);";
+
+        String createDebtTransactionTable = "CREATE TABLE IF NOT EXISTS " + TABLE_DEBT_TRANSACTION + "(" +
+                COLUMN_DEBT_TRANSACTION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_DEBT_TRANSACTION_DEBT_ID + " TEXT NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_AMOUNT + " REAL NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_DATE + " INTEGER NOT NULL, " +
+                COLUMN_DEBT_TRANSACTION_NOTES + " TEXT, " +
+                "FOREIGN KEY (" + COLUMN_DEBT_TRANSACTION_DEBT_ID + ") REFERENCES " + TABLE_DEBT + "(" + COLUMN_DEBT_ID + ") ON DELETE CASCADE);";
+
+        sqLiteDatabase.execSQL(createDebtTable);
+        sqLiteDatabase.execSQL(createDebtTransactionTable);
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debt_transactions_debt_id ON " + TABLE_DEBT_TRANSACTION + "(" + COLUMN_DEBT_TRANSACTION_DEBT_ID + ");");
     }
 
     @Override
@@ -94,5 +162,6 @@ public class Database extends SQLiteOpenHelper {
         } catch (Exception ignored) {
             // Column already exists
         }
+        createDebtTables(sqLiteDatabase);
     }
 }

@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:ignore="ScopedStorage" />
 
@@ -55,6 +59,12 @@
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity" />
 
+        <activity
+            android:name=".habit.ui.HabitTrackerActivity"
+            android:exported="false"
+            android:label="@string/habit_tracker_title"
+            android:parentActivityName=".ui.activities.MainActivity" />
+
         <receiver
             android:name=".receiver.DeadlineReceiver"
             android:enabled="true"
@@ -66,6 +76,37 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
+        </receiver>
+
+        <!-- Habit Tracker Notifications Receiver -->
+        <receiver
+            android:name=".habit.notification.TrackerNotificationReceiver"
+            android:exported="false" />
+
+        <!-- Habit Tracker Boot Receiver -->
+        <receiver
+            android:name=".habit.notification.TrackerBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Habit Tracker Glance AppWidget Receiver -->
+        <receiver
+            android:name=".habit.widget.TrackerGlanceReceiver"
+            android:label="@string/habit_tracker_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tracker_widget_info" />
         </receiver>
     </application>
 

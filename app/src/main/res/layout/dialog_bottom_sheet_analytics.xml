@@ -21,7 +21,7 @@
     <LinearLayout
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -32,7 +32,8 @@
             android:layout_height="wrap_content">
 
             <com.google.android.material.textview.MaterialTextView
-                android:text="Savings Insights"
+                android:id="@+id/analytics_header_title"
+                android:text="Financial Insights"
                 android:textAppearance="?attr/textAppearanceHeadlineSmall"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
@@ -41,7 +42,8 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:text="Financial velocity &amp; category breakdown"
+                android:id="@+id/analytics_header_subtitle"
+                android:text="Savings, liabilities &amp; debt payoff velocity"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:layout_marginTop="2dp"
@@ -60,6 +62,33 @@
             tools:ignore="HardcodedText" />
     </LinearLayout>
 
+    <!-- Section Switcher: Savings Analytics vs Debt Analytics -->
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/analytics_mode_toggle_group"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        android:layout_marginBottom="14dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_analytics_tab_savings"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:text="💰 Savings"
+            android:layout_width="wrap_content"
+            android:layout_height="42dp"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_analytics_tab_debt"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:text="💳 Debts"
+            android:layout_width="wrap_content"
+            android:layout_height="42dp"
+            tools:ignore="HardcodedText" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -70,207 +99,865 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <!-- Card 1: Velocity Summary -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
-                app:cardCornerRadius="20dp"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                android:layout_marginBottom="14dp"
+            <!-- ================= SAVINGS ANALYTICS CONTAINER ================= -->
+            <LinearLayout
+                android:id="@+id/analytics_savings_container"
+                android:orientation="vertical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:padding="18dp"
+                <!-- Card 1: Savings Velocity -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    android:layout_marginBottom="14dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:text="SAVINGS VELOCITY"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary"
-                        android:letterSpacing="0.08"
-                        android:layout_marginBottom="12dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        tools:ignore="HardcodedText" />
-
                     <LinearLayout
-                        android:orientation="horizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <LinearLayout
-                            android:orientation="vertical"
-                            android:layout_weight="1"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content">
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:text="Last 7 Days"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                tools:ignore="HardcodedText" />
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/analytics_7day_total"
-                                android:text="$0.00"
-                                android:textAppearance="?attr/textAppearanceTitleLarge"
-                                android:textStyle="bold"
-                                android:textColor="?attr/colorOnSurface"
-                                android:layout_marginTop="2dp"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                tools:ignore="HardcodedText" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:orientation="vertical"
-                            android:layout_weight="1"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content">
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:text="Last 30 Days"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                tools:ignore="HardcodedText" />
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/analytics_30day_total"
-                                android:text="$0.00"
-                                android:textAppearance="?attr/textAppearanceTitleLarge"
-                                android:textStyle="bold"
-                                android:textColor="?attr/colorOnSurface"
-                                android:layout_marginTop="2dp"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                tools:ignore="HardcodedText" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="14dp"
-                        android:layout_marginBottom="12dp"
-                        android:background="?attr/colorOutlineVariant"
-                        android:alpha="0.4" />
-
-                    <LinearLayout
-                        android:orientation="horizontal"
+                        android:orientation="vertical"
+                        android:padding="18dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
                         <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/analytics_tx_count"
-                            android:text="0 Total Deposits"
-                            android:textAppearance="?attr/textAppearanceLabelMedium"
-                            android:textColor="?attr/colorSecondary"
-                            android:layout_weight="1"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            tools:ignore="HardcodedText" />
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/analytics_avg_deposit"
-                            android:text="Avg: $0.00"
+                            android:text="SAVINGS VELOCITY"
                             android:textAppearance="?attr/textAppearanceLabelMedium"
                             android:textStyle="bold"
                             android:textColor="?attr/colorPrimary"
+                            android:letterSpacing="0.08"
+                            android:layout_marginBottom="12dp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             tools:ignore="HardcodedText" />
+
+                        <LinearLayout
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <LinearLayout
+                                android:orientation="vertical"
+                                android:layout_weight="1"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:text="Last 7 Days"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_7day_total"
+                                    android:text="$0.00"
+                                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                                    android:textStyle="bold"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:orientation="vertical"
+                                android:layout_weight="1"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:text="Last 30 Days"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_30day_total"
+                                    android:text="$0.00"
+                                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                                    android:textStyle="bold"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="14dp"
+                            android:layout_marginBottom="12dp"
+                            android:background="?attr/colorOutlineVariant"
+                            android:alpha="0.4" />
+
+                        <LinearLayout
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_tx_count"
+                                android:text="0 Total Deposits"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="?attr/colorSecondary"
+                                android:layout_weight="1"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_avg_deposit"
+                                android:text="Avg: $0.00"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
                     </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                </com.google.android.material.card.MaterialCardView>
 
-            <!-- Card 2: Category Breakdown -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Outlined"
-                app:cardCornerRadius="20dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                android:layout_marginBottom="14dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:padding="18dp"
+                <!-- Card 2: Savings by Category -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Outlined"
+                    app:cardCornerRadius="20dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    android:layout_marginBottom="14dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:padding="18dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:text="SAVINGS BY CATEGORY"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:letterSpacing="0.08"
+                            android:layout_marginBottom="12dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:ignore="HardcodedText" />
+
+                        <LinearLayout
+                            android:id="@+id/analytics_category_container"
+                            android:orientation="vertical"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Card 3: Daily Pace Required -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Outlined"
+                    app:cardCornerRadius="20dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:padding="18dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:text="DAILY PACE ADVISOR"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorPrimary"
+                            android:letterSpacing="0.08"
+                            android:layout_marginBottom="10dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:ignore="HardcodedText" />
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/analytics_total_daily_pace"
+                            android:text="Save $0.00 / day across all goals"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            tools:ignore="HardcodedText" />
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/analytics_pace_subtext"
+                            android:text="Pace calculated based on active goals with deadlines."
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_marginTop="4dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            tools:ignore="HardcodedText" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- ================= DEBT ANALYTICS CONTAINER ================= -->
+            <LinearLayout
+                android:id="@+id/analytics_debt_container"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Options Bar: Total Debt vs Individual Debts -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:text="SELECT DEBT VIEW"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="6dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <HorizontalScrollView
+                    android:scrollbars="none"
+                    android:layout_marginBottom="12dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/debt_analytics_chip_group"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_total_debt"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:text="📊 Total Debt (All Combined)"
+                            android:checked="true"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:ignore="HardcodedText" />
+                    </com.google.android.material.chip.ChipGroup>
+                </HorizontalScrollView>
+
+                <!-- VIEW 1: TOTAL DEBT VIEW -->
+                <LinearLayout
+                    android:id="@+id/layout_total_debt_view"
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Card 1: Total Debt Overview -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Filled"
+                        app:cardCornerRadius="20dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="TOTAL OUTSTANDING DEBT"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorError"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="4dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_total_debt_remaining"
+                                android:text="$0.00"
+                                android:textAppearance="?attr/textAppearanceHeadlineLarge"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorOnSurface"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_total_debt_subtext"
+                                android:text="Total Borrowed: $0.00 | Paid Off: $0.00 (0%)"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginBottom="12dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/analytics_total_debt_progress"
+                                android:max="100"
+                                app:trackThickness="10dp"
+                                app:trackCornerRadius="5dp"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceContainerHighest"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Card 2: Net Financial Position (Net Worth) -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Outlined"
+                        app:cardCornerRadius="20dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="NET FINANCIAL POSITION"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="10dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Total Savings"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_net_savings"
+                                        android:text="+$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorPrimary"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Total Debt"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_net_debt"
+                                        android:text="-$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorError"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1.2"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Net Position"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_net_worth"
+                                        android:text="$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Card 3: Debt Payoff Velocity -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Outlined"
+                        app:cardCornerRadius="20dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="DEBT REPAYMENT VELOCITY"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="12dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Paid Last 7 Days"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_debt_7day_total"
+                                        android:text="$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Paid Last 30 Days"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_debt_30day_total"
+                                        android:text="$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:layout_marginTop="14dp"
+                                android:layout_marginBottom="12dp"
+                                android:background="?attr/colorOutlineVariant"
+                                android:alpha="0.4" />
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_debt_tx_count"
+                                    android:text="0 Total Repayments"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorSecondary"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_debt_avg_payment"
+                                    android:text="Avg: $0.00"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textStyle="bold"
+                                    android:textColor="?attr/colorPrimary"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Card 4: Debt by Category -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Outlined"
+                        app:cardCornerRadius="20dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="DEBT BY CATEGORY"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="12dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <LinearLayout
+                                android:id="@+id/analytics_debt_category_container"
+                                android:orientation="vertical"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- VIEW 2: INDIVIDUAL DEBT VIEW -->
+                <LinearLayout
+                    android:id="@+id/layout_individual_debt_view"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Individual Debt Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Filled"
+                        app:cardCornerRadius="20dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="4dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_indiv_debt_name"
+                                    android:text="Credit Card"
+                                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                                    android:textStyle="bold"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_indiv_debt_badge"
+                                    android:text="💳 Credit Card"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textColor="?attr/colorError"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+                            </LinearLayout>
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_indiv_debt_remaining"
+                                android:text="$1,500.00"
+                                android:textAppearance="?attr/textAppearanceHeadlineLarge"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorError"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_indiv_debt_subtext"
+                                android:text="Total Borrowed: $2,000.00 | Paid: $500.00 (25%)"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginBottom="12dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.progressindicator.LinearProgressIndicator
+                                android:id="@+id/analytics_indiv_debt_progress"
+                                android:max="100"
+                                app:trackThickness="10dp"
+                                app:trackCornerRadius="5dp"
+                                app:indicatorColor="?attr/colorPrimary"
+                                app:trackColor="?attr/colorSurfaceContainerHighest"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Individual Repayment Velocity -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Outlined"
+                        app:cardCornerRadius="20dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="REPAYMENT VELOCITY (THIS DEBT)"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="12dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Last 7 Days"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_indiv_7day"
+                                        android:text="$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:orientation="vertical"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:text="Last 30 Days"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/analytics_indiv_30day"
+                                        android:text="$0.00"
+                                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                                        android:textStyle="bold"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:layout_marginTop="2dp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        tools:ignore="HardcodedText" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:layout_marginTop="14dp"
+                                android:layout_marginBottom="12dp"
+                                android:background="?attr/colorOutlineVariant"
+                                android:alpha="0.4" />
+
+                            <LinearLayout
+                                android:orientation="horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_indiv_tx_count"
+                                    android:text="0 Repayments"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorSecondary"
+                                    android:layout_weight="1"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/analytics_indiv_avg_payment"
+                                    android:text="Avg: $0.00"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textStyle="bold"
+                                    android:textColor="?attr/colorPrimary"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    tools:ignore="HardcodedText" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Individual Payoff Pace Advisor -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Material3.CardView.Outlined"
+                        app:cardCornerRadius="20dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        android:layout_marginBottom="14dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:padding="18dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:text="PAYOFF PACE ADVISOR"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="10dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_indiv_pace_title"
+                                android:text="Pay $0.00 / day to clear by due date"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorOnSurface"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/analytics_indiv_pace_subtext"
+                                android:text="Target payoff deadline recommendations."
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:layout_marginTop="4dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Individual Recent Payments History -->
                     <com.google.android.material.textview.MaterialTextView
-                        android:text="SAVINGS BY CATEGORY"
+                        android:text="RECENT PAYMENTS FOR THIS DEBT"
                         android:textAppearance="?attr/textAppearanceLabelMedium"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="12dp"
-                        android:layout_width="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         tools:ignore="HardcodedText" />
 
                     <LinearLayout
-                        android:id="@+id/analytics_category_container"
+                        android:id="@+id/analytics_indiv_payments_container"
                         android:orientation="vertical"
+                        android:layout_marginBottom="14dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card 3: Daily Pace Required -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Outlined"
-                app:cardCornerRadius="20dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                android:layout_marginBottom="10dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:padding="18dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:text="DAILY PACE ADVISOR"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary"
-                        android:letterSpacing="0.08"
-                        android:layout_marginBottom="10dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        tools:ignore="HardcodedText" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/analytics_total_daily_pace"
-                        android:text="Save $0.00 / day across all goals"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        tools:ignore="HardcodedText" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/analytics_pace_subtext"
-                        android:text="Pace calculated based on active goals with deadlines."
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:layout_marginTop="4dp"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        tools:ignore="HardcodedText" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </LinearLayout>

@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Super Center</string>
+    <string name="widget_habit_description">Track and log daily habit quotas and cumulative debt from your home screen.</string>
+    <string name="habit_tracker_title">Daily Quota &amp; Habit Tracker</string>
+    <string name="menu_item_habits">Habits &amp; Quotas</string>
     <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>
     <string name="app_license">GNU General Public License v3.0</string>
     <string name="app_author">Az-har</string>

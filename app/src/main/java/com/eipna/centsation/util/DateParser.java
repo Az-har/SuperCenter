@@ -15,4 +15,8 @@ public class DateParser {
         SimpleDateFormat dateFormat = new SimpleDateFormat(pattern, Locale.getDefault());
         return dateFormat.format(new Date(timeStamp));
     }
+
+    public static String format(long timeStamp, String pattern) {
+        return getStringDate(timeStamp, pattern);
+    }
 }

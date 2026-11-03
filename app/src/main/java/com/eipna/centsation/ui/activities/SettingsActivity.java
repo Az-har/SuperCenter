@@ -250,11 +250,18 @@ public class SettingsActivity extends CentsationActivity {
                         Toast.makeText(requireContext(), R.string.toast_no_auto_backup, Toast.LENGTH_SHORT).show();
                         return;
                     }
+                    String message;
+                    if (info.debtsCount > 0) {
+                        message = String.format("Found backup from %s containing %d goal(s), %d debt(s), and transactions.\n\nRestore now?",
+                                info.dateFormatted, info.savingsCount, info.debtsCount);
+                    } else {
+                        message = String.format("Found backup from %s containing %d goal(s) and %d transaction(s).\n\nRestore now?",
+                                info.dateFormatted, info.savingsCount, info.transactionsCount);
+                    }
                     new MaterialAlertDialogBuilder(requireContext())
                             .setTitle(R.string.preference_restore_auto_title)
                             .setIcon(R.drawable.ic_unarchive)
-                            .setMessage(String.format("Found backup from %s containing %d goal(s) and %d transaction(s).\n\nRestore now?",
-                                    info.dateFormatted, info.savingsCount, info.transactionsCount))
+                            .setMessage(message)
                             .setPositiveButton("Restore", (d, w) -> executeAutoRestore(info))
                             .setNegativeButton(R.string.dialog_button_cancel, null)
                             .show();

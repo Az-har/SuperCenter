@@ -17,6 +17,9 @@ import com.eipna.centsation.data.Database;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingCategory;
 import com.eipna.centsation.data.saving.SavingRepository;
+import com.eipna.centsation.data.debt.Debt;
+import com.eipna.centsation.data.debt.DebtRepository;
+import com.eipna.centsation.data.debt.DebtTransaction;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
 
@@ -53,6 +56,8 @@ public class BackupManager {
         public String dateFormatted;
         public int savingsCount;
         public int transactionsCount;
+        public int debtsCount;
+        public int debtTransactionsCount;
         public long fileSizeBytes;
         public File sourceFile;
         public Uri sourceUri;
@@ -116,10 +121,13 @@ public class BackupManager {
 
     public static String generateBackupJSON(@NonNull Context context) throws JSONException {
         try (SavingRepository savingRepo = new SavingRepository(context);
-             TransactionRepository txRepo = new TransactionRepository(context)) {
+             TransactionRepository txRepo = new TransactionRepository(context);
+             DebtRepository debtRepo = new DebtRepository(context)) {
 
             List<Saving> savings = savingRepo.getAllSavings();
             List<Transaction> transactions = txRepo.getAll();
+            List<Debt> debts = debtRepo.getAllDebts();
+            List<DebtTransaction> debtTransactions = debtRepo.getAllTransactions();
 
             JSONArray savingJsonArray = new JSONArray();
             for (Saving saving : savings) {
@@ -146,12 +154,40 @@ public class BackupManager {
                 transactionJsonArray.put(obj);
             }
 
+            JSONArray debtJsonArray = new JSONArray();
+            for (Debt debt : debts) {
+                JSONObject obj = new JSONObject();
+                obj.put(Database.COLUMN_DEBT_ID, debt.getId());
+                obj.put(Database.COLUMN_DEBT_NAME, debt.getName());
+                obj.put(Database.COLUMN_DEBT_TOTAL_AMOUNT, debt.getTotalAmount());
+                obj.put(Database.COLUMN_DEBT_AMOUNT_PAID, debt.getAmountPaid());
+                obj.put(Database.COLUMN_DEBT_NOTES, debt.getNotes() == null ? "" : debt.getNotes());
+                obj.put(Database.COLUMN_DEBT_CATEGORY, debt.getCategory());
+                obj.put(Database.COLUMN_DEBT_IS_ARCHIVED, debt.getIsArchived());
+                obj.put(Database.COLUMN_DEBT_DEADLINE, debt.getDeadline());
+                obj.put(Database.COLUMN_DEBT_CREATED_AT, debt.getCreatedAt());
+                debtJsonArray.put(obj);
+            }
+
+            JSONArray debtTransactionJsonArray = new JSONArray();
+            for (DebtTransaction debtTx : debtTransactions) {
+                JSONObject obj = new JSONObject();
+                obj.put(Database.COLUMN_DEBT_TRANSACTION_ID, debtTx.getId());
+                obj.put(Database.COLUMN_DEBT_TRANSACTION_DEBT_ID, debtTx.getDebtId());
+                obj.put(Database.COLUMN_DEBT_TRANSACTION_AMOUNT, debtTx.getAmount());
+                obj.put(Database.COLUMN_DEBT_TRANSACTION_DATE, debtTx.getDate());
+                obj.put(Database.COLUMN_DEBT_TRANSACTION_NOTES, debtTx.getNotes() == null ? "" : debtTx.getNotes());
+                debtTransactionJsonArray.put(obj);
+            }
+
             JSONObject root = new JSONObject();
             root.put("app", "Super Center");
             root.put("version", CURRENT_BACKUP_VERSION);
             root.put("timestamp", System.currentTimeMillis());
             root.put("savings_count", savings.size());
             root.put("transactions_count", transactions.size());
+            root.put("debts_count", debts.size());
+            root.put("debt_transactions_count", debtTransactions.size());
 
             PreferenceUtil prefs = new PreferenceUtil(context);
             JSONObject prefsObj = new JSONObject();
@@ -171,6 +207,8 @@ public class BackupManager {
             // Support both direct table names and generic keys for compatibility
             root.put(Database.TABLE_SAVING, savingJsonArray);
             root.put(Database.TABLE_TRANSACTION, transactionJsonArray);
+            root.put(Database.TABLE_DEBT, debtJsonArray);
+            root.put(Database.TABLE_DEBT_TRANSACTION, debtTransactionJsonArray);
 
             return root.toString(2);
         }
@@ -259,11 +297,15 @@ public class BackupManager {
 
             JSONArray savingsArray = root.optJSONArray(Database.TABLE_SAVING);
             JSONArray txArray = root.optJSONArray(Database.TABLE_TRANSACTION);
+            JSONArray debtsArray = root.optJSONArray(Database.TABLE_DEBT);
+            JSONArray debtTxArray = root.optJSONArray(Database.TABLE_DEBT_TRANSACTION);
 
             BackupInfo info = new BackupInfo();
             info.timestamp = root.optLong("timestamp", file != null ? file.lastModified() : System.currentTimeMillis());
             info.savingsCount = savingsArray != null ? savingsArray.length() : root.optInt("savings_count", 0);
             info.transactionsCount = txArray != null ? txArray.length() : root.optInt("transactions_count", 0);
+            info.debtsCount = debtsArray != null ? debtsArray.length() : root.optInt("debts_count", 0);
+            info.debtTransactionsCount = debtTxArray != null ? debtTxArray.length() : root.optInt("debt_transactions_count", 0);
             info.fileSizeBytes = size > 0 ? size : sb.length();
             info.sourceFile = file;
             info.sourceUri = uri;
@@ -287,7 +329,8 @@ public class BackupManager {
     }
 
     public static boolean restoreFromPayload(@NonNull Context context, @NonNull String jsonContent) {
-        try (SavingRepository savingRepo = new SavingRepository(context)) {
+        try (SavingRepository savingRepo = new SavingRepository(context);
+             DebtRepository debtRepo = new DebtRepository(context)) {
             JSONObject jsonImport = new JSONObject(jsonContent);
 
             JSONArray savingsArray = jsonImport.optJSONArray(Database.TABLE_SAVING);
@@ -296,12 +339,25 @@ public class BackupManager {
             JSONArray transactionsArray = jsonImport.optJSONArray(Database.TABLE_TRANSACTION);
             if (transactionsArray == null) transactionsArray = jsonImport.optJSONArray("transactions");
 
-            if (savingsArray == null) return false;
+            if (savingsArray != null) {
+                List<Saving> savings = parseSavings(savingsArray);
+                List<Transaction> transactions = transactionsArray != null ? parseTransactions(transactionsArray) : new ArrayList<>();
+                savingRepo.bulkImport(savings, transactions);
+            }
 
-            List<Saving> savings = parseSavings(savingsArray);
-            List<Transaction> transactions = transactionsArray != null ? parseTransactions(transactionsArray) : new ArrayList<>();
+            JSONArray debtsArray = jsonImport.optJSONArray(Database.TABLE_DEBT);
+            if (debtsArray == null) debtsArray = jsonImport.optJSONArray("debts");
 
-            savingRepo.bulkImport(savings, transactions);
+            JSONArray debtTransactionsArray = jsonImport.optJSONArray(Database.TABLE_DEBT_TRANSACTION);
+            if (debtTransactionsArray == null) debtTransactionsArray = jsonImport.optJSONArray("debt_transactions");
+
+            if (debtsArray != null) {
+                List<Debt> debts = parseDebts(debtsArray);
+                List<DebtTransaction> debtTransactions = debtTransactionsArray != null ? parseDebtTransactions(debtTransactionsArray) : new ArrayList<>();
+                debtRepo.bulkImport(debts, debtTransactions);
+            }
+
+            if (savingsArray == null && debtsArray == null) return false;
 
             // Restore user preferences/settings if present
             PreferenceUtil prefs = new PreferenceUtil(context);
@@ -415,6 +471,42 @@ public class BackupManager {
             transaction.setType(obj.getString(Database.COLUMN_TRANSACTION_TYPE));
             transaction.setDate(obj.optLong(Database.COLUMN_TRANSACTION_DATE, System.currentTimeMillis()));
             result.add(transaction);
+        }
+        return result;
+    }
+
+    private static List<Debt> parseDebts(JSONArray array) throws JSONException {
+        List<Debt> result = new ArrayList<>(array.length());
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject obj = array.getJSONObject(i);
+            Debt debt = new Debt();
+            debt.setId(obj.getString(Database.COLUMN_DEBT_ID));
+            debt.setName(obj.getString(Database.COLUMN_DEBT_NAME));
+            debt.setTotalAmount(obj.getDouble(Database.COLUMN_DEBT_TOTAL_AMOUNT));
+            debt.setAmountPaid(obj.optDouble(Database.COLUMN_DEBT_AMOUNT_PAID, 0.0));
+            debt.setNotes(obj.optString(Database.COLUMN_DEBT_NOTES, ""));
+            debt.setCategory(obj.optString(Database.COLUMN_DEBT_CATEGORY, "general"));
+            debt.setIsArchived(obj.optInt(Database.COLUMN_DEBT_IS_ARCHIVED, 0));
+            debt.setDeadline(obj.optLong(Database.COLUMN_DEBT_DEADLINE, AlarmSetter.NO_ALARM));
+            debt.setCreatedAt(obj.optLong(Database.COLUMN_DEBT_CREATED_AT, System.currentTimeMillis()));
+            result.add(debt);
+        }
+        return result;
+    }
+
+    private static List<DebtTransaction> parseDebtTransactions(JSONArray array) throws JSONException {
+        List<DebtTransaction> result = new ArrayList<>(array.length());
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject obj = array.getJSONObject(i);
+            DebtTransaction tx = new DebtTransaction();
+            if (obj.has(Database.COLUMN_DEBT_TRANSACTION_ID)) {
+                tx.setId(obj.getLong(Database.COLUMN_DEBT_TRANSACTION_ID));
+            }
+            tx.setDebtId(obj.getString(Database.COLUMN_DEBT_TRANSACTION_DEBT_ID));
+            tx.setAmount(obj.getDouble(Database.COLUMN_DEBT_TRANSACTION_AMOUNT));
+            tx.setDate(obj.optLong(Database.COLUMN_DEBT_TRANSACTION_DATE, System.currentTimeMillis()));
+            tx.setNotes(obj.optString(Database.COLUMN_DEBT_TRANSACTION_NOTES, ""));
+            result.add(tx);
         }
         return result;
     }
