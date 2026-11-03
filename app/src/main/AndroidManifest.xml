@@ -66,6 +66,12 @@
             android:label="@string/habit_tracker_title"
             android:parentActivityName=".ui.activities.MainActivity" />
 
+        <activity
+            android:name=".compat.pennywise.PennyWiseBridgeActivity"
+            android:exported="false"
+            android:label="PennyWise Data Bridge"
+            android:parentActivityName=".ui.activities.MainActivity" />
+
         <receiver
             android:name=".receiver.DeadlineReceiver"
             android:enabled="true"
