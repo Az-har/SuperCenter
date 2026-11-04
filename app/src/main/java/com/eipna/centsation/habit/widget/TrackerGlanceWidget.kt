@@ -348,6 +348,7 @@ class TrackerCompleteCallback : ActionCallback {
 
 fun updateAllHabitWidgets(context: Context) {
     updateAllSingleHabitWidgets(context)
+    updateAllHabitHeatmapWidgets(context)
 
     try {
         val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)

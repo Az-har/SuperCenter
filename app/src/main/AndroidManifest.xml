@@ -133,6 +133,19 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/financial_widget_info" />
         </receiver>
+
+        <!-- Habit Contribution Heatmap & Streaks Glance AppWidget Receiver -->
+        <receiver
+            android:name=".habit.widget.HabitHeatmapGlanceReceiver"
+            android:label="@string/widget_heatmap_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/habit_heatmap_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

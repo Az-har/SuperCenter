@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/bg_hero_card">
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🎯 Pushups • 10 reps/day"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔥 14d streak"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="[30D]"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary" />
+    </LinearLayout>
+
+    <!-- Subtitle stats -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="🏆 28d Best • 📊 92% Consistency"
+        android:textSize="11sp"
+        android:textColor="?attr/colorOutline" />
+
+    <!-- Heatmap Preview Grid Representation -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Column 1 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#006D32" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+        </LinearLayout>
+
+        <!-- Column 2 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#0E4429" />
+        </LinearLayout>
+
+        <!-- Column 3 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#006D32" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+        </LinearLayout>
+
+        <!-- Column 4 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#006D32" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+        </LinearLayout>
+
+        <!-- Column 5 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#26A641" />
+            <View android:layout_width="14dp" android:layout_height="14dp" android:layout_margin="1.5dp" android:background="#39D353" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Footer Controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="✅ Met (10/10)"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="+1"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:background="@drawable/bg_hero_card" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="+10"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:background="@drawable/bg_hero_card" />
+    </LinearLayout>
+</LinearLayout>
