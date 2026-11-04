@@ -39,7 +39,6 @@ import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.saving.SavingSort;
 import com.eipna.centsation.databinding.ActivityMainBinding;
 import com.eipna.centsation.habit.ui.HabitTrackerActivity;
-import com.eipna.centsation.compat.pennywise.PennyWiseBridgeActivity;
 import com.eipna.centsation.data.debt.Debt;
 import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.ui.adapters.DebtAdapter;
@@ -170,8 +169,6 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 startActivity(new Intent(MainActivity.this, HabitTrackerActivity.class));
             } else if (id == R.id.nav_analytics) {
                 showAnalytics();
-            } else if (id == R.id.nav_pennywise_bridge) {
-                startActivity(new Intent(MainActivity.this, PennyWiseBridgeActivity.class));
             } else if (id == R.id.nav_archive) {
                 startActivity(new Intent(MainActivity.this, ArchiveActivity.class));
             } else if (id == R.id.nav_settings) {
