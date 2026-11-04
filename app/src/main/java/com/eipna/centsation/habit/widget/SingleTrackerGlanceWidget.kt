@@ -1,12 +1,14 @@
 package com.eipna.centsation.habit.widget
 
 import android.content.Context
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
@@ -14,8 +16,10 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
@@ -45,6 +49,16 @@ val SingleTrackerCycleKey = ActionParameters.Key<Boolean>("cycle_next")
 
 class SingleTrackerGlanceWidget : GlanceAppWidget() {
 
+    companion object {
+        private val SIZE_COMPACT = DpSize(130.dp, 90.dp)
+        private val SIZE_MEDIUM = DpSize(220.dp, 120.dp)
+        private val SIZE_EXPANDED = DpSize(320.dp, 180.dp)
+    }
+
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        setOf(SIZE_COMPACT, SIZE_MEDIUM, SIZE_EXPANDED)
+    )
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = TrackerRepository.getInstance(context)
         val allTrackers = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
@@ -61,7 +75,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                SingleWidgetRoot(
+                SingleWidgetContainer(
                     context = context,
                     item = currentItem,
                     totalCount = allTrackers.size,
@@ -73,23 +87,35 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     }
 
     @androidx.compose.runtime.Composable
-    private fun SingleWidgetRoot(
+    private fun SingleWidgetContainer(
         context: Context,
         item: TrackerWithProgress?,
         totalCount: Int,
         currentIndex: Int,
         glanceIdHash: Int
     ) {
+        val size = LocalSize.current
+
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
+                .cornerRadius(20.dp)
                 .background(GlanceTheme.colors.surface)
                 .padding(12.dp)
         ) {
             if (item == null) {
-                EmptySingleWidgetView()
+                EmptyWidgetState()
+            } else if (size.width < 180.dp || size.height < 110.dp) {
+                CompactLayout(item = item)
+            } else if (size.width >= 300.dp && size.height >= 160.dp) {
+                ExpandedLayout(
+                    item = item,
+                    totalCount = totalCount,
+                    currentIndex = currentIndex,
+                    glanceIdHash = glanceIdHash
+                )
             } else {
-                SingleTrackerContent(
+                MediumLayout(
                     item = item,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
@@ -100,7 +126,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     }
 
     @androidx.compose.runtime.Composable
-    private fun EmptySingleWidgetView() {
+    private fun EmptyWidgetState() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -113,23 +139,110 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                 text = "🎯 Daily Quota",
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     color = GlanceTheme.colors.onSurface
                 )
             )
             Spacer(modifier = GlanceModifier.height(4.dp))
             Text(
-                text = "Tap to create a habit target",
+                text = "Tap to create your first habit",
                 style = TextStyle(
                     fontSize = 12.sp,
-                    color = GlanceTheme.colors.outline
+                    color = GlanceTheme.colors.primary
                 )
             )
         }
     }
 
     @androidx.compose.runtime.Composable
-    private fun SingleTrackerContent(
+    private fun CompactLayout(item: TrackerWithProgress) {
+        val tracker = item.tracker
+        val remaining = item.remainingToday
+        val unit = tracker.unit
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize()
+        ) {
+            Row(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .clickable(actionStartActivity<HabitTrackerActivity>()),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = tracker.title,
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = GlanceTheme.colors.onSurface
+                    ),
+                    modifier = GlanceModifier.defaultWeight()
+                )
+                if (remaining == 0) {
+                    Text(
+                        text = "✅ Done",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = GlanceTheme.colors.primary
+                        )
+                    )
+                } else {
+                    Text(
+                        text = "$remaining $unit",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = if (item.accumulatedBacklogDebt > 0) GlanceTheme.colors.error else GlanceTheme.colors.primary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(4.dp))
+
+            LinearProgressIndicator(
+                progress = item.completionRatio,
+                modifier = GlanceModifier.fillMaxWidth().height(4.dp),
+                color = GlanceTheme.colors.primary,
+                backgroundColor = GlanceTheme.colors.outline
+            )
+
+            Spacer(modifier = GlanceModifier.defaultWeight())
+
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    text = "-1",
+                    onClick = actionRunCallback<SingleTrackerLogCallback>(
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to -1)
+                    ),
+                    modifier = GlanceModifier.height(30.dp).width(44.dp)
+                )
+                Spacer(modifier = GlanceModifier.width(6.dp))
+                Button(
+                    text = "+1",
+                    onClick = actionRunCallback<SingleTrackerLogCallback>(
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to 1)
+                    ),
+                    modifier = GlanceModifier.height(30.dp).width(44.dp)
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Button(
+                    text = "✓",
+                    onClick = actionRunCallback<SingleTrackerCompleteCallback>(
+                        actionParametersOf(TrackerIdKey to tracker.id)
+                    ),
+                    modifier = GlanceModifier.height(30.dp).width(44.dp)
+                )
+            }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun MediumLayout(
         item: TrackerWithProgress,
         totalCount: Int,
         currentIndex: Int,
@@ -141,7 +254,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val debt = item.accumulatedBacklogDebt
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            // Header Row: Title + Cycle Button (if multiple habits)
+            // Header Row: Title & Cycle Selector
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -169,73 +282,60 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                                 ActionParameters.Key<Int>("current_index") to currentIndex
                             )
                         ),
-                        modifier = GlanceModifier.height(28.dp).width(62.dp)
+                        modifier = GlanceModifier.height(28.dp).width(64.dp)
                     )
                 }
             }
 
             Spacer(modifier = GlanceModifier.height(4.dp))
 
-            // Main Status / Counter
-            if (remaining == 0) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            // Counter Display & Status Badge
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (remaining == 0) {
                     Text(
-                        text = "✅ Done!",
+                        text = "✅ Done Today!",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = GlanceTheme.colors.primary
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Spacer(modifier = GlanceModifier.width(6.dp))
                     Text(
-                        text = "Cleared for today",
+                        text = "Target cleared",
                         style = TextStyle(
                             fontSize = 12.sp,
                             color = GlanceTheme.colors.outline
                         )
                     )
-                }
-            } else {
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom
-                ) {
+                } else {
                     Text(
                         text = "$remaining",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
+                            fontSize = 24.sp,
                             color = if (debt > 0) GlanceTheme.colors.error else GlanceTheme.colors.primary
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(4.dp))
-                    Text(
-                        text = "$unit left",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp,
-                            color = GlanceTheme.colors.onSurface
-                        )
-                    )
-
-                    Spacer(modifier = GlanceModifier.defaultWeight())
-
-                    if (debt > 0) {
+                    Spacer(modifier = GlanceModifier.width(6.dp))
+                    Column {
                         Text(
-                            text = "+$debt debt",
+                            text = "$unit remaining",
                             style = TextStyle(
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Medium,
                                 fontSize = 12.sp,
-                                color = GlanceTheme.colors.error
+                                color = GlanceTheme.colors.onSurface
                             )
                         )
-                    } else {
                         Text(
-                            text = "Target: ${tracker.baseDailyTarget}",
+                            text = if (debt > 0) "+$debt backlog debt" else "Daily Target: ${tracker.baseDailyTarget}",
                             style = TextStyle(
-                                fontSize = 12.sp,
-                                color = GlanceTheme.colors.outline
+                                fontSize = 11.sp,
+                                fontWeight = if (debt > 0) FontWeight.Bold else FontWeight.Normal,
+                                color = if (debt > 0) GlanceTheme.colors.error else GlanceTheme.colors.outline
                             )
                         )
                     }
@@ -244,17 +344,31 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(6.dp))
 
-            // Progress Bar
-            LinearProgressIndicator(
-                progress = item.completionRatio,
-                modifier = GlanceModifier.fillMaxWidth().height(6.dp),
-                color = GlanceTheme.colors.primary,
-                backgroundColor = GlanceTheme.colors.outline
-            )
+            // Progress Bar with Percentage Indicator
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LinearProgressIndicator(
+                    progress = item.completionRatio,
+                    modifier = GlanceModifier.defaultWeight().height(6.dp),
+                    color = GlanceTheme.colors.primary,
+                    backgroundColor = GlanceTheme.colors.outline
+                )
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Text(
+                    text = "${item.progressPercent}%",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.primary
+                    )
+                )
+            }
 
-            Spacer(modifier = GlanceModifier.height(8.dp))
+            Spacer(modifier = GlanceModifier.defaultWeight())
 
-            // Interactive Buttons Row: -1, +1, +Target, Done
+            // Action Buttons
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -262,49 +376,229 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                 Button(
                     text = "-1",
                     onClick = actionRunCallback<SingleTrackerLogCallback>(
-                        actionParametersOf(
-                            TrackerIdKey to tracker.id,
-                            DeltaCountKey to -1
-                        )
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to -1)
                     ),
-                    modifier = GlanceModifier.width(48.dp).height(34.dp)
+                    modifier = GlanceModifier.height(32.dp).width(48.dp)
                 )
-
                 Spacer(modifier = GlanceModifier.width(6.dp))
-
                 Button(
                     text = "+1",
                     onClick = actionRunCallback<SingleTrackerLogCallback>(
-                        actionParametersOf(
-                            TrackerIdKey to tracker.id,
-                            DeltaCountKey to 1
-                        )
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to 1)
                     ),
-                    modifier = GlanceModifier.width(48.dp).height(34.dp)
+                    modifier = GlanceModifier.height(32.dp).width(48.dp)
                 )
-
                 Spacer(modifier = GlanceModifier.width(6.dp))
-
                 if (remaining > 0) {
                     Button(
                         text = "+${tracker.baseDailyTarget}",
                         onClick = actionRunCallback<SingleTrackerLogCallback>(
-                            actionParametersOf(
-                                TrackerIdKey to tracker.id,
-                                DeltaCountKey to tracker.baseDailyTarget
-                            )
+                            actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to tracker.baseDailyTarget)
                         ),
-                        modifier = GlanceModifier.width(58.dp).height(34.dp)
+                        modifier = GlanceModifier.height(32.dp).width(58.dp)
                     )
-
                     Spacer(modifier = GlanceModifier.defaultWeight())
-
                     Button(
                         text = "✓ Done",
                         onClick = actionRunCallback<SingleTrackerCompleteCallback>(
                             actionParametersOf(TrackerIdKey to tracker.id)
                         ),
-                        modifier = GlanceModifier.width(64.dp).height(34.dp)
+                        modifier = GlanceModifier.height(32.dp).width(68.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun ExpandedLayout(
+        item: TrackerWithProgress,
+        totalCount: Int,
+        currentIndex: Int,
+        glanceIdHash: Int
+    ) {
+        val tracker = item.tracker
+        val remaining = item.remainingToday
+        val unit = tracker.unit
+        val debt = item.accumulatedBacklogDebt
+
+        Column(modifier = GlanceModifier.fillMaxSize()) {
+            // Top Bar
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = GlanceModifier
+                        .defaultWeight()
+                        .clickable(actionStartActivity<HabitTrackerActivity>())
+                ) {
+                    Text(
+                        text = tracker.title,
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = GlanceTheme.colors.onSurface
+                        )
+                    )
+                    Text(
+                        text = "Base Quota: ${tracker.baseDailyTarget} $unit/day",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            color = GlanceTheme.colors.outline
+                        )
+                    )
+                }
+
+                if (totalCount > 1) {
+                    Button(
+                        text = "Habit ${currentIndex + 1} of $totalCount ❯",
+                        onClick = actionRunCallback<SingleTrackerCycleCallback>(
+                            actionParametersOf(
+                                SingleTrackerCycleKey to true,
+                                ActionParameters.Key<Int>("glance_hash") to glanceIdHash,
+                                ActionParameters.Key<Int>("total_count") to totalCount,
+                                ActionParameters.Key<Int>("current_index") to currentIndex
+                            )
+                        ),
+                        modifier = GlanceModifier.height(30.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(8.dp))
+
+            // Statistics Grid Row
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    if (remaining == 0) {
+                        Text(
+                            text = "🎉 Quota Cleared!",
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = GlanceTheme.colors.primary
+                            )
+                        )
+                        Text(
+                            text = "All caught up for today",
+                            style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.outline)
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "$remaining",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp,
+                                    color = if (debt > 0) GlanceTheme.colors.error else GlanceTheme.colors.primary
+                                )
+                            )
+                            Spacer(modifier = GlanceModifier.width(6.dp))
+                            Text(
+                                text = "$unit due today",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp,
+                                    color = GlanceTheme.colors.onSurface
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Done Today: ${item.todayCompletedReps} $unit",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = GlanceTheme.colors.primary
+                        )
+                    )
+                    if (debt > 0) {
+                        Text(
+                            text = "Backlog Debt: +$debt $unit",
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GlanceTheme.colors.error
+                            )
+                        )
+                    } else {
+                        Text(
+                            text = "Days Active: ${item.daysActive}",
+                            style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.outline)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(8.dp))
+
+            // Progress Bar
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LinearProgressIndicator(
+                    progress = item.completionRatio,
+                    modifier = GlanceModifier.defaultWeight().height(8.dp),
+                    color = GlanceTheme.colors.primary,
+                    backgroundColor = GlanceTheme.colors.outline
+                )
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Text(
+                    text = "${item.progressPercent}%",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = GlanceTheme.colors.primary
+                    )
+                )
+            }
+
+            Spacer(modifier = GlanceModifier.defaultWeight())
+
+            // Action Row
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    text = "-1",
+                    onClick = actionRunCallback<SingleTrackerLogCallback>(
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to -1)
+                    ),
+                    modifier = GlanceModifier.height(34.dp).width(54.dp)
+                )
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Button(
+                    text = "+1",
+                    onClick = actionRunCallback<SingleTrackerLogCallback>(
+                        actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to 1)
+                    ),
+                    modifier = GlanceModifier.height(34.dp).width(54.dp)
+                )
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                if (remaining > 0) {
+                    Button(
+                        text = "+${tracker.baseDailyTarget}",
+                        onClick = actionRunCallback<SingleTrackerLogCallback>(
+                            actionParametersOf(TrackerIdKey to tracker.id, DeltaCountKey to tracker.baseDailyTarget)
+                        ),
+                        modifier = GlanceModifier.height(34.dp).width(66.dp)
+                    )
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+                    Button(
+                        text = "✓ Clear Quota",
+                        onClick = actionRunCallback<SingleTrackerCompleteCallback>(
+                            actionParametersOf(TrackerIdKey to tracker.id)
+                        ),
+                        modifier = GlanceModifier.height(34.dp)
                     )
                 }
             }

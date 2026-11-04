@@ -3,7 +3,12 @@
     android:description="@string/widget_single_habit_description"
     android:minWidth="140dp"
     android:minHeight="100dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="550dp"
+    android:maxResizeHeight="400dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_single_habit_initial"
-    android:updatePeriodMillis="1800000" />
+    android:previewLayout="@layout/widget_single_habit_preview"
+    android:updatePeriodMillis="0" />
