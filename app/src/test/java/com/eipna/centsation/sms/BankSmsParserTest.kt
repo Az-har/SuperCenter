@@ -3,11 +3,14 @@ package com.eipna.centsation.sms
 import com.eipna.centsation.compat.pennywise.PersonalizedProfileDefaults
 import com.eipna.centsation.sms.parser.BankSmsParserFactory
 import com.eipna.centsation.sms.parser.CityUnionBankParser
+import com.eipna.centsation.sms.parser.GenericIndianBankParser
 import com.eipna.centsation.sms.parser.ICICIBankParser
+import com.eipna.centsation.sms.parser.MerchantCleaner
 import com.eipna.centsation.sms.parser.YesBankParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -139,5 +142,41 @@ class BankSmsParserTest {
         // Test Keyword fallback
         assertEquals("petrol", PersonalizedProfileDefaults.inferCategoryByKeyword("Annai Velankanni bunk"))
         assertEquals("Food & Dining", PersonalizedProfileDefaults.inferCategoryByKeyword("Tasty Burger Point"))
+    }
+
+    @Test
+    fun testFastRejectOtpAndSpam() {
+        val parser = ICICIBankParser()
+        val otpSms = "Do not share this OTP. 849201 is your secret code to login to ICICI Bank NetBanking."
+        assertNull(parser.parse("VK-ICICIB", otpSms, 1000L))
+
+        val spamSms = "Congratulations! You have a pre-approved personal loan of Rs 5,00,000. Apply now."
+        assertNull(parser.parse("VK-ICICIB", spamSms, 1000L))
+
+        val ccBillPayment = "Payment of Rs 12,000.00 received on your ICICI Bank Credit Card ending 4001."
+        assertNull(parser.parse("VK-ICICIB", ccBillPayment, 1000L))
+    }
+
+    @Test
+    fun testMerchantCleaner() {
+        assertEquals("Swiggy", MerchantCleaner.clean("UPI/Swiggy Pvt Ltd"))
+        assertEquals("Zomato", MerchantCleaner.clean("Zomato Ltd (Ref: 12345)"))
+        assertEquals("BP Anna nagar", MerchantCleaner.clean("BP Anna nagar on 04/11"))
+        assertEquals("Friday's", MerchantCleaner.clean("Friday's -"))
+        assertFalse(MerchantCleaner.isValid("TO BLOCK UPI"))
+        assertFalse(MerchantCleaner.isValid("VIA"))
+        assertTrue(MerchantCleaner.isValid("HungerBox"))
+    }
+
+    @Test
+    fun testGooglePayNotificationParsing() {
+        val parser = GenericIndianBankParser()
+        val notif = "Google Pay: Paid ₹150.00 to Friday's fast food using ICICI Bank account"
+        val parsed = parser.parse("Google Pay", notif, 1000L)
+
+        assertNotNull(parsed)
+        assertEquals(150.0, parsed!!.amount, 0.001)
+        assertTrue(parsed.isExpense)
+        assertEquals("Friday's fast food", parsed.rawMerchant)
     }
 }

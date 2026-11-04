@@ -22,7 +22,8 @@ object SmsTransactionProcessor {
         context: Context,
         sender: String,
         body: String,
-        timestamp: Long = System.currentTimeMillis()
+        timestamp: Long = System.currentTimeMillis(),
+        showNotification: Boolean = true
     ): ProcessedResult? = withContext(Dispatchers.IO) {
         val registry = PennyWiseRegistry.getInstance(context)
         if (!registry.isSmsAutoTrackingEnabled()) {
@@ -42,6 +43,11 @@ object SmsTransactionProcessor {
 
         val dbHelper = Database.getInstance(context)
         val db = dbHelper.writableDatabase
+
+        // Deduplication check
+        if (TransactionDeduplication.isDuplicate(db, finalTx)) {
+            return@withContext null
+        }
 
         var insertedTxId = -1L
         var targetBucketId = "pw_general_account"
@@ -151,12 +157,14 @@ object SmsTransactionProcessor {
             )
 
             // Trigger notification
-            SmsNotificationHelper.showTransactionNotification(
-                context = context,
-                transactionId = insertedTxId,
-                savingId = targetBucketId,
-                tx = finalTx
-            )
+            if (showNotification) {
+                SmsNotificationHelper.showTransactionNotification(
+                    context = context,
+                    transactionId = insertedTxId,
+                    savingId = targetBucketId,
+                    tx = finalTx
+                )
+            }
 
             ProcessedResult(
                 transactionId = insertedTxId,

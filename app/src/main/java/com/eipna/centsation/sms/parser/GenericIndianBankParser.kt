@@ -1,7 +1,5 @@
 package com.eipna.centsation.sms.parser
 
-import java.util.regex.Pattern
-
 class GenericIndianBankParser : BankSmsParser {
 
     override val bankName = "Bank"
@@ -19,12 +17,13 @@ class GenericIndianBankParser : BankSmsParser {
         val accountLast4 = extractAccountLast4(body)
         val balance = extractBalance(body)
         val reference = extractReference(body)
-        val merchant = extractMerchant(body)
+        val rawMerchant = extractMerchant(body)
+        val cleanedMerchant = MerchantCleaner.clean(rawMerchant)
 
         return ParsedBankTransaction(
             amount = amount,
             isExpense = isExpense,
-            rawMerchant = merchant,
+            rawMerchant = cleanedMerchant,
             bankName = detectedBank,
             accountLast4 = accountLast4,
             balanceAfter = balance,
@@ -36,23 +35,31 @@ class GenericIndianBankParser : BankSmsParser {
     }
 
     private fun isTransactionMessage(body: String): Boolean {
-        val lower = body.lowercase()
-        if (lower.contains("otp") || lower.contains("verification code") || lower.contains("code is") ||
-            lower.contains("is due by") || lower.contains("will be debited")
-        ) {
+        // Fast reject OTPs & Spam
+        for (p in SmsCompiledPatterns.FastReject.OTP_PATTERNS) {
+            if (p.containsMatchIn(body)) return false
+        }
+        for (p in SmsCompiledPatterns.FastReject.SPAM_OR_REMINDER) {
+            if (p.containsMatchIn(body)) return false
+        }
+        if (SmsCompiledPatterns.FastReject.CC_BILL_PAYMENT_CONFIRMATION.containsMatchIn(body)) {
             return false
         }
+
+        val lower = body.lowercase()
         return lower.contains("debited") || lower.contains("credited") ||
                 lower.contains("spent") || lower.contains("sent") ||
                 lower.contains("paid") || lower.contains("received") ||
-                lower.contains("withdrawn") || lower.contains("transferred")
+                lower.contains("withdrawn") || lower.contains("transferred") ||
+                lower.contains("refund") || lower.contains("reversed")
     }
 
     private fun isDebit(body: String): Boolean {
         val lower = body.lowercase()
         if (lower.contains("is credited") || lower.contains("credited with") ||
             lower.contains("credited for") || lower.contains("has received") ||
-            lower.contains("deposited")
+            lower.contains("deposited") || lower.contains("refund") ||
+            lower.contains("reversed")
         ) {
             return false
         }
@@ -71,6 +78,10 @@ class GenericIndianBankParser : BankSmsParser {
             upperSender.contains("HDFC") || upperBody.contains("HDFC BANK") -> "HDFC Bank"
             upperSender.contains("SBI") || upperBody.contains("STATE BANK") -> "SBI"
             upperSender.contains("AXIS") || upperBody.contains("AXIS BANK") -> "Axis Bank"
+            upperSender.contains("KOTAK") || upperBody.contains("KOTAK") -> "Kotak Bank"
+            upperSender.contains("PNB") || upperBody.contains("PUNJAB NATIONAL") -> "PNB"
+            upperSender.contains("CANARA") || upperBody.contains("CANARA") -> "Canara Bank"
+            upperSender.contains("INDUSIND") || upperBody.contains("INDUSIND") -> "IndusInd Bank"
             upperSender.contains("PAYTM") || upperBody.contains("PAYTM") -> "Paytm"
             upperSender.contains("GPAY") || upperBody.contains("GOOGLE PAY") -> "Google Pay"
             upperSender.contains("PHONEPE") || upperBody.contains("PHONEPE") -> "PhonePe"
@@ -79,63 +90,65 @@ class GenericIndianBankParser : BankSmsParser {
     }
 
     private fun extractAmount(body: String): Double? {
-        val patterns = listOf(
-            Pattern.compile("""(?:Rs\.?|INR)\s*([0-9,]+(?:\.\d{1,2})?)""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""(?:debited|spent|paid|credited)\s+(?:for|with|by)?\s*(?:Rs\.?|INR)?\s*([0-9,]+(?:\.\d{1,2})?)""", Pattern.CASE_INSENSITIVE)
-        )
-        for (p in patterns) {
-            val m = p.matcher(body)
-            if (m.find()) {
-                val raw = m.group(1)?.replace(",", "") ?: continue
-                val value = raw.toDoubleOrNull()
-                if (value != null && value > 0.0) return value
+        return SmsCompiledPatterns.Amount.extractTransactionAmount(body)
+    }
+
+    private fun extractAccountLast4(body: String): String? {
+        for (p in SmsCompiledPatterns.Account.ALL) {
+            val m = p.find(body)
+            if (m != null) {
+                val digits = m.groupValues[1].filter { it.isDigit() }
+                if (digits.length >= 3) return digits.takeLast(4)
             }
         }
         return null
     }
 
-    private fun extractAccountLast4(body: String): String? {
-        val p = Pattern.compile("""(?:A/c|Account|Card|Acct)\s*(?:no\.?)?\s*[X*]*(\d{3,4})""", Pattern.CASE_INSENSITIVE)
-        val m = p.matcher(body)
-        if (m.find()) return m.group(1)
-        return null
-    }
-
     private fun extractBalance(body: String): Double? {
-        val p = Pattern.compile("""(?:Avl\s+Bal|Available\s+Balance|Bal)\s*(?:is)?\s*(?:Rs\.?|INR)?\s*([0-9,]+(?:\.\d{1,2})?)""", Pattern.CASE_INSENSITIVE)
-        val m = p.matcher(body)
-        if (m.find()) {
-            return m.group(1)?.replace(",", "")?.toDoubleOrNull()
+        val m = SmsCompiledPatterns.Balance.AVL_BAL.find(body)
+        if (m != null) {
+            return m.groupValues[1].replace(",", "").toDoubleOrNull()
         }
         return null
     }
 
     private fun extractReference(body: String): String? {
-        val patterns = listOf(
-            Pattern.compile("""(?:UPI|Ref|RRN)[:/\s]+([A-Za-z0-9]+)""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""Ref\s+no\.?\s*([A-Za-z0-9]+)""", Pattern.CASE_INSENSITIVE)
-        )
-        for (p in patterns) {
-            val m = p.matcher(body)
-            if (m.find()) return m.group(1)
+        for (p in SmsCompiledPatterns.Reference.ALL) {
+            val m = p.find(body)
+            if (m != null) return m.groupValues[1]
         }
         return null
     }
 
     private fun extractMerchant(body: String): String {
-        val patterns = listOf(
-            Pattern.compile("""(?:to|towards|at)\s+([A-Za-z0-9\s._*-]+?)(?:\s+on|\s+ref|\s+avl|\.|\n|$)""", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("""Info:\s*([^.\n]+?)(?:\.|\s+Avl|\n|$)""", Pattern.CASE_INSENSITIVE)
-        )
-        for (p in patterns) {
-            val m = p.matcher(body)
-            if (m.find()) {
-                val raw = m.group(1)!!.trim()
-                if (raw.length in 2..50 && !raw.startsWith("VPA", ignoreCase = true) && !raw.startsWith("UPI", ignoreCase = true)) {
-                    return raw
-                }
-            }
+        // Notification "Paid ₹150 to XYZ"
+        val paidToM = SmsCompiledPatterns.Merchant.PAID_TO_NOTIFICATION.find(body)
+        if (paidToM != null) {
+            val cand = paidToM.groupValues[1].trim()
+            if (MerchantCleaner.isValid(cand)) return cand
         }
+
+        // Info: UPI/...
+        val infoM = SmsCompiledPatterns.Merchant.UPI_INFO.find(body)
+        if (infoM != null) {
+            val cand = infoM.groupValues[1].trim()
+            if (cand.isNotBlank()) return cand
+        }
+
+        // NEFT Transfer
+        val neftM = SmsCompiledPatterns.Merchant.NEFT_TRF.find(body)
+        if (neftM != null) {
+            val cand = neftM.groupValues[1].trim()
+            if (cand.isNotBlank()) return "NEFT - $cand"
+        }
+
+        // to / towards / at
+        val toM = SmsCompiledPatterns.Merchant.TO_PATTERN.find(body)
+        if (toM != null) {
+            val cand = toM.groupValues[1].trim()
+            if (MerchantCleaner.isValid(cand)) return cand
+        }
+
         return "Bank Transaction"
     }
 }

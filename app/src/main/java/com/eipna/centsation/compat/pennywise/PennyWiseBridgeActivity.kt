@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,7 +37,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Sync
@@ -47,9 +50,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -59,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,13 +77,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.eipna.centsation.habit.ui.theme.SuperCenterTheme
+import com.eipna.centsation.sms.notification.BankNotificationListenerService
 import com.eipna.centsation.sms.processor.SmsTransactionProcessor
+import com.eipna.centsation.sms.scanner.HistoricalSmsScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class PennyWiseBridgeActivity : ComponentActivity() {
+
+    private val notificationAccessState = mutableStateOf(false)
+    private val smsPermissionState = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,16 +97,27 @@ class PennyWiseBridgeActivity : ComponentActivity() {
         setContent {
             SuperCenterTheme {
                 PennyWiseBridgeScreen(
+                    isNotificationAccessGranted = notificationAccessState.value,
+                    isSmsPermissionGranted = smsPermissionState.value,
                     onBackClick = { finish() }
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        notificationAccessState.value = BankNotificationListenerService.isPermissionGranted(this)
+        smsPermissionState.value = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PennyWiseBridgeScreen(
+    isNotificationAccessGranted: Boolean,
+    isSmsPermissionGranted: Boolean,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -111,19 +133,29 @@ fun PennyWiseBridgeScreen(
 
     // SMS Auto-Tracking states
     var smsTrackingEnabled by remember { mutableStateOf(registry.isSmsAutoTrackingEnabled()) }
-    var hasSmsPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
-        )
-    }
+    var hasSmsPermission by remember { mutableStateOf(isSmsPermissionGranted) }
+    var hasNotificationAccess by remember { mutableStateOf(isNotificationAccessGranted) }
     var recentSmsLogs by remember { mutableStateOf<List<JSONObject>>(registry.getRecentAutoLoggedList()) }
 
+    // Synchronize with activity onResume state
+    LaunchedEffect(isNotificationAccessGranted, isSmsPermissionGranted) {
+        hasNotificationAccess = isNotificationAccessGranted
+        hasSmsPermission = isSmsPermissionGranted
+    }
+
+    // Historical SMS Scanner states
+    var isScanningInbox by remember { mutableStateOf(false) }
+    var scanProgress by remember { mutableStateOf<HistoricalSmsScanner.ScanProgress?>(null) }
+    var selectedScanWindow by remember { mutableStateOf(HistoricalSmsScanner.ScanWindow.LAST_30_DAYS) }
+
     val smsPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasSmsPermission = isGranted
-        if (isGranted) {
-            Toast.makeText(context, "SMS Auto-Tracking Permission Granted!", Toast.LENGTH_SHORT).show()
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val receiveGranted = perms[Manifest.permission.RECEIVE_SMS] == true
+        val readGranted = perms[Manifest.permission.READ_SMS] == true
+        hasSmsPermission = receiveGranted && readGranted
+        if (hasSmsPermission) {
+            Toast.makeText(context, "SMS Auto-Tracking Permissions Granted!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -253,20 +285,25 @@ fun PennyWiseBridgeScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "SMS Permission Needed",
+                                        text = "SMS Permissions Needed",
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                     Text(
-                                        text = "Allow reading incoming bank SMS to auto-log transactions.",
+                                        text = "Allow reading incoming & inbox bank SMS to auto-track expenses.",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
                                 Button(
                                     onClick = {
-                                        smsPermissionLauncher.launch(Manifest.permission.RECEIVE_SMS)
+                                        smsPermissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.RECEIVE_SMS,
+                                                Manifest.permission.READ_SMS
+                                            )
+                                        )
                                     },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.error
@@ -288,7 +325,7 @@ fun PennyWiseBridgeScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "SMS Listener active & ready",
+                                text = "SMS Auto-Reader active & ready",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
@@ -296,6 +333,178 @@ fun PennyWiseBridgeScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
+
+                    // Push Notification Listener Card
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (hasNotificationAccess) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            }
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = null,
+                                        tint = if (hasNotificationAccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "UPI App Notification Listener",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (hasNotificationAccess) {
+                                        "Listening to Google Pay, PhonePe, Paytm & CRED."
+                                    } else {
+                                        "Captures QR & micro-spends when bank SMS is omitted."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                    context.startActivity(intent)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (hasNotificationAccess) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(if (hasNotificationAccess) "Settings" else "Enable")
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Historical SMS Inbox Scanner Card
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Historical SMS Inbox Scanner",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Backfill past transactions with 24-hr duplicate prevention.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Time window selection chips
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                HistoricalSmsScanner.ScanWindow.values().forEach { window ->
+                                    FilterChip(
+                                        selected = selectedScanWindow == window,
+                                        onClick = { selectedScanWindow = window },
+                                        label = { Text(window.displayName, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            if (isScanningInbox) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Spacer(modifier = Modifier.height(6.dp))
+                                scanProgress?.let { prog ->
+                                    Text(
+                                        text = "Scanned ${prog.totalScanned} SMS • ${prog.importedCount} Imported • ${prog.duplicatesCount} Duplicates Skipped",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            } else {
+                                scanProgress?.let { prog ->
+                                    if (prog.isFinished) {
+                                        Text(
+                                            text = "Last Scan: ${prog.totalScanned} scanned, ${prog.importedCount} imported, ${prog.duplicatesCount} duplicates skipped.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+
+                                Button(
+                                    onClick = {
+                                        if (!hasSmsPermission) {
+                                            smsPermissionLauncher.launch(
+                                                arrayOf(
+                                                    Manifest.permission.RECEIVE_SMS,
+                                                    Manifest.permission.READ_SMS
+                                                )
+                                            )
+                                            return@Button
+                                        }
+                                        isScanningInbox = true
+                                        coroutineScope.launch {
+                                            HistoricalSmsScanner.scanInbox(context, selectedScanWindow).collect { progress ->
+                                                scanProgress = progress
+                                                if (progress.isFinished) {
+                                                    isScanningInbox = false
+                                                    recentSmsLogs = registry.getRecentAutoLoggedList()
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Inbox Scan Complete! Imported ${progress.importedCount} transactions.",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Scan & Backfill Inbox")
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Bank chips
                     Text(
