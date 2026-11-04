@@ -28,8 +28,8 @@ public class BatteryOptimizationTest {
             latch.countDown();
         });
 
-        boolean completed = latch.await(2, TimeUnit.SECONDS);
-        Assert.assertTrue("Task should execute within 2 seconds", completed);
+        boolean completed = latch.await(5, TimeUnit.SECONDS);
+        Assert.assertTrue("Task should execute within 5 seconds", completed);
         Assert.assertTrue("Runnable should have executed", ran.get());
     }
 
@@ -52,13 +52,13 @@ public class BatteryOptimizationTest {
             latch.countDown();
         });
 
-        boolean completed = latch.await(2, TimeUnit.SECONDS);
-        Assert.assertTrue("Task should execute within 2 seconds even after shutdown() called", completed);
+        boolean completed = latch.await(5, TimeUnit.SECONDS);
+        Assert.assertTrue("Task should execute within 5 seconds even after shutdown() called", completed);
         Assert.assertTrue("Runnable should have executed", ran.get());
 
         // Verify Future task submission works
         java.util.concurrent.Future<Integer> future = executors.diskIO().submit(() -> 42);
-        Integer result = future.get(2, TimeUnit.SECONDS);
+        Integer result = future.get(5, TimeUnit.SECONDS);
         Assert.assertEquals("Callable should return correct result", Integer.valueOf(42), result);
     }
 

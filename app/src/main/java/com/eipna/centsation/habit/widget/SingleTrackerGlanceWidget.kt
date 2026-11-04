@@ -40,6 +40,7 @@ import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
+import com.eipna.centsation.habit.util.HabitHeatmapUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -159,6 +160,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val tracker = item.tracker
         val remaining = item.remainingToday
         val unit = tracker.unit
+        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
@@ -178,6 +180,17 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                     ),
                     modifier = GlanceModifier.defaultWeight()
                 )
+                if (streakStats.currentStreak > 0) {
+                    Text(
+                        text = "🔥 ${streakStats.currentStreak}d",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = GlanceTheme.colors.primary
+                        )
+                    )
+                    Spacer(modifier = GlanceModifier.width(4.dp))
+                }
                 if (remaining == 0) {
                     Text(
                         text = "✅ Done",
@@ -252,6 +265,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
+        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
             // Header Row: Title & Cycle Selector
@@ -270,6 +284,18 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         .defaultWeight()
                         .clickable(actionStartActivity<HabitTrackerActivity>())
                 )
+
+                if (streakStats.currentStreak > 0) {
+                    Text(
+                        text = "🔥 ${streakStats.currentStreak}d",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = GlanceTheme.colors.primary
+                        )
+                    )
+                    Spacer(modifier = GlanceModifier.width(6.dp))
+                }
 
                 if (totalCount > 1) {
                     Button(
@@ -421,6 +447,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
+        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
             // Top Bar
@@ -442,10 +469,10 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         )
                     )
                     Text(
-                        text = "Base Quota: ${tracker.baseDailyTarget} $unit/day",
+                        text = "🔥 ${streakStats.currentStreak}d Streak • Base: ${tracker.baseDailyTarget} $unit/day",
                         style = TextStyle(
                             fontSize = 12.sp,
-                            color = GlanceTheme.colors.outline
+                            color = GlanceTheme.colors.primary
                         )
                     )
                 }

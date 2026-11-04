@@ -41,6 +41,7 @@ import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
+import com.eipna.centsation.habit.util.HabitHeatmapUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -170,6 +171,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
+        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
 
         Column(
             modifier = GlanceModifier
@@ -182,8 +184,9 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val titleDisplay = if (streakStats.currentStreak > 0) "${tracker.title} 🔥 ${streakStats.currentStreak}d" else tracker.title
                 Text(
-                    text = tracker.title,
+                    text = titleDisplay,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,

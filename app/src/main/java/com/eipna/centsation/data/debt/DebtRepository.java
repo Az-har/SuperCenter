@@ -54,9 +54,6 @@ public class DebtRepository implements AutoCloseable {
         } finally {
             database.endTransaction();
         }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
-        }
     }
 
     public void edit(@NonNull Debt debt) {
@@ -73,9 +70,6 @@ public class DebtRepository implements AutoCloseable {
         values.put(Database.COLUMN_DEBT_TYPE, debt.getDebtType());
 
         database.update(Database.TABLE_DEBT, values, Database.COLUMN_DEBT_ID + " = ?", new String[]{debt.getId()});
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
-        }
     }
 
     public void delete(String debtId) {
@@ -88,9 +82,6 @@ public class DebtRepository implements AutoCloseable {
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();
-        }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
         }
     }
 
@@ -116,9 +107,6 @@ public class DebtRepository implements AutoCloseable {
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();
-        }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
         }
     }
 

@@ -53,9 +53,6 @@ public class SavingRepository implements AutoCloseable {
         } finally {
             database.endTransaction();
         }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
-        }
     }
 
     public void edit(Saving editedSaving) {
@@ -71,9 +68,6 @@ public class SavingRepository implements AutoCloseable {
         values.put(Database.COLUMN_SAVING_DEADLINE, editedSaving.getDeadline());
 
         database.update(Database.TABLE_SAVING, values, Database.COLUMN_SAVING_ID + " = ?", new String[]{editedSaving.getID()});
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
-        }
     }
 
     public void delete(String savingID) {
@@ -86,9 +80,6 @@ public class SavingRepository implements AutoCloseable {
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();
-        }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
         }
     }
 
@@ -111,9 +102,6 @@ public class SavingRepository implements AutoCloseable {
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();
-        }
-        if (context != null) {
-            com.eipna.centsation.ui.widget.FinancialGlanceWidgetKt.updateAllFinancialWidgets(context);
         }
     }
 
