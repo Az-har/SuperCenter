@@ -6,10 +6,8 @@
     <string name="widget_financial_title">Financial Overview &amp; Quick Add</string>
     <string name="widget_financial_description">Current wallet balance, monthly expenses, and 1-tap transaction logger.</string>
     <string name="habit_tracker_title">Daily Quota &amp; Habit Tracker</string>
-    <string name="menu_item_habits">Habits &amp; Quotas</string>
     <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>
     <string name="app_license">GNU General Public License v3.0</string>
-    <string name="app_author">Az-har</string>
 
     <string name="toolbar_main">Savings</string>
     <string name="toolbar_create">New saving</string>
@@ -23,7 +21,6 @@
     <string name="empty_indicator_archive">No archived savings</string>
     <string name="empty_indicator_history">No transactions recorded yet</string>
     <string name="empty_indicator_history_subtitle">Deposits and withdrawals will appear here</string>
-    <string name="empty_indicator_search">No matching savings goals found</string>
 
     <string name="radio_button_deposit">Deposit</string>
     <string name="radio_button_withdraw">Withdraw</string>
@@ -42,34 +39,25 @@
     <string name="field_saving_deadline">Deadline</string>
 
     <string name="dialog_title_crash">App has crashed</string>
-    <string name="dialog_title_request_alarm_permission">Required permission</string>
-    <string name="dialog_title_create_saving">Create saving</string>
-    <string name="dialog_title_edit_saving">Edit saving</string>
     <string name="dialog_title_delete_saving">Delete saving?</string>
     <string name="dialog_title_create_transaction">Create transaction</string>
-    <string name="dialog_title_history_saving">History</string>
 
     <string name="dialog_message_crash">The app closed unexpectedly. You can help fix the issue by emailing the error report or saving it as a text file.</string>
     <string name="dialog_message_delete_saving">You are about to delete this saving, this action cannot be undone.</string>
-    <string name="dialog_message_request_alarm_permission">Deadlines requires alarms and reminders permission to work properly. Please grant this permission.</string>
 
     <string name="dialog_button_crash_email">Email report</string>
     <string name="dialog_button_crash_save">Save to file</string>
     <string name="dialog_button_crash_dismiss">Dismiss</string>
     <string name="dialog_button_grant">Grant</string>
     <string name="dialog_button_cancel">Cancel</string>
-    <string name="dialog_button_create">Create</string>
     <string name="dialog_button_close">Close</string>
-    <string name="dialog_button_edit">Save</string>
     <string name="dialog_button_save">Save Goal</string>
     <string name="dialog_button_delete">Delete</string>
     <string name="dialog_button_submit">Submit</string>
 
-    <string name="menu_item_save">Save</string>
     <string name="menu_item_archive">Archive</string>
     <string name="menu_item_settings">Settings</string>
     <string name="menu_item_about">About</string>
-    <string name="menu_item_overflow">More Options</string>
     <string name="menu_item_sort">Sort By</string>
     <string name="menu_item_search">Search</string>
     <string name="search_hint">Search savings goals…</string>
@@ -86,7 +74,6 @@
     <string name="toast_export_successful">Export successful</string>
     <string name="toast_export_no_savings_found">No savings to export</string>
     <string name="toast_notification_permission_denied">Notification permission denied</string>
-    <string name="toast_deny_import_notice">Deadlines may not work properly</string>
 
     <string name="tooltip_share">Share Notes</string>
     <string name="tooltip_update">New Transaction</string>
@@ -141,16 +128,8 @@
     <string name="toast_no_auto_backup">No auto-backup file found</string>
     <string name="btn_restore_from_backup">Restore from Backup</string>
 
-    <!--About Preference Category -->
-    <string name="preference_support_title">Support the developer</string>
-    <string name="preference_support_summary">If you enjoy using Super Center, you can support its development</string>
-    <string name="preference_category_about">About</string>
     <string name="preference_app_version">Version</string>
     <string name="preference_app_license">License</string>
-    <string name="preference_app_source_code_title">Source Code</string>
-    <string name="preference_app_source_code_summary">Check the Github repository and the README</string>
-    <string name="preference_app_author">Author</string>
-    <string name="preference_author_note_title">Author Notes</string>
     <string name="preference_author_note_summary">Crafted with care by Az-har. A clean, privacy-first offline savings tracker built for achieving your financial goals without ads, trackers, or complexity.</string>
 
     <!-- Theme options -->
@@ -177,11 +156,8 @@
     <string name="notification_deadline_advance_title">%s Due Tomorrow!</string>
     <string name="notification_deadline_advance_body">The deadline for your goal \"%s\" is tomorrow. Check your progress!</string>
 
-    <!-- Feedback & Swipe Action strings -->
+    <!-- Feedback strings -->
     <string name="snackbar_archived">%s archived</string>
     <string name="snackbar_unarchived">%s restored</string>
     <string name="snackbar_undo">UNDO</string>
-    <string name="swipe_action_transact">Transact</string>
-    <string name="swipe_action_archive">Archive</string>
-    <string name="swipe_action_unarchive">Restore</string>
 </resources>
