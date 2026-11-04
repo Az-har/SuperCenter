@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">Super Center</string>
     <string name="widget_habit_description">Track and log daily habit quotas and cumulative debt from your home screen.</string>
+    <string name="widget_single_habit_title">Daily Quota (Quick Counter)</string>
+    <string name="widget_single_habit_description">Quick +/- counter and 1-tap completion for a specific daily habit.</string>
+    <string name="widget_financial_title">Financial Overview &amp; Quick Add</string>
+    <string name="widget_financial_description">Current wallet balance, monthly expenses, and 1-tap transaction logger.</string>
     <string name="habit_tracker_title">Daily Quota &amp; Habit Tracker</string>
     <string name="menu_item_habits">Habits &amp; Quotas</string>
     <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>

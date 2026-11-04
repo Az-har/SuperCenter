@@ -292,6 +292,8 @@ class TrackerCompleteCallback : ActionCallback {
 }
 
 fun updateAllHabitWidgets(context: Context) {
+    updateAllSingleHabitWidgets(context)
+
     try {
         val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
         val glanceComponent = android.content.ComponentName(context, TrackerGlanceReceiver::class.java)

@@ -166,6 +166,9 @@ object SmsTransactionProcessor {
                 )
             }
 
+            // Update financial home screen widgets
+            com.eipna.centsation.ui.widget.updateAllFinancialWidgets(context)
+
             ProcessedResult(
                 transactionId = insertedTxId,
                 savingId = targetBucketId,

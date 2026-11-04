@@ -117,6 +117,32 @@
                 android:resource="@xml/tracker_widget_info" />
         </receiver>
 
+        <!-- Single Habit Quick Counter Glance AppWidget Receiver -->
+        <receiver
+            android:name=".habit.widget.SingleTrackerGlanceReceiver"
+            android:label="@string/widget_single_habit_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/single_tracker_widget_info" />
+        </receiver>
+
+        <!-- Financial Overview & Quick Add Glance AppWidget Receiver -->
+        <receiver
+            android:name=".ui.widget.FinancialGlanceReceiver"
+            android:label="@string/widget_financial_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/financial_widget_info" />
+        </receiver>
+
         <!-- Real-Time Bank SMS Auto-Reader Receiver -->
         <receiver
             android:name=".sms.receiver.SmsTransactionReceiver"
