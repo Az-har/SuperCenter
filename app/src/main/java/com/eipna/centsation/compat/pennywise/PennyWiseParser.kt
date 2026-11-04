@@ -2,10 +2,9 @@ package com.eipna.centsation.compat.pennywise
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
 
 object PennyWiseParser {
 
@@ -376,9 +375,9 @@ object PennyWiseParser {
 
     private fun parseDateToMillis(dateStr: String?): Long {
         if (dateStr.isNullOrBlank()) return System.currentTimeMillis()
+        val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT)
         return try {
-            val ldt = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME)
-            ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            isoFormat.parse(dateStr)?.time ?: System.currentTimeMillis()
         } catch (e: Exception) {
             try {
                 dateStr.toLongOrNull() ?: System.currentTimeMillis()

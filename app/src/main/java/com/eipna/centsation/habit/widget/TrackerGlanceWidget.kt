@@ -35,7 +35,6 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.Button
 import androidx.glance.ButtonDefaults
-import com.eipna.centsation.habit.calendar.CalendarSyncManager
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
@@ -268,7 +267,6 @@ class TrackerLogCallback : ActionCallback {
         TrackerGlanceWidget().update(context, glanceId)
 
         if (updated != null) {
-            CalendarSyncManager.syncTrackerEvent(context, updated)
             TrackerNotificationHandler.showTrackerNotification(context, updated)
         }
     }
@@ -288,7 +286,6 @@ class TrackerCompleteCallback : ActionCallback {
         TrackerGlanceWidget().update(context, glanceId)
 
         if (updated != null) {
-            CalendarSyncManager.syncTrackerEvent(context, updated)
             TrackerNotificationHandler.showTrackerNotification(context, updated)
         }
     }

@@ -1,6 +1,5 @@
 package com.eipna.centsation.habit.ui
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -56,11 +55,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.eipna.centsation.habit.calendar.CalendarSyncManager
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import java.util.Locale
@@ -69,18 +66,11 @@ import java.util.Locale
 @Composable
 fun HabitDashboardScreen(
     viewModel: HabitViewModel,
-    onRequestCalendarPermission: () -> Unit,
     onBackClicked: () -> Unit
 ) {
-    val context = LocalContext.current
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
-    val calendars by viewModel.calendars.collectAsStateWithLifecycle()
-    val calendarEvents by viewModel.calendarEvents.collectAsStateWithLifecycle()
-    val isLoadingCalendarEvents by viewModel.isLoadingCalendarEvents.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var showCalendarImportDialog by remember { mutableStateOf(false) }
-    var draftTrackerFromImport by remember { mutableStateOf<TrackerEntity?>(null) }
     var editingTracker by remember { mutableStateOf<TrackerEntity?>(null) }
 
     Scaffold(
@@ -108,23 +98,6 @@ fun HabitDashboardScreen(
                         )
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            if (CalendarSyncManager.hasCalendarPermissions(context)) {
-                                viewModel.loadCalendarEvents()
-                                showCalendarImportDialog = true
-                            } else {
-                                onRequestCalendarPermission()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Import Calendar Tasks"
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -132,10 +105,7 @@ fun HabitDashboardScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = {
-                    draftTrackerFromImport = null
-                    showAddDialog = true
-                },
+                onClick = { showAddDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Add Habit") }
             )
@@ -160,18 +130,7 @@ fun HabitDashboardScreen(
                 if (trackers.isEmpty()) {
                     item {
                         EmptyHabitsCard(
-                            onAddClick = {
-                                draftTrackerFromImport = null
-                                showAddDialog = true
-                            },
-                            onImportClick = {
-                                if (CalendarSyncManager.hasCalendarPermissions(context)) {
-                                    viewModel.loadCalendarEvents()
-                                    showCalendarImportDialog = true
-                                } else {
-                                    onRequestCalendarPermission()
-                                }
-                            }
+                            onAddClick = { showAddDialog = true }
                         )
                     }
                 } else {
@@ -208,26 +167,11 @@ fun HabitDashboardScreen(
 
     if (showAddDialog) {
         AddEditTrackerDialog(
-            initialTracker = draftTrackerFromImport,
-            availableCalendars = calendars,
-            onRequestCalendarPermission = onRequestCalendarPermission,
-            onOpenCalendarImport = {
+            initialTracker = null,
+            onDismiss = { showAddDialog = false },
+            onSave = { title, target, unit, hour, minute ->
+                viewModel.addTracker(title, target, unit, hour, minute)
                 showAddDialog = false
-                if (CalendarSyncManager.hasCalendarPermissions(context)) {
-                    viewModel.loadCalendarEvents()
-                    showCalendarImportDialog = true
-                } else {
-                    onRequestCalendarPermission()
-                }
-            },
-            onDismiss = {
-                showAddDialog = false
-                draftTrackerFromImport = null
-            },
-            onSave = { title, target, unit, hour, minute, syncCal, calId, calEventId ->
-                viewModel.addTracker(title, target, unit, hour, minute, syncCal, calId, calEventId)
-                showAddDialog = false
-                draftTrackerFromImport = null
             }
         )
     }
@@ -235,63 +179,22 @@ fun HabitDashboardScreen(
     editingTracker?.let { tracker ->
         AddEditTrackerDialog(
             initialTracker = tracker,
-            availableCalendars = calendars,
-            onRequestCalendarPermission = onRequestCalendarPermission,
-            onOpenCalendarImport = null,
             onDismiss = { editingTracker = null },
-            onSave = { title, target, unit, hour, minute, syncCal, calId, calEventId ->
+            onSave = { title, target, unit, hour, minute ->
                 val updated = tracker.copy(
                     title = title,
                     baseDailyTarget = target,
                     unit = unit,
                     scheduledHour = hour,
-                    scheduledMinute = minute,
-                    syncCalendar = syncCal,
-                    calendarId = calId,
-                    calendarEventId = calEventId
+                    scheduledMinute = minute
                 )
                 viewModel.updateTracker(
                     updated,
                     tracker.scheduledHour,
-                    tracker.scheduledMinute,
-                    tracker.syncCalendar
+                    tracker.scheduledMinute
                 )
                 editingTracker = null
             }
-        )
-    }
-
-    if (showCalendarImportDialog) {
-        ImportCalendarTasksDialog(
-            availableCalendars = calendars,
-            events = calendarEvents,
-            isLoading = isLoadingCalendarEvents,
-            onRequestCalendarPermission = onRequestCalendarPermission,
-            onRefresh = { calId -> viewModel.loadCalendarEvents(calId) },
-            onCustomizeEvent = { event ->
-                draftTrackerFromImport = TrackerEntity(
-                    title = event.parsedDetails.title,
-                    baseDailyTarget = event.parsedDetails.baseDailyTarget,
-                    unit = event.parsedDetails.unit,
-                    scheduledHour = event.parsedDetails.scheduledHour,
-                    scheduledMinute = event.parsedDetails.scheduledMinute,
-                    syncCalendar = true,
-                    calendarId = event.calendarId,
-                    calendarEventId = event.id
-                )
-                showCalendarImportDialog = false
-                showAddDialog = true
-            },
-            onQuickAddEvent = { event ->
-                viewModel.importCalendarEvent(event)
-                Toast.makeText(
-                    context,
-                    "Imported '${event.parsedDetails.title}' (${event.parsedDetails.baseDailyTarget} ${event.parsedDetails.unit})",
-                    Toast.LENGTH_SHORT
-                ).show()
-                showCalendarImportDialog = false
-            },
-            onDismiss = { showCalendarImportDialog = false }
         )
     }
 }
@@ -306,58 +209,87 @@ fun HabitHeroSummaryCard(trackers: List<TrackerWithProgress>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = "TODAY'S HABIT OVERVIEW",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+        Column(
+            modifier = Modifier.padding(18.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OverviewColumn(
-                    value = "$completedToday / $totalTrackers",
-                    label = "Completed"
+                Text(
+                    text = "Today's Momentum",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
-                OverviewColumn(
-                    value = if (totalDebt > 0) "+$totalDebt" else "0",
-                    label = "Habit Debt",
-                    isWarning = totalDebt > 0
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Text(
+                        text = "$completedToday / $totalTrackers Done",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
 
-                OverviewColumn(
-                    value = "${trackers.sumOf { it.remainingToday }}",
-                    label = "Remaining Due"
-                )
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val overallProgress = if (totalTrackers == 0) 0f else completedToday.toFloat() / totalTrackers.toFloat()
+            LinearProgressIndicator(
+                progress = { overallProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                strokeCap = StrokeCap.Round
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Completed Quotas",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = "$completedToday of $totalTrackers",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Active Habit Debt Rollover",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = if (totalDebt > 0) "+$totalDebt reps backlog" else "0 (No Backlog! 🎉)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (totalDebt > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun OverviewColumn(value: String, label: String, isWarning: Boolean = false) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = if (isWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -370,8 +302,6 @@ fun TrackerCard(
     onDelete: () -> Unit
 ) {
     val tracker = item.tracker
-    val remaining = item.remainingToday
-    val debt = item.accumulatedBacklogDebt
     var menuExpanded by remember { mutableStateOf(false) }
 
     val formattedTime = remember(tracker.scheduledHour, tracker.scheduledMinute) {
@@ -384,25 +314,36 @@ fun TrackerCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (item.isCompletedToday) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (item.isCompletedToday) 0.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: Title, Alarm/Calendar Chips, More Menu
+            // Header Row: Title, Alarm Chip, More Menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = tracker.title,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = if (item.isCompletedToday) {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
                     )
+
                     Row(
-                        modifier = Modifier.padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
@@ -416,43 +357,19 @@ fun TrackerCard(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
-
-                        if (tracker.syncCalendar) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.tertiaryContainer
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DateRange,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Calendar",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
                 Box {
                     IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
                     }
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Edit") },
+                            text = { Text("Edit Habit") },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
@@ -461,13 +378,7 @@ fun TrackerCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 menuExpanded = false
                                 onDelete()
@@ -479,205 +390,145 @@ fun TrackerCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Main Quota Counter
-            if (item.isCompletedToday) {
+            // Debt & Daily Quota Info Banner
+            if (item.accumulatedBacklogDebt > 0 && !item.isCompletedToday) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            Icons.Default.Warning,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Daily quota completed! (${item.todayCompletedReps} ${tracker.unit} logged)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            text = "Habit Debt: +${item.accumulatedBacklogDebt} ${tracker.unit} rolled over from missed days",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "$remaining",
-                                fontSize = 36.sp,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "${tracker.unit} left",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            )
-                        }
-                    }
-
-                    if (debt > 0) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.errorContainer
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "+$debt debt rollover",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Breakdown Badges: Base target | Logged today | Total effective
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DetailBadge(
-                    label = "Base Target",
-                    value = "${tracker.baseDailyTarget} ${tracker.unit}",
-                    modifier = Modifier.weight(1f)
-                )
-                DetailBadge(
-                    label = "Completed Today",
-                    value = "${item.todayCompletedReps} ${tracker.unit}",
-                    modifier = Modifier.weight(1f)
-                )
-                DetailBadge(
-                    label = "Target Today",
-                    value = "${item.effectiveTargetToday} ${tracker.unit}",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Progress bar
+            // Progress Bar
             LinearProgressIndicator(
                 progress = { item.completionRatio },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .clip(CircleShape),
+                color = if (item.isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeCap = StrokeCap.Round
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Action Buttons Row: -1, +1, +5, +Base, Done
+            // Stats Row: Completed Today vs Effective Target
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = { onLogReps(-1) },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                ) {
-                    Text("-1")
-                }
+                Text(
+                    text = "${item.todayCompletedReps} / ${item.effectiveTargetToday} ${tracker.unit}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (item.isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
 
-                FilledTonalButton(
-                    onClick = { onLogReps(1) },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                ) {
-                    Text("+1")
-                }
+                Text(
+                    text = if (item.isCompletedToday) {
+                        "🎉 Completed Today!"
+                    } else {
+                        "${item.remainingToday} ${tracker.unit} remaining"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (item.isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                FilledTonalButton(
-                    onClick = { onLogReps(5) },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                ) {
-                    Text("+5")
-                }
+            Spacer(modifier = Modifier.height(14.dp))
 
-                FilledTonalButton(
-                    onClick = { onLogReps(tracker.baseDailyTarget) },
-                    modifier = Modifier.weight(1.3f),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
+            // Action Quick Increment Buttons
+            AnimatedVisibility(visible = !item.isCompletedToday) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("+${tracker.baseDailyTarget}")
-                }
+                    val increments = when {
+                        tracker.baseDailyTarget >= 1000 -> listOf(100, 500, 1000)
+                        tracker.baseDailyTarget >= 50 -> listOf(5, 10, 25)
+                        tracker.baseDailyTarget >= 20 -> listOf(2, 5, 10)
+                        tracker.baseDailyTarget >= 5 -> listOf(1, 2, 5)
+                        else -> listOf(1)
+                    }
 
-                if (remaining > 0) {
+                    increments.forEach { inc ->
+                        FilledTonalButton(
+                            onClick = { onLogReps(inc) },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                        ) {
+                            Text(text = "+$inc")
+                        }
+                    }
+
                     Button(
                         onClick = onMarkDone,
-                        modifier = Modifier.weight(1.5f),
+                        modifier = Modifier.weight(1.2f),
                         contentPadding = ButtonDefaults.TextButtonContentPadding
                     ) {
-                        Text("Done")
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Done")
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun DetailBadge(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
-            )
+            AnimatedVisibility(visible = item.isCompletedToday) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Quota met for today! Streak intact.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    OutlinedButton(
+                        onClick = { onLogReps(1) },
+                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                    ) {
+                        Text(text = "+1 Bonus")
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 fun EmptyHabitsCard(
-    onAddClick: () -> Unit,
-    onImportClick: () -> Unit
+    onAddClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -711,21 +562,10 @@ fun EmptyHabitsCard(
                 lineHeight = 20.sp
             )
             Spacer(modifier = Modifier.height(18.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(onClick = onAddClick) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Create Habit")
-                }
-
-                OutlinedButton(onClick = onImportClick) {
-                    Icon(Icons.Default.DateRange, contentDescription = null)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Import Tasks")
-                }
+            Button(onClick = onAddClick) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Create Habit")
             }
         }
     }

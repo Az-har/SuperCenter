@@ -18,18 +18,6 @@ class HabitTrackerActivity : ComponentActivity() {
 
     private val viewModel: HabitViewModel by viewModels()
 
-    private val requestCalendarPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.values.all { it }
-        if (granted) {
-            viewModel.loadCalendars()
-            Toast.makeText(this, "Calendar access granted!", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Calendar permissions are required to sync habit events.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -56,14 +44,6 @@ class HabitTrackerActivity : ComponentActivity() {
             SuperCenterTheme {
                 HabitDashboardScreen(
                     viewModel = viewModel,
-                    onRequestCalendarPermission = {
-                        requestCalendarPermissionsLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.READ_CALENDAR,
-                                Manifest.permission.WRITE_CALENDAR
-                            )
-                        )
-                    },
                     onBackClicked = { finish() }
                 )
             }

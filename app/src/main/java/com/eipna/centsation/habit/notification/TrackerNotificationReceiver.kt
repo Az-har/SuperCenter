@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.RemoteInput
-import com.eipna.centsation.habit.calendar.CalendarSyncManager
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.widget.updateAllHabitWidgets
 import kotlinx.coroutines.CoroutineScope
@@ -35,8 +34,6 @@ class TrackerNotificationReceiver : BroadcastReceiver() {
                             TrackerAlarmScheduler.scheduleDailyAlarm(context, current.tracker)
                             // Display notification
                             TrackerNotificationHandler.showTrackerNotification(context, current)
-                            // Sync calendar
-                            CalendarSyncManager.syncTrackerEvent(context, current)
                         }
                     }
 
@@ -56,7 +53,6 @@ class TrackerNotificationReceiver : BroadcastReceiver() {
                             val updated = repository.logReps(trackerId, reps)
                             if (updated != null) {
                                 TrackerNotificationHandler.showTrackerNotification(context, updated)
-                                CalendarSyncManager.syncTrackerEvent(context, updated)
                                 updateAllHabitWidgets(context)
                             }
                         }
@@ -68,7 +64,6 @@ class TrackerNotificationReceiver : BroadcastReceiver() {
                             val updated = repository.logReps(trackerId, current.tracker.baseDailyTarget)
                             if (updated != null) {
                                 TrackerNotificationHandler.showTrackerNotification(context, updated)
-                                CalendarSyncManager.syncTrackerEvent(context, updated)
                                 updateAllHabitWidgets(context)
                             }
                         }

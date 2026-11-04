@@ -1,7 +1,6 @@
 package com.eipna.centsation.habit.ui
 
 import android.app.TimePickerDialog
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,23 +8,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,27 +34,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.eipna.centsation.habit.calendar.CalendarSyncManager
-import com.eipna.centsation.habit.calendar.UserCalendar
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import java.util.Locale
 
 @Composable
 fun AddEditTrackerDialog(
     initialTracker: TrackerEntity? = null,
-    availableCalendars: List<UserCalendar>,
-    onRequestCalendarPermission: () -> Unit,
-    onOpenCalendarImport: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSave: (
         title: String,
         target: Int,
         unit: String,
         hour: Int,
-        minute: Int,
-        syncCalendar: Boolean,
-        calendarId: Long?,
-        calendarEventId: Long?
+        minute: Int
     ) -> Unit
 ) {
     val context = LocalContext.current
@@ -69,19 +55,7 @@ fun AddEditTrackerDialog(
     var unit by remember { mutableStateOf(initialTracker?.unit ?: "reps") }
     var hour by remember { mutableIntStateOf(initialTracker?.scheduledHour ?: 21) }
     var minute by remember { mutableIntStateOf(initialTracker?.scheduledMinute ?: 0) }
-    var syncCalendar by remember { mutableStateOf(initialTracker?.syncCalendar ?: false) }
-    var selectedCalendarId by remember {
-        mutableStateOf(
-            initialTracker?.calendarId
-                ?: availableCalendars.firstOrNull { it.isPrimary }?.id
-                ?: availableCalendars.firstOrNull()?.id
-        )
-    }
-    var selectedCalendarEventId by remember {
-        mutableStateOf(initialTracker?.calendarEventId)
-    }
 
-    var calendarDropdownExpanded by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val formattedTime = remember(hour, minute) {
@@ -89,8 +63,6 @@ fun AddEditTrackerDialog(
         val amPm = if (hour < 12) "AM" else "PM"
         String.format(Locale.getDefault(), "%02d:%02d %s", h, minute, amPm)
     }
-
-    val hasCalendarPerms = CalendarSyncManager.hasCalendarPermissions(context)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -107,46 +79,7 @@ fun AddEditTrackerDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                if (initialTracker == null && onOpenCalendarImport != null) {
-                    OutlinedButton(
-                        onClick = onOpenCalendarImport,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Default.DateRange, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Import from Calendar Tasks")
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
-
-                if (selectedCalendarEventId != null) {
-                    Surface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.tertiary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Linked to Calendar Event #$selectedCalendarEventId",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
+                // Title
                 OutlinedTextField(
                     value = title,
                     onValueChange = {
@@ -154,13 +87,14 @@ fun AddEditTrackerDialog(
                         errorMessage = null
                     },
                     label = { Text("Habit Title") },
-                    placeholder = { Text("e.g. Pushups, Reading, Hydration") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    placeholder = { Text("e.g. Pushups, Read Book, Drink Water") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Target & Unit Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -168,35 +102,70 @@ fun AddEditTrackerDialog(
                     OutlinedTextField(
                         value = targetText,
                         onValueChange = {
-                            if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                targetText = it
-                            }
+                            targetText = it.filter { ch -> ch.isDigit() }
+                            errorMessage = null
                         },
                         label = { Text("Daily Target") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
 
                     OutlinedTextField(
                         value = unit,
-                        onValueChange = { unit = it },
+                        onValueChange = {
+                            unit = it
+                            errorMessage = null
+                        },
                         label = { Text("Unit") },
-                        placeholder = { Text("reps") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        placeholder = { Text("reps, pages, mins") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick unit suggestions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("reps", "pages", "glasses", "mins", "steps").forEach { suggestion ->
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = if (unit.equals(suggestion, ignoreCase = true)) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            modifier = Modifier
+                                .weight(1f),
+                            onClick = { unit = suggestion }
+                        ) {
+                            Text(
+                                text = suggestion,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(vertical = 6.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = if (unit.equals(suggestion, ignoreCase = true)) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Daily Reminder Time
                 Text(
-                    text = "Daily Reminder Time",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Daily Reminder & Reset Time",
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
                 Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedButton(
@@ -217,110 +186,6 @@ fun AddEditTrackerDialog(
                     Icon(imageVector = Icons.Default.DateRange, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "Scheduled at: $formattedTime")
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Google Calendar Sync
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sync with Google Calendar",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Blocks off daily quota time on device calendar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = syncCalendar,
-                        onCheckedChange = { checked ->
-                            syncCalendar = checked
-                            if (checked && !hasCalendarPerms) {
-                                onRequestCalendarPermission()
-                            }
-                        }
-                    )
-                }
-
-                if (syncCalendar) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (!hasCalendarPerms) {
-                        OutlinedButton(
-                            onClick = onRequestCalendarPermission,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Grant Calendar Access")
-                        }
-                    } else if (availableCalendars.isEmpty()) {
-                        Text(
-                            text = "No on-device Google calendars found.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    } else {
-                        val currentCal = availableCalendars.firstOrNull { it.id == selectedCalendarId }
-                            ?: availableCalendars.first()
-
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "Selected Calendar:",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedButton(
-                                onClick = { calendarDropdownExpanded = true },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${currentCal.displayName} (${currentCal.accountName})",
-                                        maxLines = 1,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
-                            }
-
-                            DropdownMenu(
-                                expanded = calendarDropdownExpanded,
-                                onDismissRequest = { calendarDropdownExpanded = false }
-                            ) {
-                                availableCalendars.forEach { cal ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Text(
-                                                    text = cal.displayName,
-                                                    fontWeight = if (cal.id == selectedCalendarId) FontWeight.Bold else FontWeight.Normal
-                                                )
-                                                Text(
-                                                    text = cal.accountName,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        },
-                                        onClick = {
-                                            selectedCalendarId = cal.id
-                                            calendarDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
 
                 if (errorMessage != null) {
@@ -351,10 +216,7 @@ fun AddEditTrackerDialog(
                         target,
                         unit.trim().ifEmpty { "reps" },
                         hour,
-                        minute,
-                        syncCalendar,
-                        if (syncCalendar) selectedCalendarId else null,
-                        if (syncCalendar) selectedCalendarEventId else null
+                        minute
                     )
                 }
             ) {
