@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:ignore="ScopedStorage" />
 
@@ -113,6 +116,21 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/tracker_widget_info" />
         </receiver>
+
+        <!-- Real-Time Bank SMS Auto-Reader Receiver -->
+        <receiver
+            android:name=".sms.receiver.SmsTransactionReceiver"
+            android:permission="android.permission.BROADCAST_SMS"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Action Receiver for SMS Notification Undo -->
+        <receiver
+            android:name=".sms.receiver.SmsActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

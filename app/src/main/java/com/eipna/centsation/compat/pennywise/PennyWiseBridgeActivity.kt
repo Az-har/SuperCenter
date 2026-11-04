@@ -1,9 +1,11 @@
 package com.eipna.centsation.compat.pennywise
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -35,6 +37,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -64,10 +69,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.eipna.centsation.habit.ui.theme.SuperCenterTheme
+import com.eipna.centsation.sms.processor.SmsTransactionProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class PennyWiseBridgeActivity : ComponentActivity() {
 
@@ -92,6 +100,7 @@ fun PennyWiseBridgeScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val registry = remember { PennyWiseRegistry.getInstance(context) }
 
     var selectedFileName by remember { mutableStateOf<String?>(null) }
     var parsedPackage by remember { mutableStateOf<PennyWiseParsedPackage?>(null) }
@@ -99,6 +108,24 @@ fun PennyWiseBridgeScreen(
     var isImporting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var importStats by remember { mutableStateOf<PennyWiseDatabaseImporter.ImportStats?>(null) }
+
+    // SMS Auto-Tracking states
+    var smsTrackingEnabled by remember { mutableStateOf(registry.isSmsAutoTrackingEnabled()) }
+    var hasSmsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var recentSmsLogs by remember { mutableStateOf<List<JSONObject>>(registry.getRecentAutoLoggedList()) }
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasSmsPermission = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "SMS Auto-Tracking Permission Granted!", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Checkbox preferences
     var optSaveAliases by remember { mutableStateOf(true) }
@@ -160,6 +187,243 @@ fun PennyWiseBridgeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Real-Time Bank SMS Auto-Tracking Card
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.Default.Sms,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Bank SMS Auto-Tracking",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Automatic expense detection & clean aliases",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = smsTrackingEnabled,
+                            onCheckedChange = { enabled ->
+                                smsTrackingEnabled = enabled
+                                registry.setSmsAutoTrackingEnabled(enabled)
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Permission status banner
+                    if (!hasSmsPermission) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "SMS Permission Needed",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        text = "Allow reading incoming bank SMS to auto-log transactions.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        smsPermissionLauncher.launch(Manifest.permission.RECEIVE_SMS)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Grant")
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "SMS Listener active & ready",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // Bank chips
+                    Text(
+                        text = "Configured Bank Parsers:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SuggestionChip(onClick = {}, label = { Text("ICICI Bank") })
+                        SuggestionChip(onClick = {}, label = { Text("City Union Bank") })
+                        SuggestionChip(onClick = {}, label = { Text("Yes Bank") })
+                        SuggestionChip(onClick = {}, label = { Text("Cashfree") })
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Profile rules stat
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Hyper-Personalized Profile",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "62 Clean Aliases • 47 Categories",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Test / Simulation Button
+                    OutlinedButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                // Simulate an ICICI bank transaction with clean alias resolution (BP Anna nagar -> petrol bunk G.W)
+                                SmsTransactionProcessor.processSms(
+                                    context = context,
+                                    sender = "VK-ICICIB",
+                                    body = "Acct XX1234 is debited for Rs 450.00 on 04-Nov-26. Info: UPI/529482910482/BP Anna nagar. Avl Bal Rs 15,200.00",
+                                    timestamp = System.currentTimeMillis()
+                                )
+                                recentSmsLogs = registry.getRecentAutoLoggedList()
+                                Toast.makeText(context, "Test SMS simulated! Check notification shade.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Simulate Bank SMS (Test)")
+                    }
+
+                    // Recent Auto-Logged SMS list
+                    if (recentSmsLogs.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Recent Auto-Logged SMS (${recentSmsLogs.size}):",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        recentSmsLogs.take(5).forEach { logObj ->
+                            val merchant = logObj.optString("merchant", "Unknown")
+                            val cat = logObj.optString("category", "General")
+                            val amt = logObj.optDouble("amount", 0.0)
+                            val isExp = logObj.optBoolean("isExpense", true)
+                            val bank = logObj.optString("bankName", "Bank")
+
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = merchant,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "$cat • $bank",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(
+                                        text = "%s₹%,.2f".format(if (isExp) "-" else "+", amt),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isExp) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Instructions Card
             Card(
                 colors = CardDefaults.cardColors(
@@ -348,28 +612,28 @@ fun PennyWiseBridgeScreen(
 
                         CheckboxOption(
                             title = "Save Account & Merchant Aliases",
-                            subtitle = "Stores clean names in Super Center registry for all current & future SMS parsing",
+                            subtitle = "Store clean display names for merchants and accounts",
                             checked = optSaveAliases,
                             onCheckedChange = { optSaveAliases = it }
                         )
 
                         CheckboxOption(
-                            title = "Port Accounts into Savings Buckets",
-                            subtitle = "Creates/updates account buckets with current balance & aliases",
+                            title = "Import Bank & Credit Card Accounts",
+                            subtitle = "Creates or updates balance buckets in Savings",
                             checked = optImportAccounts,
                             onCheckedChange = { optImportAccounts = it }
                         )
 
                         CheckboxOption(
-                            title = "Port SMS & Manual Transactions",
-                            subtitle = "Transfers transaction history into corresponding account buckets",
+                            title = "Import Historical Transactions",
+                            subtitle = "Imports SMS and manual expenses/income into buckets",
                             checked = optImportTransactions,
                             onCheckedChange = { optImportTransactions = it }
                         )
 
                         CheckboxOption(
-                            title = "Port Debts & Loans",
-                            subtitle = "Adds lent and borrowed balances into Super Center's Debts tracker",
+                            title = "Import Loans & Debts",
+                            subtitle = "Imports active borrowings & receivables into Debts & Owed",
                             checked = optImportLoans,
                             onCheckedChange = { optImportLoans = it }
                         )
@@ -380,23 +644,30 @@ fun PennyWiseBridgeScreen(
                 Button(
                     onClick = {
                         isImporting = true
+                        errorMessage = null
                         coroutineScope.launch {
-                            val stats = PennyWiseDatabaseImporter.importPackage(
-                                context = context,
-                                pkg = pkg,
-                                importAccounts = optImportAccounts,
-                                importTransactions = optImportTransactions,
-                                importLoans = optImportLoans,
-                                saveAliases = optSaveAliases
-                            )
-                            importStats = stats
-                            isImporting = false
-                            Toast.makeText(context, "Data successfully ported into Super Center!", Toast.LENGTH_SHORT).show()
+                            try {
+                                val stats = PennyWiseDatabaseImporter.importPackage(
+                                    context = context,
+                                    pkg = pkg,
+                                    importAccounts = optImportAccounts,
+                                    importTransactions = optImportTransactions,
+                                    importLoans = optImportLoans,
+                                    saveAliases = optSaveAliases
+                                )
+                                importStats = stats
+                                Toast.makeText(context, "Data ported successfully!", Toast.LENGTH_LONG).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                errorMessage = "Import failed: ${e.localizedMessage ?: "Unknown error"}"
+                            } finally {
+                                isImporting = false
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = !isImporting
+                    enabled = !isImporting && (optImportAccounts || optImportTransactions || optImportLoans || optSaveAliases)
                 ) {
                     if (isImporting) {
                         CircularProgressIndicator(
