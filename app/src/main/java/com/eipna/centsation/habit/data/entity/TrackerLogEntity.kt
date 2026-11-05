@@ -17,6 +17,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index("trackerId"),
+        Index("date"),
         Index(value = ["trackerId", "date"], unique = true)
     ]
 )

@@ -666,7 +666,6 @@ class SingleTrackerLogCallback : ActionCallback {
         val repository = TrackerRepository.getInstance(context)
 
         val updated = repository.logReps(trackerId, delta)
-        SingleTrackerGlanceWidget().update(context, glanceId)
         updateAllHabitWidgets(context)
 
         if (updated != null) {
@@ -686,7 +685,6 @@ class SingleTrackerCompleteCallback : ActionCallback {
         val current = repository.getTrackerWithProgressById(trackerId) ?: return
 
         val updated = repository.logReps(trackerId, current.remainingToday)
-        SingleTrackerGlanceWidget().update(context, glanceId)
         updateAllHabitWidgets(context)
 
         if (updated != null) {

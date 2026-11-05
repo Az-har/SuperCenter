@@ -1,5 +1,7 @@
 package com.eipna.centsation.habit
 
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.eipna.centsation.habit.data.db.HabitDatabase
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
@@ -7,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.lang.reflect.Proxy
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -145,5 +148,24 @@ class HabitDebtCalculationTest {
         assertEquals(0, item.accumulatedBacklogDebt)
         assertTrue(item.isCompletedToday)
         assertEquals(1.0f, item.completionRatio, 0.001f)
+    }
+
+    @Test
+    fun migration1_2_createsIndicesCorrectly() {
+        val executedSql = mutableListOf<String>()
+        val db = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        HabitDatabase.MIGRATION_1_2.migrate(db)
+
+        assertTrue(executedSql.contains("CREATE INDEX IF NOT EXISTS index_trackers_isActive ON trackers(isActive)"))
+        assertTrue(executedSql.contains("CREATE INDEX IF NOT EXISTS index_tracker_logs_date ON tracker_logs(date)"))
     }
 }

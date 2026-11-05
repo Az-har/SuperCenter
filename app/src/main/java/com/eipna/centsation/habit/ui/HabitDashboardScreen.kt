@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
+import com.eipna.centsation.habit.util.HabitHeatmapUtil
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -304,6 +305,10 @@ fun TrackerCard(
     val tracker = item.tracker
     var menuExpanded by remember { mutableStateOf(false) }
 
+    val streakStats = remember(item.logs, tracker.baseDailyTarget, item.todayDate) {
+        HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
+    }
+
     val formattedTime = remember(tracker.scheduledHour, tracker.scheduledMinute) {
         val h = if (tracker.scheduledHour == 0) 12 else if (tracker.scheduledHour > 12) tracker.scheduledHour - 12 else tracker.scheduledHour
         val amPm = if (tracker.scheduledHour < 12) "AM" else "PM"
@@ -355,6 +360,27 @@ fun TrackerCard(
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = if (streakStats.currentStreak > 0) {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        ) {
+                            Text(
+                                text = if (streakStats.currentStreak > 0) "🔥 ${streakStats.currentStreak}d streak" else "🔥 0d streak",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                color = if (streakStats.currentStreak > 0) {
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             )
                         }
                     }

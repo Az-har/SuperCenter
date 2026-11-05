@@ -9,7 +9,7 @@ import androidx.annotation.Nullable;
 public class Database extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "centsation.db";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 6;
 
     public static final String TABLE_SAVING = "savings";
     public static final String COLUMN_SAVING_ID = "id";
@@ -58,6 +58,7 @@ public class Database extends SQLiteOpenHelper {
 
     public Database(@Nullable Context context) {
         super(context != null ? context.getApplicationContext() : null, DATABASE_NAME, null, DATABASE_VERSION);
+        setWriteAheadLoggingEnabled(true);
     }
 
     @Override
@@ -106,12 +107,15 @@ public class Database extends SQLiteOpenHelper {
         sqLiteDatabase.execSQL(createDebtTransactionTable);
         sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_transactions_saving_id ON " + TABLE_TRANSACTION + "(" + COLUMN_TRANSACTION_SAVING_ID + ");");
         sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debt_transactions_debt_id ON " + TABLE_DEBT_TRANSACTION + "(" + COLUMN_DEBT_TRANSACTION_DEBT_ID + ");");
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_savings_is_archived ON " + TABLE_SAVING + "(" + COLUMN_SAVING_IS_ARCHIVED + ");");
+        sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debts_is_archived ON " + TABLE_DEBT + "(" + COLUMN_DEBT_IS_ARCHIVED + ");");
     }
 
     @Override
     public void onConfigure(SQLiteDatabase sqLiteDatabase) {
         super.onConfigure(sqLiteDatabase);
         sqLiteDatabase.setForeignKeyConstraintsEnabled(true);
+        sqLiteDatabase.enableWriteAheadLogging();
     }
 
     @Override
@@ -131,6 +135,13 @@ public class Database extends SQLiteOpenHelper {
         if (oldVersion < 5) {
             try {
                 sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_DEBT + " ADD COLUMN " + COLUMN_DEBT_TYPE + " INTEGER NOT NULL DEFAULT 0;");
+            } catch (Exception ignored) {
+            }
+        }
+        if (oldVersion < 6) {
+            try {
+                sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_savings_is_archived ON " + TABLE_SAVING + "(" + COLUMN_SAVING_IS_ARCHIVED + ");");
+                sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debts_is_archived ON " + TABLE_DEBT + "(" + COLUMN_DEBT_IS_ARCHIVED + ");");
             } catch (Exception ignored) {
             }
         }
