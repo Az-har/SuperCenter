@@ -87,7 +87,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
 
         val currentItem = allTrackers.getOrNull(activeIndex)
 
-        // Precompute streak & heatmap bitmap for active item
+        // Precompute streak & heatmap grids for active item
         val streakStats = currentItem?.let {
             HabitHeatmapUtil.calculateStreakStats(
                 tracker = it.tracker,
@@ -96,12 +96,34 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             )
         }
 
+        val (grid35, numWeeks35) = currentItem?.let {
+            HabitHeatmapUtil.generateHeatmapGrid(
+                tracker = it.tracker,
+                logs = it.logs,
+                is365Days = false
+            )
+        } ?: Pair(emptyList(), 5)
+
+        val (grid365, numWeeks365) = if (is365Days && currentItem != null) {
+            HabitHeatmapUtil.generateHeatmapGrid(
+                tracker = currentItem.tracker,
+                logs = currentItem.logs,
+                is365Days = true
+            )
+        } else {
+            Pair(emptyList(), 0)
+        }
+
         provideContent {
             GlanceTheme {
                 HeatmapWidgetContainer(
                     context = context,
                     item = currentItem,
                     stats = streakStats,
+                    grid35 = grid35,
+                    numWeeks35 = numWeeks35,
+                    grid365 = grid365,
+                    numWeeks365 = numWeeks365,
                     totalCount = allTrackers.size,
                     currentIndex = activeIndex,
                     is365Days = is365Days,
@@ -116,6 +138,10 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         context: Context,
         item: TrackerWithProgress?,
         stats: StreakStats?,
+        grid35: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
+        numWeeks35: Int,
+        grid365: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
+        numWeeks365: Int,
         totalCount: Int,
         currentIndex: Int,
         is365Days: Boolean,
@@ -137,6 +163,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     context = context,
                     item = item,
                     stats = stats,
+                    gridItems = grid35,
+                    numWeeks = numWeeks35,
                     totalCount = totalCount,
                     currentIndex = currentIndex
                 )
@@ -145,6 +173,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     context = context,
                     item = item,
                     stats = stats,
+                    gridItems = if (is365Days) grid365 else grid35,
+                    numWeeks = if (is365Days) numWeeks365 else numWeeks35,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
                     is365Days = is365Days,
@@ -155,6 +185,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     context = context,
                     item = item,
                     stats = stats,
+                    gridItems = if (is365Days) grid365 else grid35,
+                    numWeeks = if (is365Days) numWeeks365 else numWeeks35,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
                     is365Days = is365Days,
@@ -198,6 +230,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         context: Context,
         item: TrackerWithProgress,
         stats: StreakStats,
+        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
+        numWeeks: Int,
         totalCount: Int,
         currentIndex: Int
     ) {
@@ -205,12 +239,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val isDark = isSystemInDarkTheme(context)
         val density = context.resources.displayMetrics.density
 
-        // Generate 35-day bitmap
-        val (gridItems, numWeeks) = HabitHeatmapUtil.generateHeatmapGrid(
-            tracker = tracker,
-            logs = item.logs,
-            is365Days = false
-        )
         val bitmap = HabitHeatmapUtil.renderHeatmapBitmap(
             items = gridItems,
             numWeeks = numWeeks,
@@ -314,6 +342,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         context: Context,
         item: TrackerWithProgress,
         stats: StreakStats,
+        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
+        numWeeks: Int,
         totalCount: Int,
         currentIndex: Int,
         is365Days: Boolean,
@@ -322,12 +352,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val tracker = item.tracker
         val isDark = isSystemInDarkTheme(context)
         val density = context.resources.displayMetrics.density
-
-        val (gridItems, numWeeks) = HabitHeatmapUtil.generateHeatmapGrid(
-            tracker = tracker,
-            logs = item.logs,
-            is365Days = is365Days
-        )
 
         val targetWidth = if (is365Days) 240 else 220
         val targetHeight = if (is365Days) 62 else 56
@@ -477,6 +501,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         context: Context,
         item: TrackerWithProgress,
         stats: StreakStats,
+        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
+        numWeeks: Int,
         totalCount: Int,
         currentIndex: Int,
         is365Days: Boolean,
@@ -485,12 +511,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val tracker = item.tracker
         val isDark = isSystemInDarkTheme(context)
         val density = context.resources.displayMetrics.density
-
-        val (gridItems, numWeeks) = HabitHeatmapUtil.generateHeatmapGrid(
-            tracker = tracker,
-            logs = item.logs,
-            is365Days = is365Days
-        )
 
         val bitmap = HabitHeatmapUtil.renderHeatmapBitmap(
             items = gridItems,
@@ -719,22 +739,5 @@ class HabitHeatmapLogAction : ActionCallback {
 }
 
 fun updateAllHabitHeatmapWidgets(context: Context) {
-    try {
-        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
-        val glanceComponent = android.content.ComponentName(context, HabitHeatmapGlanceReceiver::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(glanceComponent)
-        if (widgetIds == null || widgetIds.isEmpty()) {
-            return
-        }
-    } catch (e: Exception) {
-        // Fallback
-    }
-
-    CoroutineScope(Dispatchers.IO).launch {
-        try {
-            HabitHeatmapGlanceWidget().updateAll(context)
-        } catch (e: Exception) {
-            // Widget might not be placed
-        }
-    }
+    HabitWidgetSyncManager.enqueueUpdate(context)
 }

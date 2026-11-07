@@ -71,12 +71,16 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         }
 
         val currentItem = allTrackers.getOrNull(activeIndex)
+        val streakStats = currentItem?.let {
+            HabitHeatmapUtil.calculateStreakStats(it.tracker, it.logs, it.todayDate)
+        }
 
         provideContent {
             GlanceTheme {
                 SingleWidgetContainer(
                     context = context,
                     item = currentItem,
+                    stats = streakStats,
                     totalCount = allTrackers.size,
                     currentIndex = activeIndex,
                     glanceIdHash = id.hashCode()
@@ -89,6 +93,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     private fun SingleWidgetContainer(
         context: Context,
         item: TrackerWithProgress?,
+        stats: com.eipna.centsation.habit.util.StreakStats?,
         totalCount: Int,
         currentIndex: Int,
         glanceIdHash: Int
@@ -105,10 +110,11 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
             if (item == null) {
                 EmptyWidgetState()
             } else if (size.width < 180.dp || size.height < 110.dp) {
-                CompactLayout(item = item)
+                CompactLayout(item = item, stats = stats)
             } else if (size.width >= 300.dp && size.height >= 160.dp) {
                 ExpandedLayout(
                     item = item,
+                    stats = stats,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
                     glanceIdHash = glanceIdHash
@@ -116,6 +122,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
             } else {
                 MediumLayout(
                     item = item,
+                    stats = stats,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
                     glanceIdHash = glanceIdHash
@@ -154,11 +161,14 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     }
 
     @androidx.compose.runtime.Composable
-    private fun CompactLayout(item: TrackerWithProgress) {
+    private fun CompactLayout(
+        item: TrackerWithProgress,
+        stats: com.eipna.centsation.habit.util.StreakStats?
+    ) {
         val tracker = item.tracker
         val remaining = item.remainingToday
         val unit = tracker.unit
-        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
+        val streak = stats?.currentStreak ?: 0
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
@@ -178,9 +188,9 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                     ),
                     modifier = GlanceModifier.defaultWeight()
                 )
-                if (streakStats.currentStreak > 0) {
+                if (streak > 0) {
                     Text(
-                        text = "🔥 ${streakStats.currentStreak}d",
+                        text = "🔥 ${streak}d",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
@@ -255,6 +265,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     @androidx.compose.runtime.Composable
     private fun MediumLayout(
         item: TrackerWithProgress,
+        stats: com.eipna.centsation.habit.util.StreakStats?,
         totalCount: Int,
         currentIndex: Int,
         glanceIdHash: Int
@@ -263,7 +274,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
-        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
+        val streak = stats?.currentStreak ?: 0
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
             // Header Row: Title & Cycle Selector
@@ -283,9 +294,9 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         .clickable(actionStartActivity<HabitTrackerActivity>())
                 )
 
-                if (streakStats.currentStreak > 0) {
+                if (streak > 0) {
                     Text(
-                        text = "🔥 ${streakStats.currentStreak}d",
+                        text = "🔥 ${streak}d",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
@@ -436,6 +447,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
     @androidx.compose.runtime.Composable
     private fun ExpandedLayout(
         item: TrackerWithProgress,
+        stats: com.eipna.centsation.habit.util.StreakStats?,
         totalCount: Int,
         currentIndex: Int,
         glanceIdHash: Int
@@ -444,7 +456,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
-        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
+        val streak = stats?.currentStreak ?: 0
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
             // Top Bar
@@ -466,7 +478,7 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         )
                     )
                     Text(
-                        text = "🔥 ${streakStats.currentStreak}d Streak • Base: ${tracker.baseDailyTarget} $unit/day",
+                        text = "🔥 ${streak}d Streak • Base: ${tracker.baseDailyTarget} $unit/day",
                         style = TextStyle(
                             fontSize = 12.sp,
                             color = GlanceTheme.colors.primary
@@ -690,20 +702,5 @@ class SingleTrackerCompleteCallback : ActionCallback {
 }
 
 fun updateAllSingleHabitWidgets(context: Context) {
-    try {
-        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
-        val glanceComponent = android.content.ComponentName(context, SingleTrackerGlanceReceiver::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(glanceComponent)
-        if (widgetIds == null || widgetIds.isEmpty()) return
-    } catch (e: Exception) {
-        // Fallback
-    }
-
-    CoroutineScope(Dispatchers.IO).launch {
-        try {
-            SingleTrackerGlanceWidget().updateAll(context)
-        } catch (e: Exception) {
-            // Widget might not be placed
-        }
-    }
+    HabitWidgetSyncManager.enqueueUpdate(context)
 }

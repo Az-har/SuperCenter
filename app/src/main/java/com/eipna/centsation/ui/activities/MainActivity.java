@@ -178,6 +178,28 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             return true;
         });
 
+        binding.bottomNavigation.setSelectedItemId(R.id.nav_bottom_savings);
+        binding.bottomNavigation.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_bottom_savings) {
+                if (isDebtMode) setAppMode(false);
+                return true;
+            } else if (id == R.id.nav_bottom_debts) {
+                if (!isDebtMode) setAppMode(true);
+                return true;
+            } else if (id == R.id.nav_bottom_habits) {
+                startActivity(new Intent(MainActivity.this, HabitTrackerActivity.class));
+                return false;
+            } else if (id == R.id.nav_bottom_analytics) {
+                showAnalytics();
+                return false;
+            } else if (id == R.id.nav_bottom_settings) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+                return false;
+            }
+            return false;
+        });
+
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -432,6 +454,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         super.onResume();
         if (binding != null) {
             binding.navigationView.setCheckedItem(isDebtMode ? R.id.nav_debts : R.id.nav_savings);
+            int targetId = isDebtMode ? R.id.nav_bottom_debts : R.id.nav_bottom_savings;
+            if (binding.bottomNavigation.getSelectedItemId() != targetId) {
+                binding.bottomNavigation.setSelectedItemId(targetId);
+            }
         }
         if (isDebtMode) {
             loadDebts();
@@ -498,6 +524,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
 
     private void setAppMode(boolean debtMode) {
         this.isDebtMode = debtMode;
+        int targetNavId = debtMode ? R.id.nav_bottom_debts : R.id.nav_bottom_savings;
+        if (binding.bottomNavigation.getSelectedItemId() != targetNavId) {
+            binding.bottomNavigation.setSelectedItemId(targetNavId);
+        }
         if (!debtMode) {
             binding.toolbar.setTitle(R.string.toolbar_main);
             binding.navigationView.setCheckedItem(R.id.nav_savings);
@@ -612,11 +642,14 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         }
 
+        int errorColor = com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, androidx.appcompat.R.attr.colorError);
+        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, androidx.appcompat.R.attr.colorPrimary);
+
         if (filterMode == 1) { // Only I Owe
             binding.dashboardCardHeader.setText("TOTAL DEBT (I OWE)");
             binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
                     FormatUtil.formatAmount(totalIOweRemaining, this)));
-            binding.dashboardTotalSaved.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.dashboardTotalSaved.setTextColor(errorColor);
             binding.dashboardTotalGoal.setText(String.format("Borrowed: %s%s | Paid: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalIOweOriginal, this),
                     currencySymbol, FormatUtil.formatAmount(totalIOwePaid, this)));
@@ -629,7 +662,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             binding.dashboardCardHeader.setText("TOTAL OWED TO YOU");
             binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
                     FormatUtil.formatAmount(totalOwedRemaining, this)));
-            binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+            binding.dashboardTotalSaved.setTextColor(primaryColor);
             binding.dashboardTotalGoal.setText(String.format("Lent: %s%s | Collected: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalOwedOriginal, this),
                     currencySymbol, FormatUtil.formatAmount(totalOwedPaid, this)));
@@ -644,15 +677,15 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             if (netDebt > 0) {
                 binding.dashboardTotalSaved.setText(String.format("-%s%s", currencySymbol,
                         FormatUtil.formatAmount(netDebt, this)));
-                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.dashboardTotalSaved.setTextColor(errorColor);
             } else if (netDebt < 0) {
                 binding.dashboardTotalSaved.setText(String.format("+%s%s", currencySymbol,
                         FormatUtil.formatAmount(Math.abs(netDebt), this)));
-                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+                binding.dashboardTotalSaved.setTextColor(primaryColor);
             } else {
                 binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
                         FormatUtil.formatAmount(0, this)));
-                binding.dashboardTotalSaved.setTextColor(Color.parseColor("#1B6B50"));
+                binding.dashboardTotalSaved.setTextColor(primaryColor);
             }
 
             binding.dashboardTotalGoal.setText(String.format("You Owe: %s%s | Owed to You: %s%s",

@@ -376,7 +376,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:layoutAnimation="@anim/layout_animation_fall_down"
         android:clipToPadding="false"
-        android:paddingBottom="96dp"
+        android:paddingBottom="150dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
@@ -386,7 +386,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:layoutAnimation="@anim/layout_animation_fall_down"
         android:clipToPadding="false"
-        android:paddingBottom="96dp"
+        android:paddingBottom="150dp"
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
@@ -453,13 +453,23 @@
         android:id="@+id/create_saving"
         android:layout_gravity="end|bottom"
         android:src="@drawable/ic_add"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="92dp"
         android:layout_marginEnd="20dp"
         app:elevation="4dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"
         android:importantForAccessibility="no" />
+
+    <!-- Modern Material 3 Bottom Navigation Bar -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        style="@style/Widget.Material3.BottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/menu_bottom_nav" />
 
     <!-- Confetti Particle View -->
     <com.eipna.centsation.util.ConfettiView

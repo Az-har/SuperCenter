@@ -65,16 +65,23 @@ class TrackerGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = TrackerRepository.getInstance(context)
         val items = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
+        val streaks = items.associate {
+            it.tracker.id to HabitHeatmapUtil.calculateStreakStats(it.tracker, it.logs, it.todayDate)
+        }
 
         provideContent {
             GlanceTheme {
-                WidgetRoot(context = context, items = items)
+                WidgetRoot(context = context, items = items, streaks = streaks)
             }
         }
     }
 
     @androidx.compose.runtime.Composable
-    private fun WidgetRoot(context: Context, items: List<TrackerWithProgress>) {
+    private fun WidgetRoot(
+        context: Context,
+        items: List<TrackerWithProgress>,
+        streaks: Map<Long, com.eipna.centsation.habit.util.StreakStats>
+    ) {
         val doneCount = items.count { it.isCompletedToday }
 
         Box(
@@ -127,7 +134,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
                     LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                         items(items) { item ->
-                            TrackerWidgetItem(item = item)
+                            TrackerWidgetItem(item = item, streakStats = streaks[item.tracker.id])
                             Spacer(modifier = GlanceModifier.height(8.dp))
                         }
                     }
@@ -166,12 +173,15 @@ class TrackerGlanceWidget : GlanceAppWidget() {
     }
 
     @androidx.compose.runtime.Composable
-    private fun TrackerWidgetItem(item: TrackerWithProgress) {
+    private fun TrackerWidgetItem(
+        item: TrackerWithProgress,
+        streakStats: com.eipna.centsation.habit.util.StreakStats?
+    ) {
         val tracker = item.tracker
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
-        val streakStats = HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
+        val currentStreak = streakStats?.currentStreak ?: 0
 
         Column(
             modifier = GlanceModifier
@@ -184,7 +194,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val titleDisplay = if (streakStats.currentStreak > 0) "${tracker.title} 🔥 ${streakStats.currentStreak}d" else tracker.title
+                val titleDisplay = if (currentStreak > 0) "${tracker.title} 🔥 ${currentStreak}d" else tracker.title
                 Text(
                     text = titleDisplay,
                     style = TextStyle(
@@ -350,25 +360,5 @@ class TrackerCompleteCallback : ActionCallback {
 }
 
 fun updateAllHabitWidgets(context: Context) {
-    updateAllSingleHabitWidgets(context)
-    updateAllHabitHeatmapWidgets(context)
-
-    try {
-        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
-        val glanceComponent = android.content.ComponentName(context, TrackerGlanceReceiver::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(glanceComponent)
-        if (widgetIds == null || widgetIds.isEmpty()) {
-            return
-        }
-    } catch (e: Exception) {
-        // Fallback
-    }
-
-    CoroutineScope(Dispatchers.IO).launch {
-        try {
-            TrackerGlanceWidget().updateAll(context)
-        } catch (e: Exception) {
-            // Widget might not be placed
-        }
-    }
+    HabitWidgetSyncManager.enqueueUpdate(context)
 }

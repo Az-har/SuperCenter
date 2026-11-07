@@ -109,18 +109,21 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.detailDebtName.setText(debt.getName());
 
         boolean isOwed = debt.isOwedToMe();
+        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorPrimary);
+        int errorColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorError);
+
         if (isOwed) {
             binding.detailDebtTypeBadge.setText("📥 Owed to Me");
-            binding.detailDebtTypeBadge.setTextColor(Color.parseColor("#1B6B50"));
+            binding.detailDebtTypeBadge.setTextColor(primaryColor);
             binding.detailDebtRemainingLabel.setText("PENDING TO COLLECT");
-            binding.detailDebtRemainingLabel.setTextColor(Color.parseColor("#1B6B50"));
+            binding.detailDebtRemainingLabel.setTextColor(primaryColor);
             binding.btnSubmitPayment.setText("Record Received");
             binding.paymentAmountLayout.setHint("Payment Received (" + currencySymbol + ")");
         } else {
             binding.detailDebtTypeBadge.setText("💸 I Owe");
-            binding.detailDebtTypeBadge.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.detailDebtTypeBadge.setTextColor(errorColor);
             binding.detailDebtRemainingLabel.setText("REMAINING DEBT");
-            binding.detailDebtRemainingLabel.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.detailDebtRemainingLabel.setTextColor(errorColor);
             binding.btnSubmitPayment.setText("Record Payment");
             binding.paymentAmountLayout.setHint("Repayment Amount (" + currencySymbol + ")");
         }
@@ -178,7 +181,7 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
                 }
                 if (amountTv != null) {
                     amountTv.setText(String.format(isOwed ? "+%s%s" : "-%s%s", currencySymbol, FormatUtil.formatAmount(tx.getAmount(), context)));
-                    amountTv.setTextColor(Color.parseColor(isOwed ? "#006874" : "#1B6B50"));
+                    amountTv.setTextColor(isOwed ? primaryColor : errorColor);
                 }
                 if (dateTv != null) {
                     dateTv.setText(DateParser.format(tx.getDate(), deadlineFormat));

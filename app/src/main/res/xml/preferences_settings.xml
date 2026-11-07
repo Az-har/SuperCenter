@@ -109,4 +109,21 @@
             android:summary="@string/preference_import_summary"
             app:iconSpaceReserved="false"/>
     </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Hardware &amp; OriginOS Optimization"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="hardware_telemetry"
+            android:title="Device &amp; Battery Telemetry"
+            android:summary="View real-time hardware, thermal, and battery metrics"
+            app:iconSpaceReserved="false"/>
+
+        <Preference
+            android:key="originos_power_settings"
+            android:title="OriginOS Background Protection"
+            android:summary="Configure high background power consumption and autostart"
+            app:iconSpaceReserved="false"/>
+    </PreferenceCategory>
 </PreferenceScreen>

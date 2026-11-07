@@ -21,6 +21,8 @@ object TrackerAlarmScheduler {
     const val EXTRA_TRACKER_ID = "extra_tracker_id"
     const val ACTION_ALARM_TRIGGER = "com.eipna.centsation.habit.ACTION_ALARM_TRIGGER"
     const val ACTION_SNOOZE_TRIGGER = "com.eipna.centsation.habit.ACTION_SNOOZE_TRIGGER"
+    const val ACTION_MIDNIGHT_ROLLOVER = "com.eipna.centsation.habit.ACTION_MIDNIGHT_ROLLOVER"
+    private const val MIDNIGHT_ROLLOVER_REQ_CODE = 99999
 
     fun scheduleDailyAlarm(context: Context, tracker: TrackerEntity) {
         if (!tracker.isActive) {
@@ -144,7 +146,39 @@ object TrackerAlarmScheduler {
         }
     }
 
+    fun scheduleMidnightRollover(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val midnightCal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 5)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        val intent = Intent(context, TrackerNotificationReceiver::class.java).apply {
+            action = ACTION_MIDNIGHT_ROLLOVER
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            MIDNIGHT_ROLLOVER_REQ_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        try {
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC,
+                midnightCal.timeInMillis,
+                pendingIntent
+            )
+        } catch (_: Exception) {
+            alarmManager.set(AlarmManager.RTC, midnightCal.timeInMillis, pendingIntent)
+        }
+    }
+
     fun rescheduleAll(context: Context) {
+        scheduleMidnightRollover(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val repository = TrackerRepository.getInstance(context)

@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.debt.Debt;
 import com.eipna.centsation.data.debt.DebtCategory;
@@ -82,17 +83,20 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
             binding.debtName.setText(debt.getName());
 
             boolean isOwed = debt.isOwedToMe();
+            int primaryColor = com.google.android.material.color.MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorPrimary);
+            int errorColor = com.google.android.material.color.MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorError);
+
             if (isOwed) {
                 binding.debtTypeBadge.setText("📥 Owed to Me");
-                binding.debtTypeBadge.setTextColor(Color.parseColor("#1B6B50"));
-                binding.debtRemainingAmount.setTextColor(Color.parseColor("#1B6B50"));
+                binding.debtTypeBadge.setTextColor(primaryColor);
+                binding.debtRemainingAmount.setTextColor(primaryColor);
                 binding.debtRemainingLabel.setText(" pending");
                 binding.debtPercent.setText(debt.isPaidOff() ? "Settled 🎉" : debt.getProgressPercent() + "% Collected");
                 binding.btnDebtPay.setText("Record Received");
             } else {
                 binding.debtTypeBadge.setText("💸 I Owe");
-                binding.debtTypeBadge.setTextColor(Color.parseColor("#BA1A1A"));
-                binding.debtRemainingAmount.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.debtTypeBadge.setTextColor(errorColor);
+                binding.debtRemainingAmount.setTextColor(errorColor);
                 binding.debtRemainingLabel.setText(" remaining");
                 binding.debtPercent.setText(debt.isPaidOff() ? "Paid Off 🎉" : debt.getProgressPercent() + "% Paid");
                 binding.btnDebtPay.setText("Record Payment");

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_bottom_savings"
+        android:icon="@drawable/ic_savings"
+        android:title="Savings" />
+    <item
+        android:id="@+id/nav_bottom_debts"
+        android:icon="@drawable/ic_debt"
+        android:title="Debts" />
+    <item
+        android:id="@+id/nav_bottom_habits"
+        android:icon="@drawable/ic_habits"
+        android:title="Habits" />
+    <item
+        android:id="@+id/nav_bottom_analytics"
+        android:icon="@drawable/ic_insights"
+        android:title="Insights" />
+    <item
+        android:id="@+id/nav_bottom_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="Settings" />
+</menu>

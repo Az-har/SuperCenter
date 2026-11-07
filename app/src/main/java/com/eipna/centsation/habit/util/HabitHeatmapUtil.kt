@@ -248,11 +248,16 @@ object HabitHeatmapUtil {
         heightPx: Int,
         density: Float
     ): Bitmap {
+        val cappedDensity = min(density, 1.75f).coerceAtLeast(1.0f)
         val safeWidth = widthPx.coerceAtLeast(100)
         val safeHeight = heightPx.coerceAtLeast(60)
 
-        val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
+
+        // Fill background with surface color for RGB_565
+        val bgColor = if (isDarkMode) 0xFF1C1B1F.toInt() else 0xFFFEF7FF.toInt()
+        canvas.drawColor(bgColor)
 
         // Color definitions matching GitHub contribution palette & M3 Emerald
         val emptyColor = if (isDarkMode) 0xFF161B22.toInt() else 0xFFEBEDF0.toInt()
@@ -270,44 +275,40 @@ object HabitHeatmapUtil {
 
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 1f * density
+            strokeWidth = 1f * cappedDensity
         }
 
         val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 1.5f * density
+            strokeWidth = 1.5f * cappedDensity
             color = todayRingColor
         }
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = labelColor
-            textSize = if (is365Days) 8f * density else 9f * density
+            textSize = if (is365Days) 8f * cappedDensity else 9f * cappedDensity
         }
 
-        val leftMargin = if (is365Days) 16f * density else 14f * density
-        val topMargin = if (is365Days) 14f * density else 4f * density
-        val rightMargin = 4f * density
-        val bottomMargin = 4f * density
+        val leftMargin = if (is365Days) 16f * cappedDensity else 14f * cappedDensity
+        val topMargin = if (is365Days) 14f * cappedDensity else 4f * cappedDensity
+        val rightMargin = 4f * cappedDensity
+        val bottomMargin = 4f * cappedDensity
 
         val availWidth = safeWidth - leftMargin - rightMargin
         val availHeight = safeHeight - topMargin - bottomMargin
 
-        val gap = if (is365Days) 2f * density else 3.5f * density
+        val gap = if (is365Days) 2f * cappedDensity else 3.5f * cappedDensity
         val cellW = (availWidth - (numWeeks - 1) * gap) / numWeeks
         val cellH = (availHeight - 6 * gap) / 7
-        val cellSize = min(cellW, cellH).coerceAtLeast(3f * density)
-        val cornerRadius = if (is365Days) max(1.5f * density, cellSize * 0.2f) else max(3f * density, cellSize * 0.25f)
+        val cellSize = min(cellW, cellH).coerceAtLeast(3f * cappedDensity)
+        val cornerRadius = if (is365Days) max(1.5f * cappedDensity, cellSize * 0.2f) else max(3f * cappedDensity, cellSize * 0.25f)
 
         // Draw Weekday Labels ("M", "W", "F") on the left
-        val weekdayRowLabels = if (is365Days) {
-            listOf(1 to "M", 3 to "W", 5 to "F")
-        } else {
-            listOf(1 to "M", 3 to "W", 5 to "F")
-        }
+        val weekdayRowLabels = listOf(1 to "M", 3 to "W", 5 to "F")
 
         for ((row, label) in weekdayRowLabels) {
             val y = topMargin + row * (cellSize + gap) + cellSize * 0.8f
-            canvas.drawText(label, 2f * density, y, textPaint)
+            canvas.drawText(label, 2f * cappedDensity, y, textPaint)
         }
 
         // Draw Month Labels on Top for 365-day view
@@ -322,8 +323,8 @@ object HabitHeatmapUtil {
                 // If week contains beginning of month or first week
                 if (month != lastDrawnMonth && (dayOfMonth <= 7 || w == 0)) {
                     val x = leftMargin + w * (cellSize + gap)
-                    if (x + 20f * density < safeWidth) {
-                        canvas.drawText(MONTH_NAMES[month], x, topMargin - 3f * density, textPaint)
+                    if (x + 20f * cappedDensity < safeWidth) {
+                        canvas.drawText(MONTH_NAMES[month], x, topMargin - 3f * cappedDensity, textPaint)
                         lastDrawnMonth = month
                     }
                 }
@@ -362,7 +363,7 @@ object HabitHeatmapUtil {
 
             // Highlight ring around today's cell
             if (item.isToday) {
-                val ringPad = 1f * density
+                val ringPad = 1f * cappedDensity
                 ringRect.set(x - ringPad, y - ringPad, x + cellSize + ringPad, y + cellSize + ringPad)
                 canvas.drawRoundRect(ringRect, cornerRadius + ringPad, cornerRadius + ringPad, todayRingPaint)
             }

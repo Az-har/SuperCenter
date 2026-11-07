@@ -15,6 +15,22 @@ class TrackerNotificationReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
+
+        if (action == TrackerAlarmScheduler.ACTION_MIDNIGHT_ROLLOVER) {
+            val pendingResult = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    com.eipna.centsation.habit.widget.HabitWidgetSyncManager.performSynchronizedUpdate(context)
+                    TrackerAlarmScheduler.scheduleMidnightRollover(context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error performing midnight rollover refresh", e)
+                } finally {
+                    pendingResult.finish()
+                }
+            }
+            return
+        }
+
         val trackerId = intent.getLongExtra(TrackerAlarmScheduler.EXTRA_TRACKER_ID, -1L)
         if (trackerId == -1L) {
             Log.w(TAG, "Received action $action with invalid trackerId")

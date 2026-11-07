@@ -184,6 +184,70 @@ public class SettingsActivity extends CentsationActivity {
                 requireActivity().recreate();
                 return true;
             });
+
+            Preference hardwareTelemetry = findPreference("hardware_telemetry");
+            if (hardwareTelemetry != null) {
+                Context ctx = requireContext();
+                com.eipna.centsation.util.DeviceHardwareOptimizer.BatterySnapshot snapshot =
+                        com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getBatterySnapshot(ctx);
+                hardwareTelemetry.setSummary(com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getDeviceDisplayName() +
+                        " • " + snapshot.getPercentage() + "% (" + snapshot.getTemperatureCelsius() + "°C)");
+
+                hardwareTelemetry.setOnPreferenceClickListener(preference -> {
+                    showHardwareTelemetryDialog();
+                    return true;
+                });
+            }
+
+            Preference originOsPower = findPreference("originos_power_settings");
+            if (originOsPower != null) {
+                String osName = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getOriginOsVersion();
+                if (osName != null) {
+                    originOsPower.setSummary("Manage background power and autostart on " + osName);
+                }
+                originOsPower.setOnPreferenceClickListener(preference -> {
+                    boolean opened = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.openOriginOsPowerSettings(requireContext());
+                    if (!opened) {
+                        Toast.makeText(requireContext(), "Could not open background settings directly", Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                });
+            }
+        }
+
+        private void showHardwareTelemetryDialog() {
+            Context ctx = requireContext();
+            com.eipna.centsation.util.DeviceHardwareOptimizer.BatterySnapshot snapshot =
+                    com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getBatterySnapshot(ctx);
+            String deviceName = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getDeviceDisplayName();
+            String osName = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getOriginOsVersion();
+            String modeName = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getPerformanceMode(ctx).name();
+            long debounceMs = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getAdaptiveWidgetDebounceMs(ctx);
+            String drainSummary = com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.getBatteryLogSummary(ctx);
+
+            String message = "Hardware Profile:\n" +
+                    "• Device: " + deviceName + "\n" +
+                    "• OS / ROM: " + (osName != null ? osName : "Android " + android.os.Build.VERSION.RELEASE) + "\n\n" +
+                    "Battery & Thermal Status:\n" +
+                    "• Level: " + snapshot.getPercentage() + "%\n" +
+                    "• Temperature: " + snapshot.getTemperatureCelsius() + "°C\n" +
+                    "• Health: " + snapshot.getHealth() + "\n" +
+                    "• Power Saver: " + (snapshot.isPowerSaveMode() ? "ON" : "OFF") + "\n" +
+                    "• Charging: " + (snapshot.isFastCharging() ? "Fast Charging / AC" : (snapshot.isCharging() ? "Charging" : "Discharging")) + "\n" +
+                    "• History: " + drainSummary + "\n\n" +
+                    "Optimization Engine:\n" +
+                    "• State: " + modeName + "\n" +
+                    "• Adaptive Widget Debounce: " + debounceMs + "ms\n" +
+                    "• Memory Footprint: RGB_565 Compact Canvas";
+
+            new MaterialAlertDialogBuilder(ctx)
+                    .setTitle("Hardware & Battery Telemetry")
+                    .setMessage(message)
+                    .setPositiveButton("OK", null)
+                    .setNeutralButton("Background Settings", (dialog, which) -> {
+                        com.eipna.centsation.util.DeviceHardwareOptimizer.INSTANCE.openOriginOsPowerSettings(ctx);
+                    })
+                    .show();
         }
 
         @Override

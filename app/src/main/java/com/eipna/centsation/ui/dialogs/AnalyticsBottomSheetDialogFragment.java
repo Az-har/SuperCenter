@@ -372,27 +372,31 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
             }
         }
 
+        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorPrimary);
+        int errorColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorError);
+        int tertiaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), com.google.android.material.R.attr.colorTertiary);
+
         // 1. Overview Card Customization based on Selected Filter
         if (filterIOweOnly) {
             int pct = totalIOweOriginal > 0 ? (int) Math.round((totalIOwePaid / totalIOweOriginal) * 100.0) : 100;
             binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context)));
-            binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.analyticsTotalDebtRemaining.setTextColor(errorColor);
             binding.analyticsTotalDebtSubtext.setText(String.format("Borrowed: %s%s | Repaid: %s%s (%d%%) • %d Active",
                     currencySymbol, FormatUtil.formatAmount(totalIOweOriginal, context),
                     currencySymbol, FormatUtil.formatAmount(totalIOwePaid, context),
                     pct, activeIOweCount));
             binding.analyticsTotalDebtProgress.setProgress(pct);
-            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#BA1A1A"));
+            binding.analyticsTotalDebtProgress.setIndicatorColor(errorColor);
         } else if (filterOwedOnly) {
             int pct = totalOwedOriginal > 0 ? (int) Math.round((totalOwedPaid / totalOwedOriginal) * 100.0) : 100;
             binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, context)));
-            binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#006874"));
+            binding.analyticsTotalDebtRemaining.setTextColor(tertiaryColor);
             binding.analyticsTotalDebtSubtext.setText(String.format("Lent Out: %s%s | Recovered: %s%s (%d%%) • %d Active",
                     currencySymbol, FormatUtil.formatAmount(totalOwedOriginal, context),
                     currencySymbol, FormatUtil.formatAmount(totalOwedPaid, context),
                     pct, activeOwedCount));
             binding.analyticsTotalDebtProgress.setProgress(pct);
-            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#006874"));
+            binding.analyticsTotalDebtProgress.setIndicatorColor(tertiaryColor);
         } else {
             // Combined View
             double netDebt = totalIOweRemaining - totalOwedRemaining;
@@ -402,18 +406,18 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
             binding.analyticsTotalDebtRemaining.setText(String.format("%s%s", currencySymbol, FormatUtil.formatAmount(Math.abs(netDebt), context)));
             if (netDebt > 0) {
-                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.analyticsTotalDebtRemaining.setTextColor(errorColor);
             } else if (netDebt < 0) {
-                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#1B6B50"));
+                binding.analyticsTotalDebtRemaining.setTextColor(primaryColor);
             } else {
-                binding.analyticsTotalDebtRemaining.setTextColor(Color.parseColor("#006874"));
+                binding.analyticsTotalDebtRemaining.setTextColor(tertiaryColor);
             }
 
             binding.analyticsTotalDebtSubtext.setText(String.format("You Owe: %s%s (%d active) | Owed to You: %s%s (%d active)",
                     currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, context), activeIOweCount,
                     currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, context), activeOwedCount));
             binding.analyticsTotalDebtProgress.setProgress(overallPct);
-            binding.analyticsTotalDebtProgress.setIndicatorColor(Color.parseColor("#6750A4"));
+            binding.analyticsTotalDebtProgress.setIndicatorColor(primaryColor);
         }
 
         // 2. Net Financial Position (Net Worth)
@@ -429,33 +433,33 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
 
         if (netWorth >= 0) {
             binding.analyticsNetWorth.setText(String.format("+%s%s", currencySymbol, FormatUtil.formatAmount(netWorth, context)));
-            binding.analyticsNetWorth.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsNetWorth.setTextColor(primaryColor);
         } else {
             binding.analyticsNetWorth.setText(String.format("-%s%s", currencySymbol, FormatUtil.formatAmount(Math.abs(netWorth), context)));
-            binding.analyticsNetWorth.setTextColor(Color.parseColor("#BA1A1A"));
+            binding.analyticsNetWorth.setTextColor(errorColor);
         }
 
         // Debt-to-Savings Ratio Analysis
         if (totalIOweRemaining == 0) {
             binding.analyticsDebtSavingsRatio.setText("Debt-to-Savings: 0.00 (Debt-Free! 🎉)");
             binding.analyticsDebtHealthBadge.setText("Excellent");
-            binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsDebtHealthBadge.setTextColor(primaryColor);
             binding.analyticsDebtHealthAdvice.setText("100% of your liquid savings are unencumbered by liabilities.");
         } else {
             double ratio = totalSavings > 0 ? (totalIOweRemaining / totalSavings) : 999.0;
             binding.analyticsDebtSavingsRatio.setText(String.format("Debt-to-Savings: %.2f", ratio));
             if (ratio < 0.5) {
                 binding.analyticsDebtHealthBadge.setText("Very Healthy");
-                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#1B6B50"));
+                binding.analyticsDebtHealthBadge.setTextColor(primaryColor);
                 int cov = (int) Math.round((1.0 / ratio) * 100.0);
                 binding.analyticsDebtHealthAdvice.setText(String.format("Strong liquidity: Savings cover %d%% of all liabilities.", cov));
             } else if (ratio <= 1.0) {
                 binding.analyticsDebtHealthBadge.setText("Moderate");
-                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#E65100"));
+                binding.analyticsDebtHealthBadge.setTextColor(tertiaryColor);
                 binding.analyticsDebtHealthAdvice.setText("Liquid savings exceed total liabilities, but maintain an emergency buffer.");
             } else {
                 binding.analyticsDebtHealthBadge.setText("High Leverage");
-                binding.analyticsDebtHealthBadge.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.analyticsDebtHealthBadge.setTextColor(errorColor);
                 binding.analyticsDebtHealthAdvice.setText(String.format("Liabilities exceed liquid savings by %s%s. Prioritize debt payoff.",
                         currencySymbol, FormatUtil.formatAmount(totalIOweRemaining - totalSavings, context)));
             }
@@ -531,17 +535,17 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
             if (diffDays < 0) {
                 binding.analyticsNextDueRecommendation.setText(String.format("⚠️ Overdue: '%s' was due %d day(s) ago!",
                         nextDueCandidate.getName(), Math.abs(diffDays)));
-                binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#BA1A1A"));
+                binding.analyticsNextDueRecommendation.setTextColor(errorColor);
             } else {
                 binding.analyticsNextDueRecommendation.setText(String.format("⏰ Next Due: '%s' due in %d day(s) (%s)",
                         nextDueCandidate.getName(), diffDays, DateParser.format(nextDueCandidate.getDeadline(), deadlineFormat)));
-                binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#E65100"));
+                binding.analyticsNextDueRecommendation.setTextColor(tertiaryColor);
             }
             binding.analyticsNextDueSubtext.setText(String.format("Remaining balance: %s%s",
                     currencySymbol, FormatUtil.formatAmount(nextDueCandidate.getRemainingDebt(), context)));
         } else {
             binding.analyticsNextDueRecommendation.setText("⏰ No upcoming deadlines");
-            binding.analyticsNextDueRecommendation.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsNextDueRecommendation.setTextColor(primaryColor);
             binding.analyticsNextDueSubtext.setText("All debts are on schedule or have no deadline set.");
         }
 
@@ -598,6 +602,8 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         String currencySymbol = Currency.getSymbol(prefUtil.getCurrency());
         String deadlineFormat = prefUtil.getDeadlineFormat();
         long now = System.currentTimeMillis();
+        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorPrimary);
+        int tertiaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), com.google.android.material.R.attr.colorTertiary);
 
         binding.analyticsIndivDebtName.setText(targetDebt.getName());
         DebtCategory cat = DebtCategory.fromId(targetDebt.getCategory());
@@ -692,14 +698,14 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
         // Projected Completion Date for this debt based on actual payments
         if (remaining <= 0) {
             binding.analyticsIndivProjectedDate.setText("🎉 Fully Cleared! 100% completed.");
-            binding.analyticsIndivProjectedDate.setTextColor(Color.parseColor("#1B6B50"));
+            binding.analyticsIndivProjectedDate.setTextColor(primaryColor);
         } else if (debt30Days > 0) {
             double monthsLeft = remaining / debt30Days;
             long projDate = now + (long) (monthsLeft * 30L * 24 * 60 * 60 * 1000);
             binding.analyticsIndivProjectedDate.setText(String.format(
                     "Projected completion: %s (in ~%.1f months at current pace)",
                     DateParser.format(projDate, "MMMM yyyy"), monthsLeft));
-            binding.analyticsIndivProjectedDate.setTextColor(Color.parseColor("#006874"));
+            binding.analyticsIndivProjectedDate.setTextColor(tertiaryColor);
         } else {
             binding.analyticsIndivProjectedDate.setText("Projected completion: Log repayments to forecast date");
             binding.analyticsIndivProjectedDate.setTextColor(Color.GRAY);
@@ -728,7 +734,7 @@ public class AnalyticsBottomSheetDialogFragment extends BottomSheetDialogFragmen
                 }
                 if (amountTv != null) {
                     amountTv.setText(String.format((targetDebt.isOwedToMe() ? "+%s%s" : "-%s%s"), currencySymbol, FormatUtil.formatAmount(dt.getAmount(), context)));
-                    amountTv.setTextColor(Color.parseColor(targetDebt.isOwedToMe() ? "#006874" : "#1B6B50"));
+                    amountTv.setTextColor(targetDebt.isOwedToMe() ? tertiaryColor : primaryColor);
                 }
                 if (dateTv != null) {
                     dateTv.setText(DateParser.format(dt.getDate(), deadlineFormat));
