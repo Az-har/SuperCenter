@@ -46,8 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
-val SingleTrackerCycleKey = ActionParameters.Key<Boolean>("cycle_next")
-
 class SingleTrackerGlanceWidget : GlanceAppWidget() {
 
     companion object {
@@ -302,7 +300,6 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         text = "${currentIndex + 1}/$totalCount ❯",
                         onClick = actionRunCallback<SingleTrackerCycleCallback>(
                             actionParametersOf(
-                                SingleTrackerCycleKey to true,
                                 ActionParameters.Key<Int>("glance_hash") to glanceIdHash,
                                 ActionParameters.Key<Int>("total_count") to totalCount,
                                 ActionParameters.Key<Int>("current_index") to currentIndex
@@ -482,7 +479,6 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         text = "Habit ${currentIndex + 1} of $totalCount ❯",
                         onClick = actionRunCallback<SingleTrackerCycleCallback>(
                             actionParametersOf(
-                                SingleTrackerCycleKey to true,
                                 ActionParameters.Key<Int>("glance_hash") to glanceIdHash,
                                 ActionParameters.Key<Int>("total_count") to totalCount,
                                 ActionParameters.Key<Int>("current_index") to currentIndex

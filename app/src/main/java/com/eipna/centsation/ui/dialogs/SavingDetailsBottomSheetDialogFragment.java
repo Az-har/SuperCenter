@@ -3,8 +3,6 @@ package com.eipna.centsation.ui.dialogs;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,7 +14,6 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -32,7 +29,6 @@ import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.FormatUtil;
-import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;

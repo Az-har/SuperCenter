@@ -64,13 +64,6 @@ public class MainViewModel extends AndroidViewModel {
         return isSortAscending;
     }
 
-    public String getSearchQuery() {
-        return searchQuery;
-    }
-
-    public StatusFilter getStatusFilter() {
-        return statusFilter;
-    }
 
     public void setStatusFilter(StatusFilter filter) {
         this.statusFilter = filter != null ? filter : StatusFilter.ALL;

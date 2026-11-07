@@ -15,9 +15,6 @@ interface TrackerDao {
     @Query("SELECT * FROM trackers WHERE isActive = 1 ORDER BY id DESC")
     fun getActiveTrackers(): Flow<List<TrackerEntity>>
 
-    @Query("SELECT * FROM trackers ORDER BY id DESC")
-    fun getAllTrackers(): Flow<List<TrackerEntity>>
-
     @Query("SELECT * FROM trackers WHERE id = :id LIMIT 1")
     suspend fun getTrackerById(id: Long): TrackerEntity?
 
@@ -29,7 +26,4 @@ interface TrackerDao {
 
     @Delete
     suspend fun delete(tracker: TrackerEntity)
-
-    @Query("UPDATE trackers SET calendarEventId = :eventId WHERE id = :id")
-    suspend fun updateCalendarEventId(id: Long, eventId: Long?)
 }

@@ -2,7 +2,6 @@ package com.eipna.centsation.ui.activities;
 
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
-import android.icu.text.NumberFormat;
 import android.os.Bundle;
 import android.view.View;
 

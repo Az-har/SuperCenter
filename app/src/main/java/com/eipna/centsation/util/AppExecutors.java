@@ -1,8 +1,5 @@
 package com.eipna.centsation.util;
 
-import android.os.Handler;
-import android.os.Looper;
-
 import androidx.annotation.NonNull;
 
 import java.util.Collection;
@@ -10,7 +7,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -34,12 +30,10 @@ public class AppExecutors {
 
     private final ThreadPoolExecutor rawDiskIO;
     private final ExecutorService diskIO;
-    private final Executor mainThread;
 
-    private AppExecutors(ThreadPoolExecutor rawDiskIO, Executor mainThread) {
+    private AppExecutors(ThreadPoolExecutor rawDiskIO) {
         this.rawDiskIO = rawDiskIO;
         this.diskIO = new NonClosingExecutorService(rawDiskIO);
-        this.mainThread = mainThread;
     }
 
     public static AppExecutors getInstance() {
@@ -61,7 +55,7 @@ public class AppExecutors {
                     );
                     executor.allowCoreThreadTimeOut(true);
 
-                    sInstance = new AppExecutors(executor, new MainThreadExecutor());
+                    sInstance = new AppExecutors(executor);
                 }
             }
         }
@@ -74,10 +68,6 @@ public class AppExecutors {
 
     public ExecutorService diskIO() {
         return diskIO;
-    }
-
-    public Executor mainThread() {
-        return mainThread;
     }
 
     /**
@@ -163,33 +153,6 @@ public class AppExecutors {
         @Override
         public <T> T invokeAny(@NonNull Collection<? extends Callable<T>> tasks, long timeout, @NonNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
             return delegate.invokeAny(tasks, timeout, unit);
-        }
-    }
-
-    private static class MainThreadExecutor implements Executor {
-        private Handler mainThreadHandler;
-
-        private Handler getHandler() {
-            if (mainThreadHandler == null) {
-                try {
-                    Looper looper = Looper.getMainLooper();
-                    if (looper != null) {
-                        mainThreadHandler = new Handler(looper);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-            return mainThreadHandler;
-        }
-
-        @Override
-        public void execute(@NonNull Runnable command) {
-            Handler handler = getHandler();
-            if (handler != null) {
-                handler.post(command);
-            } else {
-                command.run();
-            }
         }
     }
 }

@@ -6,8 +6,6 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.icu.text.NumberFormat;
-import android.os.Build;
 import android.os.PowerManager;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -47,19 +45,6 @@ public final class AnimationUtil {
     public static void performHapticFeedback(View view) {
         if (view != null) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
-        }
-    }
-
-    /**
-     * Confirmation haptic feedback when a transaction or important action completes.
-     */
-    public static void performConfirmFeedback(View view) {
-        if (view != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
-            } else {
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-            }
         }
     }
 

@@ -10,9 +10,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TrackerLogDao {
 
-    @Query("SELECT * FROM tracker_logs WHERE trackerId = :trackerId ORDER BY date ASC")
-    fun getLogsForTracker(trackerId: Long): Flow<List<TrackerLogEntity>>
-
     @Query("SELECT * FROM tracker_logs ORDER BY date ASC")
     fun getAllLogs(): Flow<List<TrackerLogEntity>>
 
@@ -24,7 +21,4 @@ interface TrackerLogDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(log: TrackerLogEntity): Long
-
-    @Query("DELETE FROM tracker_logs WHERE trackerId = :trackerId AND date = :date")
-    suspend fun deleteLogForDate(trackerId: Long, date: String)
 }

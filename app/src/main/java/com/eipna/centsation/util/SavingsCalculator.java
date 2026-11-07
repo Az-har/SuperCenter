@@ -41,8 +41,4 @@ public final class SavingsCalculator {
         return getRemainingAmount(saving) / days;
     }
 
-    public static double getWeeklySavingsRate(Saving saving) {
-        double daily = getDailySavingsRate(saving);
-        return daily * 7.0;
-    }
 }

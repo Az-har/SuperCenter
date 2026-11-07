@@ -49,10 +49,6 @@ public class NotificationHandler {
         }
     }
 
-    public static void create(Context context, Saving saving) {
-        create(context, saving, false);
-    }
-
     public static void create(Context context, Saving saving, boolean isAdvanceNotice) {
         if (context == null || saving == null || saving.getID() == null) return;
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -113,18 +109,4 @@ public class NotificationHandler {
         if (saving.getGoal() <= 0) return 0;
         return (int) Math.round((saving.getCurrentSaving() / saving.getGoal()) * 100.0);
     }
-
-    public static void create(Context context, Intent intent) {
-        if (context == null || intent == null) return;
-        String savingID = intent.getStringExtra(Database.COLUMN_SAVING_ID);
-        String savingName = intent.getStringExtra(Database.COLUMN_SAVING_NAME);
-        boolean isAdvanceNotice = intent.getBooleanExtra("is_advance_notice", false);
-        if (savingID == null || savingName == null) return;
-
-        Saving saving = new Saving();
-        saving.setID(savingID);
-        saving.setName(savingName);
-        create(context, saving, isAdvanceNotice);
-    }
-
 }

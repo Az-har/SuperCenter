@@ -1,7 +1,6 @@
 package com.eipna.centsation.ui.adapters;
 
 import android.content.Context;
-import android.icu.text.NumberFormat;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.StrikethroughSpan;
@@ -49,13 +48,6 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
         super(DIFF_CALLBACK);
         this.context = context;
         this.preferences = new PreferenceUtil(context);
-        this.listener = listener;
-    }
-
-    public SavingAdapter(Context context, PreferenceUtil preferences, Listener listener) {
-        super(DIFF_CALLBACK);
-        this.context = context;
-        this.preferences = preferences;
         this.listener = listener;
     }
 

@@ -7,10 +7,4 @@ public enum SavingOperation {
     ARCHIVE,
     UNARCHIVE,
     DELETE;
-
-    private static SavingOperation[] operations;
-
-    static {
-        operations = values();
-    }
 }

@@ -16,10 +16,8 @@ import java.util.List;
 public class DebtRepository implements AutoCloseable {
 
     private final Database dbHelper;
-    private final Context context;
 
     public DebtRepository(@Nullable Context context) {
-        this.context = context == null ? null : context.getApplicationContext();
         this.dbHelper = Database.getInstance(context);
     }
 

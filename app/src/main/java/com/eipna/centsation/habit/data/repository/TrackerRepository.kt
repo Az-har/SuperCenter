@@ -52,10 +52,6 @@ class TrackerRepository(
         trackerDao.delete(tracker)
     }
 
-    suspend fun updateCalendarEventId(id: Long, eventId: Long?) {
-        trackerDao.updateCalendarEventId(id, eventId)
-    }
-
     /**
      * Increment completed count for a given date by additionalCount
      */

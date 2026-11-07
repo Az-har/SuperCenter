@@ -71,12 +71,6 @@ public class TransactionRepository implements AutoCloseable {
         return list;
     }
 
-    public void deleteForSaving(String savingID) {
-        if (dbHelper == null || savingID == null) return;
-        SQLiteDatabase database = dbHelper.getWritableDatabase();
-        database.delete(Database.TABLE_TRANSACTION, Database.COLUMN_TRANSACTION_SAVING_ID + " = ?", new String[]{savingID});
-    }
-
     @Override
     public void close() {
         // Shared database helper connection pool is managed globally.
