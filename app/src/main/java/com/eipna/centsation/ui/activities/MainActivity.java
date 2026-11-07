@@ -2,9 +2,7 @@ package com.eipna.centsation.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import com.eipna.centsation.util.FormatUtil;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
@@ -25,23 +23,31 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.Database;
+import com.eipna.centsation.data.debt.Debt;
+import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.saving.SavingSort;
 import com.eipna.centsation.databinding.ActivityMainBinding;
+import com.eipna.centsation.databinding.PageAnalyticsBinding;
+import com.eipna.centsation.databinding.PageDebtsBinding;
+import com.eipna.centsation.databinding.PageHabitsBinding;
+import com.eipna.centsation.databinding.PageSavingsBinding;
 import com.eipna.centsation.habit.ui.HabitTrackerActivity;
-import com.eipna.centsation.data.debt.Debt;
-import com.eipna.centsation.data.debt.DebtRepository;
+import com.eipna.centsation.habit.ui.HabitViewBinder;
 import com.eipna.centsation.ui.adapters.DebtAdapter;
+import com.eipna.centsation.ui.adapters.MainPagerAdapter;
+import com.eipna.centsation.ui.adapters.SavingAdapter;
+import com.eipna.centsation.ui.analytics.AnalyticsViewController;
+import com.eipna.centsation.ui.dialogs.AnalyticsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.CreateDebtBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.DebtDetailsBottomSheetDialogFragment;
-import com.eipna.centsation.ui.adapters.SavingAdapter;
-import com.eipna.centsation.ui.dialogs.AnalyticsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.TransactionBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.MainViewModel;
@@ -50,6 +56,7 @@ import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.CrashReporter;
 import com.eipna.centsation.util.DateParser;
+import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.HapticUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
@@ -64,9 +71,16 @@ import java.util.concurrent.Executors;
 public class MainActivity extends CentsationActivity implements SavingAdapter.Listener, DebtAdapter.Listener {
 
     private ActivityMainBinding binding;
+    private PageSavingsBinding savingsBinding;
+    private PageDebtsBinding debtsBinding;
+    private PageHabitsBinding habitsBinding;
+    private PageAnalyticsBinding analyticsBinding;
+
+    private AnalyticsViewController analyticsController;
     private MainViewModel viewModel;
     private SavingAdapter savingAdapter;
     private DebtAdapter debtAdapter;
+
     private boolean isDebtMode = false;
     private final List<Debt> cachedDebts = new java.util.ArrayList<>();
     private double previousTotalSaved = 0.0;
@@ -120,30 +134,41 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
 
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
 
+        // Inflate the 4 modular sliding pages
+        savingsBinding = PageSavingsBinding.inflate(getLayoutInflater());
+        debtsBinding = PageDebtsBinding.inflate(getLayoutInflater());
+        habitsBinding = PageHabitsBinding.inflate(getLayoutInflater());
+        analyticsBinding = PageAnalyticsBinding.inflate(getLayoutInflater());
+
+        // Bind Compose Habits screen & Analytics controller
+        HabitViewBinder.bind(habitsBinding.composeHabitsDashboard, this);
+        analyticsController = new AnalyticsViewController(analyticsBinding, this);
+
+        View[] pages = new View[] {
+                savingsBinding.getRoot(),
+                debtsBinding.getRoot(),
+                habitsBinding.getRoot(),
+                analyticsBinding.getRoot()
+        };
+
+        MainPagerAdapter pagerAdapter = new MainPagerAdapter(pages);
+        binding.mainViewPager.setAdapter(pagerAdapter);
+        binding.mainViewPager.setOffscreenPageLimit(3);
+
+        // Setup Adapters
         savingAdapter = new SavingAdapter(this, this);
-        binding.savingList.setLayoutManager(new LinearLayoutManager(this));
-        binding.savingList.setHasFixedSize(true);
-        binding.savingList.setItemViewCacheSize(20);
-        binding.savingList.setAdapter(savingAdapter);
+        savingsBinding.savingList.setLayoutManager(new LinearLayoutManager(this));
+        savingsBinding.savingList.setHasFixedSize(true);
+        savingsBinding.savingList.setItemViewCacheSize(20);
+        savingsBinding.savingList.setAdapter(savingAdapter);
 
         debtAdapter = new DebtAdapter(this);
-        binding.debtList.setLayoutManager(new LinearLayoutManager(this));
-        binding.debtList.setHasFixedSize(true);
-        binding.debtList.setItemViewCacheSize(20);
-        binding.debtList.setAdapter(debtAdapter);
+        debtsBinding.debtList.setLayoutManager(new LinearLayoutManager(this));
+        debtsBinding.debtList.setHasFixedSize(true);
+        debtsBinding.debtList.setItemViewCacheSize(20);
+        debtsBinding.debtList.setAdapter(debtAdapter);
 
-        binding.mainModeToggleGroup.check(R.id.btn_main_tab_savings);
-        binding.mainModeToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            HapticUtil.performTap(group);
-            if (checkedId == R.id.btn_main_tab_savings) {
-                setAppMode(false);
-            } else if (checkedId == R.id.btn_main_tab_debts) {
-                setAppMode(true);
-            }
-        });
-
-        // Setup Side Navigation Drawer
+        // Side Navigation Drawer
         binding.toolbar.setNavigationOnClickListener(v -> {
             if (binding != null) {
                 if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -158,13 +183,13 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         binding.navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_savings) {
-                setAppMode(false);
+                binding.mainViewPager.setCurrentItem(0, true);
             } else if (id == R.id.nav_debts) {
-                setAppMode(true);
+                binding.mainViewPager.setCurrentItem(1, true);
             } else if (id == R.id.nav_habits) {
-                startActivity(new Intent(MainActivity.this, HabitTrackerActivity.class));
+                binding.mainViewPager.setCurrentItem(2, true);
             } else if (id == R.id.nav_analytics) {
-                showAnalytics();
+                binding.mainViewPager.setCurrentItem(3, true);
             } else if (id == R.id.nav_archive) {
                 startActivity(new Intent(MainActivity.this, ArchiveActivity.class));
             } else if (id == R.id.nav_settings) {
@@ -178,35 +203,43 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             return true;
         });
 
+        // Bottom Navigation with slide transition
         binding.bottomNavigation.setSelectedItemId(R.id.nav_bottom_savings);
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_bottom_savings) {
-                if (isDebtMode) setAppMode(false);
+                binding.mainViewPager.setCurrentItem(0, true);
                 return true;
             } else if (id == R.id.nav_bottom_debts) {
-                if (!isDebtMode) setAppMode(true);
+                binding.mainViewPager.setCurrentItem(1, true);
                 return true;
             } else if (id == R.id.nav_bottom_habits) {
-                startActivity(new Intent(MainActivity.this, HabitTrackerActivity.class));
-                return false;
+                binding.mainViewPager.setCurrentItem(2, true);
+                return true;
             } else if (id == R.id.nav_bottom_analytics) {
-                showAnalytics();
-                return false;
-            } else if (id == R.id.nav_bottom_settings) {
-                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
-                return false;
+                binding.mainViewPager.setCurrentItem(3, true);
+                return true;
             }
             return false;
         });
 
+        // ViewPager2 page change callback to synchronize BottomNav, Toolbar, and FAB
+        binding.mainViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                onMainPageSelected(position);
+            }
+        });
+
+        // Back navigation handling
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 if (binding != null && binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
                     binding.drawerLayout.closeDrawer(GravityCompat.START);
-                } else if (isDebtMode) {
-                    setAppMode(false);
+                } else if (binding != null && binding.mainViewPager.getCurrentItem() != 0) {
+                    binding.mainViewPager.setCurrentItem(0, true);
                 } else {
                     setEnabled(false);
                     getOnBackPressedDispatcher().onBackPressed();
@@ -214,7 +247,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         });
 
-        // Fluid swipe gestures (Right = Transact, Left = Archive)
+        // Swipe Gestures for Savings (Right = Transact, Left = Archive)
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new SwipeActionCallback(
                 this,
                 R.drawable.ic_add,
@@ -238,15 +271,17 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     }
                 }
         ));
-        itemTouchHelper.attachToRecyclerView(binding.savingList);
+        itemTouchHelper.attachToRecyclerView(savingsBinding.savingList);
 
         // Fluid touch animations
         AnimationUtil.applySpringPressEffect(binding.createSaving);
-        AnimationUtil.applySpringPressEffect(binding.dashboardCard);
-        AnimationUtil.applySpringPressEffect(binding.btnDashboardAnalytics);
+        AnimationUtil.applySpringPressEffect(savingsBinding.dashboardCard);
+        AnimationUtil.applySpringPressEffect(savingsBinding.btnDashboardAnalytics);
+        AnimationUtil.applySpringPressEffect(debtsBinding.debtDashboardCard);
+        AnimationUtil.applySpringPressEffect(debtsBinding.btnDebtDashboardAnalytics);
 
-        // Status Filter Chips
-        binding.filterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+        // Savings Filter Chips
+        savingsBinding.filterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
             HapticUtil.performTap(group);
             if (checkedIds.isEmpty() || checkedIds.contains(R.id.chip_filter_all)) {
                 viewModel.setStatusFilter(MainViewModel.StatusFilter.ALL);
@@ -259,41 +294,94 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         });
 
-        binding.debtFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+        // Debt Filter Chips
+        debtsBinding.debtFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
             HapticUtil.performTap(group);
             filterAndDisplayDebts();
         });
 
-        // Insights / Analytics Triggers
-        binding.dashboardCard.setOnClickListener(v -> {
+        // Insights / Analytics Triggers from cards
+        savingsBinding.dashboardCard.setOnClickListener(v -> {
             HapticUtil.performTap(v);
-            showAnalytics();
+            binding.mainViewPager.setCurrentItem(3, true);
         });
-        binding.btnDashboardAnalytics.setOnClickListener(v -> {
+        savingsBinding.btnDashboardAnalytics.setOnClickListener(v -> {
             HapticUtil.performTap(v);
-            showAnalytics();
+            binding.mainViewPager.setCurrentItem(3, true);
+        });
+        debtsBinding.debtDashboardCard.setOnClickListener(v -> {
+            HapticUtil.performTap(v);
+            binding.mainViewPager.setCurrentItem(3, true);
+        });
+        debtsBinding.btnDebtDashboardAnalytics.setOnClickListener(v -> {
+            HapticUtil.performTap(v);
+            binding.mainViewPager.setCurrentItem(3, true);
         });
 
         viewModel.getSavings().observe(this, this::onSavingsChanged);
 
+        // FAB Click
         binding.createSaving.setOnClickListener(v -> {
-            if (isDebtMode) {
+            if (binding.mainViewPager.getCurrentItem() == 1) {
                 showCreateDebtDialog();
             } else {
                 startActivity(new Intent(this, CreateActivity.class));
             }
         });
-        binding.btnEmptyCreateDebt.setOnClickListener(v -> showCreateDebtDialog());
-        AnimationUtil.applySpringPressEffect(binding.btnEmptyCreateDebt);
-        binding.btnEmptyCreate.setOnClickListener(v -> startActivity(new Intent(this, CreateActivity.class)));
-        AnimationUtil.applySpringPressEffect(binding.btnEmptyCreate);
-        binding.btnEmptyRestore.setOnClickListener(v -> onRestoreBackupClicked());
-        AnimationUtil.applySpringPressEffect(binding.btnEmptyRestore);
+
+        // Empty state buttons
+        debtsBinding.btnEmptyCreateDebt.setOnClickListener(v -> showCreateDebtDialog());
+        AnimationUtil.applySpringPressEffect(debtsBinding.btnEmptyCreateDebt);
+        savingsBinding.btnEmptyCreate.setOnClickListener(v -> startActivity(new Intent(this, CreateActivity.class)));
+        AnimationUtil.applySpringPressEffect(savingsBinding.btnEmptyCreate);
+        savingsBinding.btnEmptyRestore.setOnClickListener(v -> onRestoreBackupClicked());
+        AnimationUtil.applySpringPressEffect(savingsBinding.btnEmptyRestore);
 
         if (savedInstanceState == null) {
             CrashReporter.showDialogIfPending(this, saveCrashLauncher);
             handleNotificationLaunch(getIntent());
             checkForReinstallBackup();
+        }
+    }
+
+    private void onMainPageSelected(int position) {
+        int navItemId;
+        switch (position) {
+            case 0: // Savings
+                navItemId = R.id.nav_bottom_savings;
+                binding.toolbar.setTitle(R.string.toolbar_main);
+                binding.navigationView.setCheckedItem(R.id.nav_savings);
+                binding.createSaving.show();
+                isDebtMode = false;
+                viewModel.loadSavings();
+                break;
+            case 1: // Debts
+                navItemId = R.id.nav_bottom_debts;
+                binding.toolbar.setTitle("Debts & Owed");
+                binding.navigationView.setCheckedItem(R.id.nav_debts);
+                binding.createSaving.show();
+                isDebtMode = true;
+                loadDebts();
+                break;
+            case 2: // Habits
+                navItemId = R.id.nav_bottom_habits;
+                binding.toolbar.setTitle("Daily Quotas & Habits");
+                binding.navigationView.setCheckedItem(R.id.nav_habits);
+                binding.createSaving.hide();
+                break;
+            case 3: // Insights
+            default:
+                navItemId = R.id.nav_bottom_analytics;
+                binding.toolbar.setTitle("Insights & Analytics");
+                binding.navigationView.setCheckedItem(R.id.nav_analytics);
+                binding.createSaving.hide();
+                if (analyticsController != null) {
+                    analyticsController.loadData();
+                }
+                break;
+        }
+        if (binding.bottomNavigation.getSelectedItemId() != navItemId) {
+            binding.bottomNavigation.setSelectedItemId(navItemId);
         }
     }
 
@@ -355,12 +443,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 .setIcon(R.drawable.ic_unarchive)
                 .setMessage(message)
                 .setCancelable(true)
-                .setPositiveButton("Restore Everything", (dialog, which) -> {
-                    restoreBackup(backupInfo);
-                })
-                .setNegativeButton("Start Fresh", (dialog, which) -> {
-                    preferenceUtil.setDismissedReinstallRestore(true);
-                })
+                .setPositiveButton("Restore Everything", (dialog, which) -> restoreBackup(backupInfo))
+                .setNegativeButton("Start Fresh", (dialog, which) -> preferenceUtil.setDismissedReinstallRestore(true))
                 .show();
     }
 
@@ -379,10 +463,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     if (ok) {
                         Toast.makeText(this, "Savings restored successfully!", Toast.LENGTH_SHORT).show();
                         if (isDebtMode) {
-            loadDebts();
-        } else {
-            viewModel.loadSavings();
-        }
+                            loadDebts();
+                        } else {
+                            viewModel.loadSavings();
+                        }
                         recreate();
                     } else {
                         Toast.makeText(this, "Could not restore backup", Toast.LENGTH_SHORT).show();
@@ -420,10 +504,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     if (success) {
                         Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
                         if (isDebtMode) {
-            loadDebts();
-        } else {
-            viewModel.loadSavings();
-        }
+                            loadDebts();
+                        } else {
+                            viewModel.loadSavings();
+                        }
                         recreate();
                     } else {
                         Toast.makeText(this, "Failed to restore backup", Toast.LENGTH_SHORT).show();
@@ -453,16 +537,14 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     protected void onResume() {
         super.onResume();
         if (binding != null) {
-            binding.navigationView.setCheckedItem(isDebtMode ? R.id.nav_debts : R.id.nav_savings);
-            int targetId = isDebtMode ? R.id.nav_bottom_debts : R.id.nav_bottom_savings;
-            if (binding.bottomNavigation.getSelectedItemId() != targetId) {
-                binding.bottomNavigation.setSelectedItemId(targetId);
+            int currentItem = binding.mainViewPager.getCurrentItem();
+            if (currentItem == 0) {
+                viewModel.loadSavings();
+            } else if (currentItem == 1) {
+                loadDebts();
+            } else if (currentItem == 3 && analyticsController != null) {
+                analyticsController.loadData();
             }
-        }
-        if (isDebtMode) {
-            loadDebts();
-        } else {
-            viewModel.loadSavings();
         }
     }
 
@@ -471,27 +553,32 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         super.onDestroy();
         executor.shutdown();
         binding = null;
+        savingsBinding = null;
+        debtsBinding = null;
+        habitsBinding = null;
+        analyticsBinding = null;
     }
 
     private void onSavingsChanged(List<Saving> updated) {
-        if (isDebtMode) return;
+        if (savingsBinding == null) return;
         savingAdapter.submitList(updated);
 
         boolean empty = updated.isEmpty();
         if (empty) {
-            AnimationUtil.crossfade(binding.savingList, binding.emptyIndicator, 250);
-            binding.dashboardCard.setVisibility(View.GONE);
-            binding.savingsFilterScroll.setVisibility(View.GONE);
+            AnimationUtil.crossfade(savingsBinding.savingList, savingsBinding.emptyIndicator, 250);
+            savingsBinding.dashboardCard.setVisibility(View.GONE);
+            savingsBinding.savingsFilterScroll.setVisibility(View.GONE);
             previousTotalSaved = 0.0;
         } else {
-            AnimationUtil.crossfade(binding.emptyIndicator, binding.savingList, 250);
-            binding.dashboardCard.setVisibility(View.VISIBLE);
-            binding.savingsFilterScroll.setVisibility(View.VISIBLE);
+            AnimationUtil.crossfade(savingsBinding.emptyIndicator, savingsBinding.savingList, 250);
+            savingsBinding.dashboardCard.setVisibility(View.VISIBLE);
+            savingsBinding.savingsFilterScroll.setVisibility(View.VISIBLE);
             updateDashboard(updated);
         }
     }
 
     private void updateDashboard(List<Saving> savings) {
+        if (savingsBinding == null) return;
         String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
         double totalSaved = 0.0;
         double totalGoal = 0.0;
@@ -511,48 +598,15 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         int overallPercent = totalGoal > 0 ? (int) ((totalSaved / totalGoal) * 100) : 0;
 
         // Smooth number ticker & progress
-        AnimationUtil.animateCurrencyValue(binding.dashboardTotalSaved, previousTotalSaved, totalSaved, currencySymbol, 550);
+        AnimationUtil.animateCurrencyValue(savingsBinding.dashboardTotalSaved, previousTotalSaved, totalSaved, currencySymbol, 550);
         previousTotalSaved = totalSaved;
 
-        binding.dashboardTotalGoal.setText(String.format("Target: %s%s", currencySymbol, FormatUtil.formatAmount(totalGoal, this)));
-        binding.dashboardOverallPercent.setText(String.format("%d%%", overallPercent));
-        AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(overallPercent, 100), 500);
+        savingsBinding.dashboardTotalGoal.setText(String.format("Target: %s%s", currencySymbol, FormatUtil.formatAmount(totalGoal, this)));
+        savingsBinding.dashboardOverallPercent.setText(String.format("%d%%", overallPercent));
+        AnimationUtil.animateProgress(savingsBinding.dashboardProgress, Math.min(overallPercent, 100), 500);
 
-        binding.dashboardChipActive.setText(String.format("%d Active", activeCount));
-        binding.dashboardChipCompleted.setText(String.format("%d Completed", completedCount));
-    }
-
-    private void setAppMode(boolean debtMode) {
-        this.isDebtMode = debtMode;
-        int targetNavId = debtMode ? R.id.nav_bottom_debts : R.id.nav_bottom_savings;
-        if (binding.bottomNavigation.getSelectedItemId() != targetNavId) {
-            binding.bottomNavigation.setSelectedItemId(targetNavId);
-        }
-        if (!debtMode) {
-            binding.toolbar.setTitle(R.string.toolbar_main);
-            binding.navigationView.setCheckedItem(R.id.nav_savings);
-            binding.mainModeToggleGroup.check(R.id.btn_main_tab_savings);
-            binding.savingList.setVisibility(View.VISIBLE);
-            binding.debtList.setVisibility(View.GONE);
-            binding.debtEmptyIndicator.setVisibility(View.GONE);
-            binding.debtFilterScroll.setVisibility(View.GONE);
-            binding.savingsFilterScroll.setVisibility(View.VISIBLE);
-            binding.dashboardCardHeader.setText("TOTAL SAVINGS");
-            try {
-                binding.dashboardTotalSaved.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, android.R.attr.colorPrimary));
-            } catch (Exception ignored) {}
-            viewModel.loadSavings();
-        } else {
-            binding.toolbar.setTitle("Debts & Owed");
-            binding.navigationView.setCheckedItem(R.id.nav_debts);
-            binding.mainModeToggleGroup.check(R.id.btn_main_tab_debts);
-            binding.savingList.setVisibility(View.GONE);
-            binding.emptyIndicator.setVisibility(View.GONE);
-            binding.debtList.setVisibility(View.VISIBLE);
-            binding.savingsFilterScroll.setVisibility(View.GONE);
-            binding.debtFilterScroll.setVisibility(View.VISIBLE);
-            loadDebts();
-        }
+        savingsBinding.dashboardChipActive.setText(String.format("%d Active", activeCount));
+        savingsBinding.dashboardChipCompleted.setText(String.format("%d Completed", completedCount));
     }
 
     private void loadDebts() {
@@ -561,7 +615,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             try (DebtRepository repo = new DebtRepository(context)) {
                 List<Debt> debts = repo.getDebts(Debt.NOT_ARCHIVE);
                 runOnUiThread(() -> {
-                    if (binding != null && isDebtMode) {
+                    if (binding != null) {
                         cachedDebts.clear();
                         cachedDebts.addAll(debts);
                         filterAndDisplayDebts();
@@ -572,8 +626,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     private void filterAndDisplayDebts() {
-        if (binding == null) return;
-        List<Integer> checkedIds = binding.debtFilterChipGroup.getCheckedChipIds();
+        if (debtsBinding == null) return;
+        List<Integer> checkedIds = debtsBinding.debtFilterChipGroup.getCheckedChipIds();
         int filterMode = 0; // 0 = all, 1 = i owe, 2 = owed to me
         if (checkedIds.contains(R.id.chip_debt_filter_i_owe)) {
             filterMode = 1;
@@ -591,29 +645,29 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         debtAdapter.setDebts(filtered, this);
 
         if (filtered.isEmpty()) {
-            binding.debtEmptyIndicator.setVisibility(View.VISIBLE);
-            binding.debtList.setVisibility(View.GONE);
+            debtsBinding.debtEmptyIndicator.setVisibility(View.VISIBLE);
+            debtsBinding.debtList.setVisibility(View.GONE);
         } else {
-            binding.debtEmptyIndicator.setVisibility(View.GONE);
-            binding.debtList.setVisibility(View.VISIBLE);
+            debtsBinding.debtEmptyIndicator.setVisibility(View.GONE);
+            debtsBinding.debtList.setVisibility(View.VISIBLE);
         }
 
         updateDebtDashboard(cachedDebts, filterMode);
     }
 
     private void updateDebtDashboard(List<Debt> debts, int filterMode) {
-        if (binding == null) return;
+        if (debtsBinding == null) return;
 
         if (debts.isEmpty()) {
-            binding.debtEmptyIndicator.setVisibility(View.VISIBLE);
-            binding.debtList.setVisibility(View.GONE);
-            binding.dashboardCard.setVisibility(View.GONE);
-            binding.debtFilterScroll.setVisibility(View.GONE);
+            debtsBinding.debtEmptyIndicator.setVisibility(View.VISIBLE);
+            debtsBinding.debtList.setVisibility(View.GONE);
+            debtsBinding.debtDashboardCard.setVisibility(View.GONE);
+            debtsBinding.debtFilterScroll.setVisibility(View.GONE);
             return;
         }
 
-        binding.dashboardCard.setVisibility(View.VISIBLE);
-        binding.debtFilterScroll.setVisibility(View.VISIBLE);
+        debtsBinding.debtDashboardCard.setVisibility(View.VISIBLE);
+        debtsBinding.debtFilterScroll.setVisibility(View.VISIBLE);
 
         String currencySymbol = Currency.getSymbol(preferenceUtil.getCurrency());
         double totalIOweRemaining = 0.0;
@@ -642,64 +696,62 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         }
 
-        int errorColor = com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, androidx.appcompat.R.attr.colorError);
-        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.dashboardTotalSaved, androidx.appcompat.R.attr.colorPrimary);
+        int errorColor = com.google.android.material.color.MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorError);
+        int primaryColor = com.google.android.material.color.MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorPrimary);
 
         if (filterMode == 1) { // Only I Owe
-            binding.dashboardCardHeader.setText("TOTAL DEBT (I OWE)");
-            binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
+            debtsBinding.debtCardHeader.setText("TOTAL DEBT (I OWE)");
+            debtsBinding.debtTotalSaved.setText(String.format("%s%s", currencySymbol,
                     FormatUtil.formatAmount(totalIOweRemaining, this)));
-            binding.dashboardTotalSaved.setTextColor(errorColor);
-            binding.dashboardTotalGoal.setText(String.format("Borrowed: %s%s | Paid: %s%s",
+            debtsBinding.debtTotalSaved.setTextColor(errorColor);
+            debtsBinding.debtTotalGoal.setText(String.format("Borrowed: %s%s | Paid: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalIOweOriginal, this),
                     currencySymbol, FormatUtil.formatAmount(totalIOwePaid, this)));
             int pct = totalIOweOriginal > 0 ? (int) Math.round((totalIOwePaid / totalIOweOriginal) * 100.0) : 100;
-            binding.dashboardOverallPercent.setText(String.format("%d%% Paid", pct));
-            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
-            binding.dashboardChipActive.setText(String.format("%d Active Debts", iOweActive));
-            binding.dashboardChipCompleted.setText(String.format("%d Paid Off", iOweCompleted));
+            debtsBinding.debtOverallPercent.setText(String.format("%d%% Paid", pct));
+            AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
+            debtsBinding.debtChipActive.setText(String.format("%d Active Debts", iOweActive));
+            debtsBinding.debtChipCompleted.setText(String.format("%d Paid Off", iOweCompleted));
         } else if (filterMode == 2) { // Only Owed to Me
-            binding.dashboardCardHeader.setText("TOTAL OWED TO YOU");
-            binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
+            debtsBinding.debtCardHeader.setText("TOTAL OWED TO YOU");
+            debtsBinding.debtTotalSaved.setText(String.format("%s%s", currencySymbol,
                     FormatUtil.formatAmount(totalOwedRemaining, this)));
-            binding.dashboardTotalSaved.setTextColor(primaryColor);
-            binding.dashboardTotalGoal.setText(String.format("Lent: %s%s | Collected: %s%s",
+            debtsBinding.debtTotalSaved.setTextColor(primaryColor);
+            debtsBinding.debtTotalGoal.setText(String.format("Lent: %s%s | Collected: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalOwedOriginal, this),
                     currencySymbol, FormatUtil.formatAmount(totalOwedPaid, this)));
             int pct = totalOwedOriginal > 0 ? (int) Math.round((totalOwedPaid / totalOwedOriginal) * 100.0) : 100;
-            binding.dashboardOverallPercent.setText(String.format("%d%% Collected", pct));
-            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
-            binding.dashboardChipActive.setText(String.format("%d Pending Owed", owedActive));
-            binding.dashboardChipCompleted.setText(String.format("%d Settled", owedCompleted));
+            debtsBinding.debtOverallPercent.setText(String.format("%d%% Collected", pct));
+            AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
+            debtsBinding.debtChipActive.setText(String.format("%d Pending Owed", owedActive));
+            debtsBinding.debtChipCompleted.setText(String.format("%d Settled", owedCompleted));
         } else { // All / Net Balance
             double netDebt = totalIOweRemaining - totalOwedRemaining;
-            binding.dashboardCardHeader.setText("NET BALANCE (I OWE vs OWED TO ME)");
+            debtsBinding.debtCardHeader.setText("NET BALANCE (I OWE vs OWED TO ME)");
             if (netDebt > 0) {
-                binding.dashboardTotalSaved.setText(String.format("-%s%s", currencySymbol,
+                debtsBinding.debtTotalSaved.setText(String.format("-%s%s", currencySymbol,
                         FormatUtil.formatAmount(netDebt, this)));
-                binding.dashboardTotalSaved.setTextColor(errorColor);
+                debtsBinding.debtTotalSaved.setTextColor(errorColor);
             } else if (netDebt < 0) {
-                binding.dashboardTotalSaved.setText(String.format("+%s%s", currencySymbol,
+                debtsBinding.debtTotalSaved.setText(String.format("+%s%s", currencySymbol,
                         FormatUtil.formatAmount(Math.abs(netDebt), this)));
-                binding.dashboardTotalSaved.setTextColor(primaryColor);
+                debtsBinding.debtTotalSaved.setTextColor(primaryColor);
             } else {
-                binding.dashboardTotalSaved.setText(String.format("%s%s", currencySymbol,
-                        FormatUtil.formatAmount(0, this)));
-                binding.dashboardTotalSaved.setTextColor(primaryColor);
+                debtsBinding.debtTotalSaved.setText(String.format("%s0.00", currencySymbol));
+                debtsBinding.debtTotalSaved.setTextColor(primaryColor);
             }
-
-            binding.dashboardTotalGoal.setText(String.format("You Owe: %s%s | Owed to You: %s%s",
+            debtsBinding.debtTotalGoal.setText(String.format("Liabilities: %s%s | Assets: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, this),
                     currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, this)));
 
-            double totalAll = totalIOweOriginal + totalOwedOriginal;
-            double totalSettled = totalIOwePaid + totalOwedPaid;
-            int pct = totalAll > 0 ? (int) Math.round((totalSettled / totalAll) * 100.0) : 100;
-            binding.dashboardOverallPercent.setText(String.format("%d%% Settled", pct));
-            AnimationUtil.animateProgress(binding.dashboardProgress, Math.min(pct, 100), 500);
+            int totalOriginal = (int) (totalIOweOriginal + totalOwedOriginal);
+            int totalPaid = (int) (totalIOwePaid + totalOwedPaid);
+            int pct = totalOriginal > 0 ? (int) Math.round(((double) totalPaid / totalOriginal) * 100.0) : 100;
+            debtsBinding.debtOverallPercent.setText(String.format("%d%% Settled", pct));
+            AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
 
-            binding.dashboardChipActive.setText(String.format("%d I Owe (%d Active)", iOweActive + iOweCompleted, iOweActive));
-            binding.dashboardChipCompleted.setText(String.format("%d Owed to Me (%d Active)", owedActive + owedCompleted, owedActive));
+            debtsBinding.debtChipActive.setText(String.format("%d Liabilities", iOweActive));
+            debtsBinding.debtChipCompleted.setText(String.format("%d Receivables", owedActive));
         }
     }
 
@@ -898,10 +950,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             @Override
             public void onSavingUpdated(Saving s) {
                 if (isDebtMode) {
-            loadDebts();
-        } else {
-            viewModel.loadSavings();
-        }
+                    loadDebts();
+                } else {
+                    viewModel.loadSavings();
+                }
             }
         });
         sheet.show(getSupportFragmentManager(), "saving_details_sheet");
@@ -996,8 +1048,9 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     private void showAnalytics() {
-        AnalyticsBottomSheetDialogFragment sheet = AnalyticsBottomSheetDialogFragment.newInstance();
-        sheet.show(getSupportFragmentManager(), "analytics_sheet");
+        if (binding != null) {
+            binding.mainViewPager.setCurrentItem(3, true);
+        }
     }
 
     private void showHistoryActivity(Saving saving) {

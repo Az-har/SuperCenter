@@ -48,4 +48,24 @@ public abstract class CentsationActivity extends AppCompatActivity {
 
         if (preferenceUtil.isDynamicColors()) DynamicColors.applyToActivityIfAvailable(this);
     }
+
+    @Override
+    public void startActivity(android.content.Intent intent) {
+        super.startActivity(intent);
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.slide_in_right, R.anim.slide_out_left, 0);
+        } else {
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        }
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.slide_in_left, R.anim.slide_out_right, 0);
+        } else {
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+        }
+    }
 }

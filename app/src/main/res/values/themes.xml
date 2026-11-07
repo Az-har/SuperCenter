@@ -53,6 +53,7 @@
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
     </style>
 
     <style name="Theme.Centsation.MediumContrast" parent="ThemeOverlay.Centsation.MediumContrast">
@@ -61,6 +62,7 @@
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
     </style>
 
     <style name="Theme.Centsation.HighContrast" parent="ThemeOverlay.Centsation.HighContrast">
@@ -69,6 +71,14 @@
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
+    </style>
+
+    <style name="Animation.Centsation.ActivitySlide" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 
     <style name="Theme.Centsation.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">

@@ -70,7 +70,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
         }
 
         provideContent {
-            GlanceTheme {
+            GlanceTheme(colors = HabitGlanceTheme.Colors) {
                 WidgetRoot(context = context, items = items, streaks = streaks)
             }
         }
@@ -123,11 +123,23 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                             )
                         }
 
-                        Button(
-                            text = "+ Add",
-                            onClick = actionStartActivity<HabitTrackerActivity>(),
-                            modifier = GlanceModifier.height(28.dp).width(58.dp)
-                        )
+                        Box(
+                            modifier = GlanceModifier
+                                .cornerRadius(10.dp)
+                                .background(GlanceTheme.colors.primary)
+                                .clickable(actionStartActivity<HabitTrackerActivity>())
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+ Add",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = GlanceTheme.colors.onPrimary
+                                )
+                            )
+                        }
                     }
 
                     Spacer(modifier = GlanceModifier.height(8.dp))
@@ -262,53 +274,85 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    text = "-1",
-                    onClick = actionRunCallback<TrackerLogCallback>(
-                        actionParametersOf(
-                            TrackerIdKey to tracker.id,
-                            DeltaCountKey to -1
-                        )
-                    ),
-                    modifier = GlanceModifier.width(46.dp).height(30.dp)
-                )
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.surface)
+                        .clickable(actionRunCallback<TrackerLogCallback>(
+                            actionParametersOf(
+                                TrackerIdKey to tracker.id,
+                                DeltaCountKey to -1
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "−1",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurface)
+                    )
+                }
 
                 Spacer(modifier = GlanceModifier.width(6.dp))
 
-                Button(
-                    text = "+1",
-                    onClick = actionRunCallback<TrackerLogCallback>(
-                        actionParametersOf(
-                            TrackerIdKey to tracker.id,
-                            DeltaCountKey to 1
-                        )
-                    ),
-                    modifier = GlanceModifier.width(46.dp).height(30.dp)
-                )
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.surface)
+                        .clickable(actionRunCallback<TrackerLogCallback>(
+                            actionParametersOf(
+                                TrackerIdKey to tracker.id,
+                                DeltaCountKey to 1
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+1",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurface)
+                    )
+                }
 
                 Spacer(modifier = GlanceModifier.width(6.dp))
 
                 if (remaining > 0) {
-                    Button(
-                        text = "+${tracker.baseDailyTarget}",
-                        onClick = actionRunCallback<TrackerLogCallback>(
-                            actionParametersOf(
-                                TrackerIdKey to tracker.id,
-                                DeltaCountKey to tracker.baseDailyTarget
-                            )
-                        ),
-                        modifier = GlanceModifier.width(54.dp).height(30.dp)
-                    )
+                    Box(
+                        modifier = GlanceModifier
+                            .cornerRadius(10.dp)
+                            .background(GlanceTheme.colors.surface)
+                            .clickable(actionRunCallback<TrackerLogCallback>(
+                                actionParametersOf(
+                                    TrackerIdKey to tracker.id,
+                                    DeltaCountKey to tracker.baseDailyTarget
+                                )
+                            ))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "+${tracker.baseDailyTarget}",
+                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = GlanceTheme.colors.onSurface)
+                        )
+                    }
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    Button(
-                        text = "✓ Done",
-                        onClick = actionRunCallback<TrackerCompleteCallback>(
-                            actionParametersOf(TrackerIdKey to tracker.id)
-                        ),
-                        modifier = GlanceModifier.width(62.dp).height(30.dp)
-                    )
+                    Box(
+                        modifier = GlanceModifier
+                            .cornerRadius(10.dp)
+                            .background(GlanceTheme.colors.primary)
+                            .clickable(actionRunCallback<TrackerCompleteCallback>(
+                                actionParametersOf(TrackerIdKey to tracker.id)
+                            ))
+                            .padding(horizontal = 14.dp, vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✓ Done",
+                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = GlanceTheme.colors.onPrimary)
+                        )
+                    }
                 }
             }
         }

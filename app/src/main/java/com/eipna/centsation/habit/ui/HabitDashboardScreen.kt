@@ -65,7 +65,8 @@ import java.util.Locale
 @Composable
 fun HabitDashboardScreen(
     viewModel: HabitViewModel,
-    onBackClicked: () -> Unit
+    onBackClicked: (() -> Unit)? = null,
+    showTopBar: Boolean = true
 ) {
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
 
@@ -74,33 +75,37 @@ fun HabitDashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Daily Quotas & Habits",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Super Center Habit Rollover",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClicked) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+            if (showTopBar) {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Daily Quotas & Habits",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Super Center Habit Rollover",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        if (onBackClicked != null) {
+                            IconButton(onClick = onBackClicked) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -158,7 +163,7 @@ fun HabitDashboardScreen(
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(72.dp))
+                    Spacer(modifier = Modifier.height(130.dp))
                 }
             }
         }

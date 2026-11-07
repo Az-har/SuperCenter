@@ -115,7 +115,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         }
 
         provideContent {
-            GlanceTheme {
+            GlanceTheme(colors = HabitGlanceTheme.Colors) {
                 HeatmapWidgetContainer(
                     context = context,
                     item = currentItem,
@@ -323,16 +323,28 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.defaultWeight()
                 )
 
-                Button(
-                    text = "+1",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to 1
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.primary)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to 1
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+1",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = GlanceTheme.colors.onPrimary
                         )
-                    ),
-                    modifier = GlanceModifier.height(28.dp)
-                )
+                    )
+                }
             }
         }
     }
@@ -456,42 +468,70 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.defaultWeight()
                 )
 
-                Button(
-                    text = "-1",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to -1
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.surfaceVariant)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to -1
+                            )
+                        ))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "−1",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.width(6.dp))
+
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.primary)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to 1
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+1",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = GlanceTheme.colors.onPrimary
                         )
-                    ),
-                    modifier = GlanceModifier.height(28.dp)
-                )
+                    )
+                }
 
-                Spacer(modifier = GlanceModifier.width(4.dp))
+                Spacer(modifier = GlanceModifier.width(6.dp))
 
-                Button(
-                    text = "+1",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to 1
-                        )
-                    ),
-                    modifier = GlanceModifier.height(28.dp)
-                )
-
-                Spacer(modifier = GlanceModifier.width(4.dp))
-
-                Button(
-                    text = "+${tracker.baseDailyTarget}",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to tracker.baseDailyTarget
-                        )
-                    ),
-                    modifier = GlanceModifier.height(28.dp)
-                )
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.surfaceVariant)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to tracker.baseDailyTarget
+                            )
+                        ))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+${tracker.baseDailyTarget}",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    )
+                }
             }
         }
     }
@@ -641,42 +681,70 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.defaultWeight()
                 )
 
-                Button(
-                    text = "-1",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to -1
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(12.dp)
+                        .background(GlanceTheme.colors.surfaceVariant)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to -1
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "−1",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.width(8.dp))
+
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(12.dp)
+                        .background(GlanceTheme.colors.primary)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to 1
+                            )
+                        ))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+1",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = GlanceTheme.colors.onPrimary
                         )
-                    ),
-                    modifier = GlanceModifier.height(30.dp)
-                )
+                    )
+                }
 
-                Spacer(modifier = GlanceModifier.width(4.dp))
+                Spacer(modifier = GlanceModifier.width(8.dp))
 
-                Button(
-                    text = "+1",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to 1
-                        )
-                    ),
-                    modifier = GlanceModifier.height(30.dp)
-                )
-
-                Spacer(modifier = GlanceModifier.width(4.dp))
-
-                Button(
-                    text = "+${tracker.baseDailyTarget}",
-                    onClick = actionRunCallback<HabitHeatmapLogAction>(
-                        actionParametersOf(
-                            HeatmapTrackerIdKey to tracker.id,
-                            HeatmapDeltaKey to tracker.baseDailyTarget
-                        )
-                    ),
-                    modifier = GlanceModifier.height(30.dp)
-                )
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(12.dp)
+                        .background(GlanceTheme.colors.surfaceVariant)
+                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
+                            actionParametersOf(
+                                HeatmapTrackerIdKey to tracker.id,
+                                HeatmapDeltaKey to tracker.baseDailyTarget
+                            )
+                        ))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+${tracker.baseDailyTarget}",
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    )
+                }
             }
         }
     }

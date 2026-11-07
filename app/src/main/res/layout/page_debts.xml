@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/debts_app_bar"
+        app:liftOnScroll="true"
+        android:background="@android:color/transparent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Hero Debt Summary Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/debt_dashboard_card"
+            style="@style/Widget.Material3.CardView.Filled"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Header Row: Label & % Badge -->
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/debt_card_header"
+                        android:text="NET DEBT &amp; LIABILITIES"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:letterSpacing="0.08"
+                        android:textStyle="bold"
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_debt_dashboard_analytics"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:text="Insights"
+                        app:icon="@drawable/ic_insights"
+                        app:iconSize="16dp"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/debt_overall_percent"
+                        android:text="0%"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorError"
+                        android:background="@drawable/bg_pill_accent"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:ignore="HardcodedText" />
+                </LinearLayout>
+
+                <!-- Big Animated Balance -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/debt_total_saved"
+                    android:text="$0.00"
+                    android:textAppearance="?attr/textAppearanceHeadlineLarge"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorError"
+                    android:layout_marginTop="4dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <!-- Target Goal -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/debt_total_goal"
+                    android:text="Total borrowed vs lent"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="8dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <!-- Smooth Progress Indicator -->
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/debt_dashboard_progress"
+                    android:max="100"
+                    app:trackThickness="10dp"
+                    app:trackCornerRadius="5dp"
+                    app:indicatorColor="?attr/colorError"
+                    app:trackColor="?attr/colorSurfaceContainerHighest"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <!-- Stat Pills Row -->
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/debt_chip_active"
+                        style="@style/Widget.Material3.Chip.Assist.Elevated"
+                        app:chipIcon="@drawable/ic_flag"
+                        app:chipIconTint="?attr/colorError"
+                        android:text="0 I Owe"
+                        android:clickable="false"
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/debt_chip_completed"
+                        style="@style/Widget.Material3.Chip.Assist.Elevated"
+                        app:chipIcon="@drawable/ic_check_circle"
+                        app:chipIconTint="?attr/colorPrimary"
+                        android:text="0 Owed to Me"
+                        android:clickable="false"
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Debt Filter Tabs -->
+        <HorizontalScrollView
+            android:id="@+id/debt_filter_scroll"
+            android:scrollbars="none"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="6dp"
+            android:clipToPadding="false"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/debt_filter_chip_group"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_all"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:checked="true"
+                    android:text="All"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_i_owe"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="💸 I Owe"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debt_filter_owed_to_me"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:text="📥 Owed to Me"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:ignore="HardcodedText" />
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Debt Empty State -->
+        <LinearLayout
+            android:id="@+id/debt_empty_indicator"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:padding="24dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_savings"
+                android:background="@drawable/bg_pill_accent"
+                android:padding="22dp"
+                tools:ignore="ContentDescription"
+                app:tint="?attr/colorError" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:text="No Debts Tracked Yet"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:textAlignment="center"
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText"/>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:text="Tap + below to add a loan, credit card, or liability"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="6dp"
+                android:textAlignment="center"
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_empty_create_debt"
+                style="@style/Widget.Material3.Button"
+                android:text="Add Your First Debt"
+                app:icon="@drawable/ic_add"
+                app:cornerRadius="16dp"
+                android:layout_marginTop="18dp"
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:ignore="HardcodedText" />
+        </LinearLayout>
+
+        <!-- Debts RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/debt_list"
+            android:layoutAnimation="@anim/layout_animation_fall_down"
+            android:clipToPadding="false"
+            android:paddingBottom="120dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+    </FrameLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

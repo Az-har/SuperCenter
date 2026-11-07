@@ -255,19 +255,19 @@ object HabitHeatmapUtil {
         val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
-        // Fill background with surface color for RGB_565
-        val bgColor = if (isDarkMode) 0xFF1C1B1F.toInt() else 0xFFFEF7FF.toInt()
+        // Fill background with surface color for RGB_565 (matching widget card background)
+        val bgColor = if (isDarkMode) 0xFF121620.toInt() else 0xFFFFFFFF.toInt()
         canvas.drawColor(bgColor)
 
         // Color definitions matching GitHub contribution palette & M3 Emerald
-        val emptyColor = if (isDarkMode) 0xFF161B22.toInt() else 0xFFEBEDF0.toInt()
-        val emptyBorderColor = if (isDarkMode) 0xFF30363D.toInt() else 0xFFD0D7DE.toInt()
-        val level1Color = if (isDarkMode) 0xFF0E4429.toInt() else 0xFF9BE9A8.toInt()
-        val level2Color = if (isDarkMode) 0xFF006D32.toInt() else 0xFF40C463.toInt()
-        val level3Color = if (isDarkMode) 0xFF26A641.toInt() else 0xFF30A14E.toInt()
-        val level4Color = if (isDarkMode) 0xFF39D353.toInt() else 0xFF216E39.toInt()
-        val todayRingColor = if (isDarkMode) 0xFF58A6FF.toInt() else 0xFF0969DA.toInt()
-        val labelColor = if (isDarkMode) 0xFF8B949E.toInt() else 0xFF57606A.toInt()
+        val emptyColor = if (isDarkMode) 0xFF1E2533.toInt() else 0xFFF1F5F9.toInt()
+        val emptyBorderColor = if (isDarkMode) 0xFF2A3447.toInt() else 0xFFE2E8F0.toInt()
+        val level1Color = if (isDarkMode) 0xFF0E4429.toInt() else 0xFFA7F3D0.toInt()
+        val level2Color = if (isDarkMode) 0xFF006D32.toInt() else 0xFF34D399.toInt()
+        val level3Color = if (isDarkMode) 0xFF059669.toInt() else 0xFF10B981.toInt()
+        val level4Color = if (isDarkMode) 0xFF00E676.toInt() else 0xFF00875A.toInt()
+        val todayRingColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
+        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF64748B.toInt()
 
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL

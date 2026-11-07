@@ -16,8 +16,4 @@
         android:id="@+id/nav_bottom_analytics"
         android:icon="@drawable/ic_insights"
         android:title="Insights" />
-    <item
-        android:id="@+id/nav_bottom_settings"
-        android:icon="@drawable/ic_settings"
-        android:title="Settings" />
 </menu>
