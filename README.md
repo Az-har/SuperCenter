@@ -9,7 +9,7 @@
 
 Centsation is a modern, privacy-first offline savings tracker designed to help you reach your financial milestones with zero fuss. Whether you're setting aside funds for a vacation, an emergency buffer, a vehicle, or a major purchase, Centsation keeps you focused, motivated, and in control.
 
-[![GitHub release](https://img.shields.io/github/v/release/Az-har/Centsation?style=flat-square)](https://github.com/Az-har/Centsation/releases)
+[![GitHub release](https://img.shields.io/github/v/release/Az-har/SuperCenter?style=flat-square)](https://github.com/Az-har/SuperCenter/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg?style=flat-square)](https://developer.android.com)
 
@@ -47,7 +47,7 @@ Centsation is a modern, privacy-first offline savings tracker designed to help y
 
 Pre-compiled signed releases are available under the GitHub Releases tab:
 
-👉 **[Download Latest APK from Releases](https://github.com/Az-har/Centsation/releases)**
+👉 **[Download Latest APK from Releases](https://github.com/Az-har/SuperCenter/releases)**
 
 You can also find the ready-to-install APK at [`app/release/app-release.apk`](app/release/app-release.apk) in this repository.
 
