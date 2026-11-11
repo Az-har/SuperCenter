@@ -4,8 +4,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="12dp"
-    android:background="@drawable/bg_hero_card">
+    android:padding="16dp"
+    android:background="@drawable/bg_widget_preview_card">
 
     <TextView
         android:layout_width="wrap_content"
@@ -13,13 +13,13 @@
         android:text="Daily Quota"
         android:textSize="15sp"
         android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface" />
+        android:textColor="@color/md_theme_onSurface" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Loading tracker..."
+        android:text="Loading quick counter..."
         android:textSize="12sp"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textColor="@color/md_theme_onSurfaceVariant" />
 </LinearLayout>

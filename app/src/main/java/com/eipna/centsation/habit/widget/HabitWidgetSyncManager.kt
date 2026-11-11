@@ -3,13 +3,20 @@ package com.eipna.centsation.habit.widget
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.util.Log
+import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.updateAll
 import com.eipna.centsation.util.DeviceHardwareOptimizer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Centralized, debounced widget synchronization manager.
@@ -18,52 +25,66 @@ import kotlinx.coroutines.launch
  */
 object HabitWidgetSyncManager {
 
-    private val syncScope = CoroutineScope(Dispatchers.Default)
-    private var debounceJob: Job? = null
+    private const val TAG = "HabitWidgetSyncManager"
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val updateMutex = Mutex()
+    private var pendingDebounceJob: Job? = null
 
+    fun computeNextTrackerIndex(currentIndex: Int, totalCount: Int): Int {
+        if (totalCount <= 1) return 0
+        val safeCurrent = currentIndex.coerceIn(0, totalCount - 1)
+        return (safeCurrent + 1) % totalCount
+    }
+
+    @JvmOverloads
     @Synchronized
-    fun enqueueUpdate(context: Context) {
+    fun enqueueUpdate(context: Context, excludeReceiver: Class<*>? = null) {
         val appContext = context.applicationContext
         val delayMs = DeviceHardwareOptimizer.getAdaptiveWidgetDebounceMs(appContext)
-        debounceJob?.cancel()
-        debounceJob = syncScope.launch {
+        pendingDebounceJob?.cancel()
+        pendingDebounceJob = syncScope.launch {
             delay(delayMs)
-            performSynchronizedUpdate(appContext)
+            withContext(NonCancellable) {
+                performSynchronizedUpdate(appContext, excludeReceiver)
+            }
         }
     }
 
-    suspend fun performSynchronizedUpdate(context: Context) {
+    suspend fun performSynchronizedUpdate(context: Context, excludeReceiver: Class<*>? = null) {
         val appWidgetManager = try {
             AppWidgetManager.getInstance(context)
         } catch (e: Exception) {
+            Log.w(TAG, "Unable to obtain AppWidgetManager", e)
             null
         } ?: return
 
-        // 1. SingleTrackerGlanceWidget - check active instances
-        try {
-            val singleComponent = ComponentName(context, SingleTrackerGlanceReceiver::class.java)
-            val singleIds = appWidgetManager.getAppWidgetIds(singleComponent)
-            if (singleIds != null && singleIds.isNotEmpty()) {
-                SingleTrackerGlanceWidget().updateAll(context)
+        updateMutex.withLock {
+            if (excludeReceiver != SingleTrackerGlanceReceiver::class.java) {
+                updateProviderIfActive(context, appWidgetManager, SingleTrackerGlanceReceiver::class.java, SingleTrackerGlanceWidget())
             }
-        } catch (_: Exception) {}
+            if (excludeReceiver != HabitHeatmapGlanceReceiver::class.java) {
+                updateProviderIfActive(context, appWidgetManager, HabitHeatmapGlanceReceiver::class.java, HabitHeatmapGlanceWidget())
+            }
+            if (excludeReceiver != TrackerGlanceReceiver::class.java) {
+                updateProviderIfActive(context, appWidgetManager, TrackerGlanceReceiver::class.java, TrackerGlanceWidget())
+            }
+        }
+    }
 
-        // 2. HabitHeatmapGlanceWidget - check active instances
+    private suspend fun updateProviderIfActive(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        receiverClass: Class<*>,
+        widget: GlanceAppWidget
+    ) {
         try {
-            val heatmapComponent = ComponentName(context, HabitHeatmapGlanceReceiver::class.java)
-            val heatmapIds = appWidgetManager.getAppWidgetIds(heatmapComponent)
-            if (heatmapIds != null && heatmapIds.isNotEmpty()) {
-                HabitHeatmapGlanceWidget().updateAll(context)
+            val component = ComponentName(context, receiverClass)
+            val ids = appWidgetManager.getAppWidgetIds(component)
+            if (ids != null && ids.isNotEmpty()) {
+                widget.updateAll(context)
             }
-        } catch (_: Exception) {}
-
-        // 3. TrackerGlanceWidget (multi-habit list) - check active instances
-        try {
-            val multiComponent = ComponentName(context, TrackerGlanceReceiver::class.java)
-            val multiIds = appWidgetManager.getAppWidgetIds(multiComponent)
-            if (multiIds != null && multiIds.isNotEmpty()) {
-                TrackerGlanceWidget().updateAll(context)
-            }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed updating widget provider ${receiverClass.simpleName}", e)
+        }
     }
 }

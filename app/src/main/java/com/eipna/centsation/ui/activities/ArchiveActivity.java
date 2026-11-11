@@ -17,14 +17,16 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
 import com.eipna.centsation.data.Database;
+import com.eipna.centsation.data.debt.Debt;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingOperation;
 import com.eipna.centsation.databinding.ActivityArchiveBinding;
+import com.eipna.centsation.ui.adapters.DebtAdapter;
 import com.eipna.centsation.ui.adapters.SavingAdapter;
+import com.eipna.centsation.ui.dialogs.DebtDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.ArchiveViewModel;
 import com.eipna.centsation.util.AlarmSetter;
-import com.eipna.centsation.util.AnimationUtil;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
@@ -32,13 +34,20 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.util.Collections;
 import java.util.List;
 
-public class ArchiveActivity extends CentsationActivity implements SavingAdapter.Listener {
+public class ArchiveActivity extends CentsationActivity implements SavingAdapter.Listener, DebtAdapter.Listener {
+
+    public static final String EXTRA_ARCHIVE_TAB = "extra_archive_tab";
 
     private ActivityArchiveBinding binding;
     private ArchiveViewModel viewModel;
     private SavingAdapter savingAdapter;
+    private DebtAdapter debtAdapter;
+    private List<Saving> currentSavings = Collections.emptyList();
+    private List<Debt> currentDebts = Collections.emptyList();
+    private boolean showingDebts = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,8 +75,12 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
         binding.savingList.setLayoutManager(new LinearLayoutManager(this));
         binding.savingList.setAdapter(savingAdapter);
 
-        // Fluid swipe gestures (Right = Restore, Left = Delete Permanently)
-        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new SwipeActionCallback(
+        debtAdapter = new DebtAdapter(this);
+        binding.debtList.setLayoutManager(new LinearLayoutManager(this));
+        binding.debtList.setAdapter(debtAdapter);
+
+        // Fluid swipe gestures for archived savings (Right = Restore, Left = Delete Permanently)
+        ItemTouchHelper savingTouchHelper = new ItemTouchHelper(new SwipeActionCallback(
                 this,
                 R.drawable.ic_unarchive,
                 R.drawable.ic_delete_forever,
@@ -79,20 +92,60 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
                     @Override
                     public void onSwipeRight(int position) {
                         Saving saving = savingAdapter.getSavingAt(position);
+                        if (saving == null) return;
                         unarchiveWithUndo(saving);
                     }
 
                     @Override
                     public void onSwipeLeft(int position) {
                         Saving saving = savingAdapter.getSavingAt(position);
+                        if (saving == null) return;
                         savingAdapter.notifyItemChanged(position);
                         showDeleteDialog(saving);
                     }
                 }
         ));
-        itemTouchHelper.attachToRecyclerView(binding.savingList);
+        savingTouchHelper.attachToRecyclerView(binding.savingList);
+
+        // Fluid swipe gestures for archived debts (Right = Restore, Left = Delete Permanently)
+        ItemTouchHelper debtTouchHelper = new ItemTouchHelper(new SwipeActionCallback(
+                this,
+                R.drawable.ic_unarchive,
+                R.drawable.ic_delete_forever,
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                com.google.android.material.R.attr.colorErrorContainer,
+                com.google.android.material.R.attr.colorOnPrimaryContainer,
+                com.google.android.material.R.attr.colorOnErrorContainer,
+                new SwipeActionCallback.SwipeListener() {
+                    @Override
+                    public void onSwipeRight(int position) {
+                        Debt debt = debtAdapter.getDebtAt(position);
+                        if (debt == null) return;
+                        unarchiveDebtWithUndo(debt);
+                    }
+
+                    @Override
+                    public void onSwipeLeft(int position) {
+                        Debt debt = debtAdapter.getDebtAt(position);
+                        if (debt == null) return;
+                        debtAdapter.notifyItemChanged(position);
+                        showDeleteDebtDialog(debt);
+                    }
+                }
+        ));
+        debtTouchHelper.attachToRecyclerView(binding.debtList);
+
+        showingDebts = "debts".equals(getIntent().getStringExtra(EXTRA_ARCHIVE_TAB));
+        binding.archiveModeToggleGroup.check(showingDebts ? R.id.btn_archive_tab_debts : R.id.btn_archive_tab_savings);
+        binding.archiveModeToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            showingDebts = (checkedId == R.id.btn_archive_tab_debts);
+            updateActiveListVisibility();
+        });
 
         viewModel.getSavings().observe(this, this::onSavingsChanged);
+        viewModel.getDebts().observe(this, this::onDebtsChanged);
+        updateActiveListVisibility();
     }
 
     @Override
@@ -108,6 +161,7 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
     protected void onResume() {
         super.onResume();
         viewModel.loadSavings();
+        viewModel.loadDebts();
     }
 
     @Override
@@ -117,19 +171,42 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
     }
 
     private void onSavingsChanged(List<Saving> updated) {
-        savingAdapter.submitList(updated);
+        currentSavings = updated != null ? updated : Collections.emptyList();
+        savingAdapter.submitList(currentSavings);
+        updateActiveListVisibility();
+    }
 
-        boolean empty = updated.isEmpty();
-        if (empty) {
-            AnimationUtil.crossfade(binding.savingList, binding.emptyIndicator, 200);
+    private void onDebtsChanged(List<Debt> updated) {
+        currentDebts = updated != null ? updated : Collections.emptyList();
+        debtAdapter.setDebts(currentDebts, this);
+        updateActiveListVisibility();
+    }
+
+    private void updateActiveListVisibility() {
+        if (binding == null) return;
+        binding.savingList.animate().cancel();
+        binding.debtList.animate().cancel();
+        binding.emptyIndicator.animate().cancel();
+
+        if (showingDebts) {
+            binding.savingList.setVisibility(View.GONE);
+            binding.emptyArchiveTitle.setText(R.string.empty_indicator_archive_debts);
+            boolean empty = currentDebts.isEmpty();
+            binding.debtList.setVisibility(empty ? View.GONE : View.VISIBLE);
+            binding.emptyIndicator.setVisibility(empty ? View.VISIBLE : View.GONE);
         } else {
-            AnimationUtil.crossfade(binding.emptyIndicator, binding.savingList, 200);
+            binding.debtList.setVisibility(View.GONE);
+            binding.emptyArchiveTitle.setText(R.string.empty_indicator_archive);
+            boolean empty = currentSavings.isEmpty();
+            binding.savingList.setVisibility(empty ? View.GONE : View.VISIBLE);
+            binding.emptyIndicator.setVisibility(empty ? View.VISIBLE : View.GONE);
         }
     }
 
     @Override
     public void onClick(int position) {
         Saving selectedSaving = savingAdapter.getSavingAt(position);
+        if (selectedSaving == null) return;
         showSavingDetails(selectedSaving.getID());
     }
 
@@ -177,16 +254,71 @@ public class ArchiveActivity extends CentsationActivity implements SavingAdapter
     @Override
     public void onOperationClick(SavingOperation operation, int position) {
         Saving selectedSaving = savingAdapter.getSavingAt(position);
+        if (selectedSaving == null) return;
         if (operation.equals(SavingOperation.UNARCHIVE)) unarchiveWithUndo(selectedSaving);
         if (operation.equals(SavingOperation.SHARE)) shareSaving(selectedSaving);
         if (operation.equals(SavingOperation.DELETE)) showDeleteDialog(selectedSaving);
         if (operation.equals(SavingOperation.HISTORY)) showHistoryActivity(selectedSaving);
     }
 
+    @Override
+    public void onDebtClick(Debt debt) {
+        showDebtDetails(debt);
+    }
+
+    @Override
+    public void onPaymentClick(Debt debt) {
+        showDebtDetails(debt);
+    }
+
+    @Override
+    public void onHistoryClick(Debt debt) {
+        showDebtDetails(debt);
+    }
+
+    @Override
+    public void onUnarchiveClick(Debt debt) {
+        unarchiveDebtWithUndo(debt);
+    }
+
+    @Override
+    public void onDeleteClick(Debt debt) {
+        showDeleteDebtDialog(debt);
+    }
+
+    private void showDebtDetails(Debt debt) {
+        if (debt == null) return;
+        DebtDetailsBottomSheetDialogFragment sheet = DebtDetailsBottomSheetDialogFragment.newInstance(debt.getId());
+        sheet.setOnDebtUpdatedListener(() -> viewModel.loadDebts());
+        sheet.show(getSupportFragmentManager(), "archived_debt_details_sheet");
+    }
+
     private void unarchiveWithUndo(Saving saving) {
         viewModel.unarchiveSaving(saving);
         Snackbar.make(binding.getRoot(), getString(R.string.snackbar_unarchived, saving.getName()), Snackbar.LENGTH_LONG)
                 .setAction(R.string.snackbar_undo, v -> viewModel.archiveSaving(saving))
+                .show();
+    }
+
+    private void unarchiveDebtWithUndo(Debt debt) {
+        viewModel.unarchiveDebt(debt);
+        Snackbar.make(binding.getRoot(), getString(R.string.snackbar_unarchived, debt.getName()), Snackbar.LENGTH_LONG)
+                .setAction(R.string.snackbar_undo, v -> viewModel.archiveDebt(debt))
+                .show();
+    }
+
+    private void showDeleteDebtDialog(Debt debt) {
+        if (debt == null) return;
+        boolean isOwed = debt.isOwedToMe();
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(isOwed ? "Delete Owed Record" : "Delete Debt")
+                .setIcon(R.drawable.ic_delete_forever)
+                .setMessage(isOwed
+                        ? "Are you sure you want to delete this owed record and all associated logs?"
+                        : "Are you sure you want to delete this debt and its entire payment history?")
+                .setNegativeButton(R.string.dialog_button_cancel, null)
+                .setPositiveButton(R.string.dialog_button_delete, (dialogInterface, i) ->
+                        viewModel.deleteDebt(debt))
                 .show();
     }
 

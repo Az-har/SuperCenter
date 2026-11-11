@@ -27,7 +27,7 @@
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 app:navigationIcon="@drawable/ic_menu"
-                app:navigationContentDescription="Open navigation menu"
+                app:navigationContentDescription="@string/nav_open_menu"
                 app:title="@string/toolbar_main"
                 app:titleTextColor="?attr/colorOnSurface"
                 android:layout_width="match_parent"
@@ -53,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"
-            android:importantForAccessibility="no" />
+            android:contentDescription="@string/fab_add_saving" />
 
         <!-- Modern Material 3 Bottom Navigation Bar -->
         <com.google.android.material.bottomnavigation.BottomNavigationView

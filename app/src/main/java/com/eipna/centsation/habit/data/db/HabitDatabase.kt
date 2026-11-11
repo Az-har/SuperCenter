@@ -14,7 +14,7 @@ import com.eipna.centsation.habit.data.entity.TrackerLogEntity
 @Database(
     entities = [TrackerEntity::class, TrackerLogEntity::class],
     version = 2,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class HabitDatabase : RoomDatabase() {
 
@@ -41,7 +41,6 @@ abstract class HabitDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_1_2)
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

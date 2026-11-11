@@ -2,6 +2,7 @@ package com.eipna.centsation.debt;
 
 import com.eipna.centsation.data.debt.Debt;
 import com.eipna.centsation.data.debt.DebtCategory;
+import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.debt.DebtTransaction;
 
 import org.junit.Assert;
@@ -195,5 +196,22 @@ public class DebtCalculationTest {
         Assert.assertEquals(1500.50, tx.getAmount(), 0.001);
         Assert.assertEquals(1700000000000L, tx.getDate());
         Assert.assertEquals("EMI installment #3", tx.getNotes());
+    }
+
+    @Test
+    public void testDebtRepositoryRejectsZeroNegativeOrNonFinitePayments() {
+        Debt debt = new Debt("d1", "Personal", 1000.0, 200.0, "personal", 0, 0, System.currentTimeMillis());
+        try (DebtRepository repo = new DebtRepository(null)) {
+            double[] invalidAmounts = {0.0, -50.0, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
+            for (double invalid : invalidAmounts) {
+                boolean threw = false;
+                try {
+                    repo.makePayment(debt, invalid, "invalid");
+                } catch (IllegalArgumentException expected) {
+                    threw = true;
+                }
+                Assert.assertTrue("Expected IllegalArgumentException for amount=" + invalid, threw);
+            }
+        }
     }
 }

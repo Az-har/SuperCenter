@@ -3,11 +3,13 @@ package com.eipna.centsation.data;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
 public class Database extends SQLiteOpenHelper {
 
+    private static final String TAG = "CentsationDatabase";
     private static final String DATABASE_NAME = "centsation.db";
     private static final int DATABASE_VERSION = 6;
 
@@ -126,7 +128,8 @@ public class Database extends SQLiteOpenHelper {
         if (oldVersion < 3) {
             try {
                 sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_SAVING + " ADD COLUMN " + COLUMN_SAVING_CATEGORY + " TEXT;");
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                Log.w(TAG, "Skipping saving category column migration from v" + oldVersion, e);
             }
         }
         if (oldVersion < 4) {
@@ -135,14 +138,16 @@ public class Database extends SQLiteOpenHelper {
         if (oldVersion < 5) {
             try {
                 sqLiteDatabase.execSQL("ALTER TABLE " + TABLE_DEBT + " ADD COLUMN " + COLUMN_DEBT_TYPE + " INTEGER NOT NULL DEFAULT 0;");
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                Log.w(TAG, "Skipping debt_type column migration from v" + oldVersion, e);
             }
         }
         if (oldVersion < 6) {
             try {
                 sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_savings_is_archived ON " + TABLE_SAVING + "(" + COLUMN_SAVING_IS_ARCHIVED + ");");
                 sqLiteDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_debts_is_archived ON " + TABLE_DEBT + "(" + COLUMN_DEBT_IS_ARCHIVED + ");");
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to create archive index during upgrade from v" + oldVersion, e);
             }
         }
     }

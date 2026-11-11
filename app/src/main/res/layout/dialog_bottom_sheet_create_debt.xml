@@ -54,10 +54,9 @@
             android:id="@+id/btn_create_debt_close"
             style="?attr/materialIconButtonStyle"
             app:icon="@drawable/ic_clear"
-            android:contentDescription="Close"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            tools:ignore="HardcodedText" />
+            android:contentDescription="@string/dialog_button_close"
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
     </LinearLayout>
 
     <androidx.core.widget.NestedScrollView

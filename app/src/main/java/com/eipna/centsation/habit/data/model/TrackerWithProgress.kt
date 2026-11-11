@@ -21,7 +21,9 @@ data class TrackerWithProgress(
         get() = TrackerDateUtil.calculateDaysActive(tracker.createdAt, todayDate)
 
     val totalExpectedQuota: Int
-        get() = (daysActive * tracker.baseDailyTarget).toInt()
+        get() = (daysActive * tracker.baseDailyTarget.toLong())
+            .coerceIn(0L, Int.MAX_VALUE.toLong())
+            .toInt()
 
     val remainingToday: Int
         get() = max(0, totalExpectedQuota - totalCompletedReps)

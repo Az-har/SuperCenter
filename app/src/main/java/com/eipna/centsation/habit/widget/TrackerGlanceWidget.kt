@@ -1,13 +1,16 @@
 package com.eipna.centsation.habit.widget
 
 import android.content.Context
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
@@ -22,7 +25,6 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -42,10 +44,8 @@ import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.eipna.centsation.habit.util.TrackerDateUtil
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 
 val TrackerIdKey = ActionParameters.Key<Long>("tracker_id")
 val DeltaCountKey = ActionParameters.Key<Int>("delta_count")
@@ -54,34 +54,42 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
     companion object {
         private val SIZE_MEDIUM = DpSize(180.dp, 110.dp)
+        private val SIZE_STANDARD = DpSize(270.dp, 200.dp)
         private val SIZE_WIDE = DpSize(300.dp, 160.dp)
         private val SIZE_EXPANDED = DpSize(360.dp, 260.dp)
     }
 
     override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(SIZE_MEDIUM, SIZE_WIDE, SIZE_EXPANDED)
+        setOf(SIZE_MEDIUM, SIZE_STANDARD, SIZE_WIDE, SIZE_EXPANDED)
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = TrackerRepository.getInstance(context)
-        val items = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
-        val streaks = items.associate {
-            it.tracker.id to HabitHeatmapUtil.calculateStreakStats(it.tracker, it.logs, it.todayDate)
-        }
+        val initialItems = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
 
         provideContent {
-            GlanceTheme(colors = HabitGlanceTheme.Colors) {
-                WidgetRoot(context = context, items = items, streaks = streaks)
+            val items by repository.getTrackersWithProgress().collectAsState(initial = initialItems)
+            val today = TrackerDateUtil.getTodayDateString()
+            val streaks = remember(items, today) {
+                items.associate {
+                    it.tracker.id to HabitHeatmapUtil.calculateStreakStats(it.tracker, it.logs, it.todayDate)
+                }
+            }
+
+            GlanceTheme(colors = HabitGlanceTheme.colorsFor(context)) {
+                WidgetRoot(items = items, streaks = streaks)
             }
         }
     }
 
     @androidx.compose.runtime.Composable
     private fun WidgetRoot(
-        context: Context,
         items: List<TrackerWithProgress>,
         streaks: Map<Long, com.eipna.centsation.habit.util.StreakStats>
     ) {
+        val size = LocalSize.current
+        val ultraCompact = size.height < 140.dp
+        val compact = size.height < 200.dp
         val doneCount = items.count { it.isCompletedToday }
 
         Box(
@@ -89,7 +97,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .cornerRadius(20.dp)
                 .background(GlanceTheme.colors.surface)
-                .padding(12.dp)
+                .padding(if (ultraCompact) 8.dp else if (compact) 9.dp else 12.dp)
         ) {
             if (items.isEmpty()) {
                 EmptyWidgetView()
@@ -109,26 +117,30 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                                 text = "🎯 Daily Quotas",
                                 style = TextStyle(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
+                                    fontSize = if (ultraCompact) 12.sp else if (compact) 13.sp else 15.sp,
                                     color = GlanceTheme.colors.onSurface
                                 )
                             )
-                            Text(
-                                text = "$doneCount of ${items.size} Completed",
-                                style = TextStyle(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (doneCount == items.size) GlanceTheme.colors.primary else GlanceTheme.colors.outline
+                            if (!ultraCompact) {
+                                Text(
+                                    text = "$doneCount of ${items.size} Completed",
+                                    style = TextStyle(
+                                        fontSize = if (compact) 10.sp else 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (doneCount == items.size) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
+                                    )
                                 )
-                            )
+                            }
                         }
+
+                        Spacer(modifier = GlanceModifier.width(6.dp))
 
                         Box(
                             modifier = GlanceModifier
                                 .cornerRadius(10.dp)
                                 .background(GlanceTheme.colors.primary)
                                 .clickable(actionStartActivity<HabitTrackerActivity>())
-                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                                .padding(horizontal = if (compact) 10.dp else 12.dp, vertical = if (compact) 6.dp else 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -142,12 +154,17 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                         }
                     }
 
-                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    Spacer(modifier = GlanceModifier.height(if (ultraCompact) 4.dp else if (compact) 5.dp else 8.dp))
 
                     LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-                        items(items) { item ->
-                            TrackerWidgetItem(item = item, streakStats = streaks[item.tracker.id])
-                            Spacer(modifier = GlanceModifier.height(8.dp))
+                        items(items = items, itemId = { it.tracker.id.toLong() }) { item ->
+                            TrackerWidgetItem(
+                                item = item,
+                                streakStats = streaks[item.tracker.id],
+                                compact = compact,
+                                ultraCompact = ultraCompact
+                            )
+                            Spacer(modifier = GlanceModifier.height(if (ultraCompact) 4.dp else if (compact) 5.dp else 8.dp))
                         }
                     }
                 }
@@ -187,31 +204,40 @@ class TrackerGlanceWidget : GlanceAppWidget() {
     @androidx.compose.runtime.Composable
     private fun TrackerWidgetItem(
         item: TrackerWithProgress,
-        streakStats: com.eipna.centsation.habit.util.StreakStats?
+        streakStats: com.eipna.centsation.habit.util.StreakStats?,
+        compact: Boolean,
+        ultraCompact: Boolean
     ) {
         val tracker = item.tracker
         val remaining = item.remainingToday
         val unit = tracker.unit
         val debt = item.accumulatedBacklogDebt
         val currentStreak = streakStats?.currentStreak ?: 0
+        val btnVPad = if (ultraCompact) 2.dp else if (compact) 3.dp else 5.dp
+        val btnHPad = if (ultraCompact) 8.dp else if (compact) 9.dp else 12.dp
+        val cardPad = if (ultraCompact) 6.dp else if (compact) 7.dp else 10.dp
+        val rowGap = if (ultraCompact) 2.dp else if (compact) 3.dp else 5.dp
 
         Column(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .cornerRadius(14.dp)
+                .cornerRadius(if (compact) 12.dp else 14.dp)
                 .background(GlanceTheme.colors.surfaceVariant)
-                .padding(10.dp)
+                .padding(cardPad)
         ) {
             Row(
-                modifier = GlanceModifier.fillMaxWidth(),
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .clickable(actionStartActivity<HabitTrackerActivity>()),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val titleDisplay = if (currentStreak > 0) "${tracker.title} 🔥 ${currentStreak}d" else tracker.title
                 Text(
                     text = titleDisplay,
+                    maxLines = 1,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = if (compact) 12.sp else 13.sp,
                         color = GlanceTheme.colors.onSurfaceVariant
                     ),
                     modifier = GlanceModifier.defaultWeight()
@@ -222,7 +248,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                         text = "✅ Done",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = if (compact) 11.sp else 12.sp,
                             color = GlanceTheme.colors.primary
                         )
                     )
@@ -236,14 +262,14 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                         text = statusText,
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            fontSize = if (compact) 10.sp else 11.sp,
                             color = if (debt > 0) GlanceTheme.colors.error else GlanceTheme.colors.primary
                         )
                     )
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(4.dp))
+            Spacer(modifier = GlanceModifier.height(rowGap))
 
             // Progress bar with percentage
             Row(
@@ -252,9 +278,9 @@ class TrackerGlanceWidget : GlanceAppWidget() {
             ) {
                 LinearProgressIndicator(
                     progress = item.completionRatio,
-                    modifier = GlanceModifier.defaultWeight().height(5.dp),
+                    modifier = GlanceModifier.defaultWeight().height(if (compact) 4.dp else 5.dp),
                     color = GlanceTheme.colors.primary,
-                    backgroundColor = GlanceTheme.colors.outline
+                    backgroundColor = GlanceTheme.colors.surface
                 )
                 Spacer(modifier = GlanceModifier.width(6.dp))
                 Text(
@@ -262,12 +288,12 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                     style = TextStyle(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = GlanceTheme.colors.outline
+                        color = GlanceTheme.colors.onSurfaceVariant
                     )
                 )
             }
 
-            Spacer(modifier = GlanceModifier.height(6.dp))
+            Spacer(modifier = GlanceModifier.height(rowGap))
 
             // Stepper Control Buttons
             Row(
@@ -276,7 +302,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
             ) {
                 Box(
                     modifier = GlanceModifier
-                        .cornerRadius(10.dp)
+                        .cornerRadius(9.dp)
                         .background(GlanceTheme.colors.surface)
                         .clickable(actionRunCallback<TrackerLogCallback>(
                             actionParametersOf(
@@ -284,12 +310,12 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                                 DeltaCountKey to -1
                             )
                         ))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                        .padding(horizontal = btnHPad, vertical = btnVPad),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "−1",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurface)
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, color = GlanceTheme.colors.onSurface)
                     )
                 }
 
@@ -297,7 +323,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
                 Box(
                     modifier = GlanceModifier
-                        .cornerRadius(10.dp)
+                        .cornerRadius(9.dp)
                         .background(GlanceTheme.colors.surface)
                         .clickable(actionRunCallback<TrackerLogCallback>(
                             actionParametersOf(
@@ -305,12 +331,12 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                                 DeltaCountKey to 1
                             )
                         ))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                        .padding(horizontal = btnHPad, vertical = btnVPad),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "+1",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurface)
+                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, color = GlanceTheme.colors.onSurface)
                     )
                 }
 
@@ -319,7 +345,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 if (remaining > 0) {
                     Box(
                         modifier = GlanceModifier
-                            .cornerRadius(10.dp)
+                            .cornerRadius(9.dp)
                             .background(GlanceTheme.colors.surface)
                             .clickable(actionRunCallback<TrackerLogCallback>(
                                 actionParametersOf(
@@ -327,12 +353,12 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                                     DeltaCountKey to tracker.baseDailyTarget
                                 )
                             ))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                            .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = btnVPad),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "+${tracker.baseDailyTarget}",
-                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = GlanceTheme.colors.onSurface)
+                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = if (compact) 10.sp else 11.sp, color = GlanceTheme.colors.onSurface)
                         )
                     }
 
@@ -340,17 +366,17 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
                     Box(
                         modifier = GlanceModifier
-                            .cornerRadius(10.dp)
+                            .cornerRadius(9.dp)
                             .background(GlanceTheme.colors.primary)
                             .clickable(actionRunCallback<TrackerCompleteCallback>(
                                 actionParametersOf(TrackerIdKey to tracker.id)
                             ))
-                            .padding(horizontal = 14.dp, vertical = 5.dp),
+                            .padding(horizontal = if (compact) 10.dp else 14.dp, vertical = btnVPad),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✓ Done",
-                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = GlanceTheme.colors.onPrimary)
+                            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = if (compact) 10.sp else 11.sp, color = GlanceTheme.colors.onPrimary)
                         )
                     }
                 }
@@ -375,7 +401,7 @@ class TrackerLogCallback : ActionCallback {
 
         val updated = repository.logReps(trackerId, delta)
         TrackerGlanceWidget().update(context, glanceId)
-        updateAllSingleHabitWidgets(context)
+        HabitWidgetSyncManager.enqueueUpdate(context, excludeReceiver = TrackerGlanceReceiver::class.java)
 
         if (updated != null) {
             TrackerNotificationHandler.showTrackerNotification(context, updated)
@@ -395,7 +421,7 @@ class TrackerCompleteCallback : ActionCallback {
 
         val updated = repository.logReps(trackerId, current.remainingToday)
         TrackerGlanceWidget().update(context, glanceId)
-        updateAllSingleHabitWidgets(context)
+        HabitWidgetSyncManager.enqueueUpdate(context, excludeReceiver = TrackerGlanceReceiver::class.java)
 
         if (updated != null) {
             TrackerNotificationHandler.showTrackerNotification(context, updated)

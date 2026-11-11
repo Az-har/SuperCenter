@@ -57,27 +57,12 @@
                         android:layout_height="wrap_content"
                         tools:ignore="HardcodedText" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_dashboard_analytics"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:text="Insights"
-                        app:icon="@drawable/ic_insights"
-                        app:iconSize="16dp"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="12dp"
-                        android:layout_marginEnd="8dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        tools:ignore="HardcodedText" />
-
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/dashboard_overall_percent"
                         android:text="0%"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnPrimaryContainer"
                         android:background="@drawable/bg_pill_accent"
                         android:paddingStart="10dp"
                         android:paddingEnd="10dp"
@@ -165,6 +150,7 @@
             android:scrollbars="none"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
+            android:paddingTop="2dp"
             android:paddingBottom="6dp"
             android:clipToPadding="false"
             android:layout_width="match_parent"
@@ -174,6 +160,7 @@
                 android:id="@+id/filter_chip_group"
                 app:singleSelection="true"
                 app:selectionRequired="true"
+                app:chipSpacingHorizontal="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">
 
@@ -181,34 +168,30 @@
                     android:id="@+id/chip_filter_all"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:checked="true"
-                    android:text="All Goals"
+                    android:text="@string/chip_filter_all"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_filter_in_progress"
                     style="@style/Widget.Material3.Chip.Filter"
-                    android:text="In Progress"
+                    android:text="@string/chip_filter_in_progress"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_filter_due_soon"
                     style="@style/Widget.Material3.Chip.Filter"
-                    android:text="Due Soon ⏰"
+                    android:text="@string/chip_filter_due_soon"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_filter_completed"
                     style="@style/Widget.Material3.Chip.Filter"
-                    android:text="Completed 🎉"
+                    android:text="@string/chip_filter_completed"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>
     </com.google.android.material.appbar.AppBarLayout>

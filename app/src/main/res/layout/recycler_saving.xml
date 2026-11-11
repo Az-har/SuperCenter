@@ -22,10 +22,10 @@
 
     <LinearLayout
         android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:paddingTop="18dp"
-        android:paddingBottom="14dp"
+        android:paddingBottom="12dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -54,8 +54,8 @@
                 android:text="🎯 General"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"
-                android:background="@drawable/bg_pill_accent"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/bg_pill_neutral"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:paddingTop="3dp"
@@ -70,7 +70,7 @@
                 android:text="75%"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="?attr/colorOnPrimaryContainer"
                 android:background="@drawable/bg_pill_accent"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
@@ -221,14 +221,14 @@
                 android:id="@+id/saving_update"
                 style="@style/Widget.Material3.Button.TonalButton"
                 app:icon="@drawable/ic_add_circle"
-                app:iconSize="18dp"
-                android:text="Transact"
+                app:iconSize="16dp"
+                android:text="@string/action_transact"
                 app:cornerRadius="14dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="16dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="12dp"
+                android:minHeight="48dp"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:layout_height="wrap_content" />
 
             <Space
                 android:layout_weight="1"
@@ -241,18 +241,17 @@
                 app:icon="@drawable/ic_history"
                 app:iconTint="?attr/colorSecondary"
                 android:contentDescription="@string/toolbar_history"
-                android:layout_width="40dp"
-                android:layout_height="40dp" />
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/saving_share"
                 style="?attr/materialIconButtonStyle"
                 app:icon="@drawable/ic_share"
                 app:iconTint="?attr/colorSecondary"
-                android:contentDescription="Share notes"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:contentDescription="@string/tooltip_share"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/saving_archive"
@@ -260,18 +259,17 @@
                 app:icon="@drawable/ic_archive"
                 app:iconTint="?attr/colorSecondary"
                 android:contentDescription="@string/toolbar_archive"
-                android:layout_width="40dp"
-                android:layout_height="40dp" />
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/saving_unarchive"
                 style="?attr/materialIconButtonStyle"
                 app:icon="@drawable/ic_unarchive"
                 app:iconTint="?attr/colorSecondary"
-                android:contentDescription="Unarchive"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:contentDescription="@string/tooltip_unarchive"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/saving_delete"
@@ -279,8 +277,8 @@
                 app:icon="@drawable/ic_delete"
                 app:iconTint="?attr/colorError"
                 android:contentDescription="@string/dialog_button_delete"
-                android:layout_width="40dp"
-                android:layout_height="40dp" />
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

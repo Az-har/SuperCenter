@@ -21,10 +21,10 @@
 
     <LinearLayout
         android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:paddingTop="18dp"
-        android:paddingBottom="14dp"
+        android:paddingBottom="12dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -53,8 +53,8 @@
                 android:text="💸 I Owe"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textStyle="bold"
-                android:textColor="?attr/colorError"
-                android:background="@drawable/bg_pill_accent"
+                android:textColor="?attr/colorOnErrorContainer"
+                android:background="@drawable/bg_pill_error"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:paddingTop="3dp"
@@ -69,8 +69,8 @@
                 android:text="💳 Credit Card"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textStyle="bold"
-                android:textColor="?attr/colorError"
-                android:background="@drawable/bg_pill_accent"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/bg_pill_neutral"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:paddingTop="3dp"
@@ -85,8 +85,8 @@
                 android:text="0% Paid"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"
-                android:background="@drawable/bg_pill_accent"
+                android:textColor="?attr/colorOnErrorContainer"
+                android:background="@drawable/bg_pill_error"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
                 android:paddingTop="4dp"
@@ -214,14 +214,14 @@
                 android:id="@+id/btn_debt_pay"
                 style="@style/Widget.Material3.Button.TonalButton"
                 app:icon="@drawable/ic_add_circle"
-                app:iconSize="18dp"
-                android:text="Make Payment"
+                app:iconSize="16dp"
+                android:text="@string/action_make_payment"
                 app:cornerRadius="14dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="16dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="12dp"
+                android:minHeight="48dp"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:layout_height="wrap_content" />
 
             <Space
                 android:layout_weight="1"
@@ -233,20 +233,37 @@
                 style="?attr/materialIconButtonStyle"
                 app:icon="@drawable/ic_history"
                 app:iconTint="?attr/colorSecondary"
-                android:contentDescription="Payment History"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:contentDescription="@string/action_payment_history"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_debt_archive"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_archive"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="@string/action_archive_debt"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_debt_unarchive"
+                style="?attr/materialIconButtonStyle"
+                app:icon="@drawable/ic_unarchive"
+                app:iconTint="?attr/colorSecondary"
+                android:contentDescription="@string/action_unarchive_debt"
+                android:visibility="gone"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_debt_delete"
                 style="?attr/materialIconButtonStyle"
                 app:icon="@drawable/ic_delete"
                 app:iconTint="?attr/colorError"
-                android:contentDescription="Delete Debt"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                tools:ignore="HardcodedText" />
+                android:contentDescription="@string/action_delete_debt"
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

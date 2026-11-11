@@ -1,6 +1,6 @@
 package com.eipna.centsation.habit.ui
 
-import android.app.TimePickerDialog
+import android.text.format.DateFormat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -37,7 +38,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -53,7 +57,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.eipna.centsation.habit.data.entity.TrackerEntity
-import java.util.Locale
+import com.eipna.centsation.habit.util.TrackerDateUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +73,7 @@ fun AddEditTrackerDialog(
     ) -> Unit
 ) {
     val context = LocalContext.current
+    val is24Hour = DateFormat.is24HourFormat(context)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var title by remember { mutableStateOf(initialTracker?.title ?: "") }
@@ -77,11 +82,10 @@ fun AddEditTrackerDialog(
     var hour by remember { mutableIntStateOf(initialTracker?.scheduledHour ?: 21) }
     var minute by remember { mutableIntStateOf(initialTracker?.scheduledMinute ?: 0) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
-    val formattedTime = remember(hour, minute) {
-        val h = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
-        val amPm = if (hour < 12) "AM" else "PM"
-        String.format(Locale.getDefault(), "%02d:%02d %s", h, minute, amPm)
+    val formattedTime = remember(hour, minute, is24Hour) {
+        TrackerDateUtil.formatReminderTime(is24Hour, hour, minute)
     }
 
     ModalBottomSheet(
@@ -288,18 +292,7 @@ fun AddEditTrackerDialog(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        TimePickerDialog(
-                            context,
-                            { _, selectedHour, selectedMinute ->
-                                hour = selectedHour
-                                minute = selectedMinute
-                            },
-                            hour,
-                            minute,
-                            false
-                        ).show()
-                    }
+                    .clickable { showTimePicker = true }
             ) {
                 Row(
                     modifier = Modifier
@@ -408,5 +401,32 @@ fun AddEditTrackerDialog(
                 }
             }
         }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = hour,
+            initialMinute = minute,
+            is24Hour = is24Hour
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text(text = "Daily Reminder Time") },
+            text = { TimePicker(state = timePickerState) },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text(text = "Cancel")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    hour = timePickerState.hour
+                    minute = timePickerState.minute
+                    showTimePicker = false
+                }) {
+                    Text(text = "OK")
+                }
+            }
+        )
     }
 }

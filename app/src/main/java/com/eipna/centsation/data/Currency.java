@@ -99,7 +99,7 @@ public enum Currency {
     MEXICAN_PESO("Mexican Peso", "MXN", "$"),
     MOLDOVAN_LEU("Moldovan Leu", "MDL", "L"),
     MONGOLIAN_TUGRIK("Mongolian Tögrög", "MNT", "₮"),
-    MOROCCAN_DIRHAM("Moroccan Dirham", " MAD", "د.م."),
+    MOROCCAN_DIRHAM("Moroccan Dirham", "MAD", "د.م."),
     MOZAMBICAN_METICAL("Mozambican Metical", "MZN", "MT"),
     MYANMAR_KYAT("Myanmar Kyat", "MMK", "K"),
     NAMIBIAN_DOLLAR("Namibian Dollar", "NAD", "$"),

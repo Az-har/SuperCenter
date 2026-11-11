@@ -309,7 +309,6 @@ public class EditActivity extends CentsationActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
         if (savingRepository != null) {
             savingRepository.close();
         }

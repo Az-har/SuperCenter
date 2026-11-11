@@ -74,4 +74,19 @@ class TrackerDateUtilTest {
         // March 7 (1), March 8 (2), March 9 (3) -> 3 days
         assertEquals(3L, days)
     }
+
+    @Test
+    fun formatReminderTime_respects12HourAnd24HourPreferences() {
+        assertEquals("12:05 AM", TrackerDateUtil.formatReminderTime(is24Hour = false, hour = 0, minute = 5))
+        assertEquals("12:00 PM", TrackerDateUtil.formatReminderTime(is24Hour = false, hour = 12, minute = 0))
+        assertEquals("09:30 PM", TrackerDateUtil.formatReminderTime(is24Hour = false, hour = 21, minute = 30))
+
+        assertEquals("00:05", TrackerDateUtil.formatReminderTime(is24Hour = true, hour = 0, minute = 5))
+        assertEquals("12:00", TrackerDateUtil.formatReminderTime(is24Hour = true, hour = 12, minute = 0))
+        assertEquals("21:30", TrackerDateUtil.formatReminderTime(is24Hour = true, hour = 21, minute = 30))
+
+        // Out-of-range inputs are safely coerced
+        assertEquals("00:00", TrackerDateUtil.formatReminderTime(is24Hour = true, hour = -3, minute = -10))
+        assertEquals("23:59", TrackerDateUtil.formatReminderTime(is24Hour = true, hour = 29, minute = 75))
+    }
 }

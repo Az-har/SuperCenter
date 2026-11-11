@@ -22,6 +22,11 @@ import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.debt.DebtTransaction;
 import com.eipna.centsation.data.transaction.Transaction;
 import com.eipna.centsation.data.transaction.TransactionRepository;
+import com.eipna.centsation.habit.data.entity.TrackerEntity;
+import com.eipna.centsation.habit.data.entity.TrackerLogEntity;
+import com.eipna.centsation.habit.data.repository.TrackerRepository;
+import com.eipna.centsation.habit.notification.TrackerAlarmScheduler;
+import com.eipna.centsation.habit.widget.HabitWidgetSyncManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,7 +54,9 @@ public class BackupManager {
     public static final String LEGACY_BACKUP_DIR_NAME = "Centsation";
     public static final String AUTO_BACKUP_FILE_NAME = "supercenter_auto_backup.json";
     public static final String LEGACY_AUTO_BACKUP_FILE_NAME = "centsation_auto_backup.json";
-    public static final int CURRENT_BACKUP_VERSION = 1;
+    public static final int CURRENT_BACKUP_VERSION = 2;
+    public static final String TABLE_TRACKERS = "trackers";
+    public static final String TABLE_TRACKER_LOGS = "tracker_logs";
 
     private static final long DEBOUNCE_DELAY_MS = 2500L;
     private static final ScheduledExecutorService BACKUP_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -67,6 +74,8 @@ public class BackupManager {
         public int transactionsCount;
         public int debtsCount;
         public int debtTransactionsCount;
+        public int trackersCount;
+        public int trackerLogsCount;
         public long fileSizeBytes;
         public File sourceFile;
         public Uri sourceUri;
@@ -98,29 +107,40 @@ public class BackupManager {
 
             boolean wroteAtLeastOne = false;
 
-            // 1. Write to Public Documents/Centsation (Survives app uninstallation)
-            File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-            File centsationDocs = new File(docsDir, BACKUP_DIR_NAME);
-            if (centsationDocs.exists() || centsationDocs.mkdirs()) {
-                File target = new File(centsationDocs, AUTO_BACKUP_FILE_NAME);
-                if (writeStringToFile(target, jsonPayload)) {
-                    wroteAtLeastOne = true;
-                }
-            }
-
-            // 2. Write to Public Downloads/Centsation (Secondary fallback)
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File centsationDownloads = new File(downloadsDir, BACKUP_DIR_NAME);
-            if (centsationDownloads.exists() || centsationDownloads.mkdirs()) {
-                File target = new File(centsationDownloads, AUTO_BACKUP_FILE_NAME);
-                if (writeStringToFile(target, jsonPayload)) {
-                    wroteAtLeastOne = true;
-                }
-            }
-
-            // 3. Write via MediaStore on Android 10+ if supported
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                writeViaMediaStore(context, jsonPayload);
+                // Scoped Storage (Android 10+): use MediaStore without raw external paths
+                if (writeViaMediaStore(context, jsonPayload)) {
+                    wroteAtLeastOne = true;
+                }
+            } else {
+                // Legacy external public directories (Android 7-9)
+                File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                if (docsDir != null) {
+                    File centsationDocs = new File(docsDir, BACKUP_DIR_NAME);
+                    if (centsationDocs.exists() || centsationDocs.mkdirs()) {
+                        File target = new File(centsationDocs, AUTO_BACKUP_FILE_NAME);
+                        if (writeStringToFile(target, jsonPayload)) {
+                            wroteAtLeastOne = true;
+                        }
+                    }
+                }
+
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (downloadsDir != null) {
+                    File centsationDownloads = new File(downloadsDir, BACKUP_DIR_NAME);
+                    if (centsationDownloads.exists() || centsationDownloads.mkdirs()) {
+                        File target = new File(centsationDownloads, AUTO_BACKUP_FILE_NAME);
+                        if (writeStringToFile(target, jsonPayload)) {
+                            wroteAtLeastOne = true;
+                        }
+                    }
+                }
+            }
+
+            // Always keep an app-scoped fallback copy for local diagnostics / recovery
+            File localBackupDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+            if (localBackupDir != null && (localBackupDir.exists() || localBackupDir.mkdirs())) {
+                writeStringToFile(new File(localBackupDir, AUTO_BACKUP_FILE_NAME), jsonPayload);
             }
 
             if (wroteAtLeastOne) {
@@ -142,6 +162,9 @@ public class BackupManager {
             List<Transaction> transactions = txRepo.getAll();
             List<Debt> debts = debtRepo.getAllDebts();
             List<DebtTransaction> debtTransactions = debtRepo.getAllTransactions();
+            TrackerRepository trackerRepo = TrackerRepository.getInstance(context);
+            List<TrackerEntity> trackers = trackerRepo.exportTrackersSync();
+            List<TrackerLogEntity> trackerLogs = trackerRepo.exportTrackerLogsSync();
 
             JSONArray savingJsonArray = new JSONArray();
             for (Saving saving : savings) {
@@ -195,15 +218,6 @@ public class BackupManager {
                 debtTransactionJsonArray.put(obj);
             }
 
-            JSONObject root = new JSONObject();
-            root.put("app", "Super Center");
-            root.put("version", CURRENT_BACKUP_VERSION);
-            root.put("timestamp", System.currentTimeMillis());
-            root.put("savings_count", savings.size());
-            root.put("transactions_count", transactions.size());
-            root.put("debts_count", debts.size());
-            root.put("debt_transactions_count", debtTransactions.size());
-
             PreferenceUtil prefs = new PreferenceUtil(context);
             JSONObject prefsObj = new JSONObject();
             prefsObj.put("currency", prefs.getCurrency());
@@ -215,46 +229,138 @@ public class BackupManager {
             prefsObj.put("auto_backup", prefs.isAutoBackupEnabled());
             prefsObj.put("sort_criteria", prefs.getSortCriteria());
             prefsObj.put("sort_order", prefs.getSortOrder());
+            prefsObj.put("regional_number_format", prefs.getRegionalNumberFormat());
 
-            root.put("preferences", prefsObj);
-            root.put("currency", prefs.getCurrency());
-
-            // Support both direct table names and generic keys for compatibility
-            root.put(Database.TABLE_SAVING, savingJsonArray);
-            root.put(Database.TABLE_TRANSACTION, transactionJsonArray);
-            root.put(Database.TABLE_DEBT, debtJsonArray);
-            root.put(Database.TABLE_DEBT_TRANSACTION, debtTransactionJsonArray);
-
-            return root.toString(2);
+            return buildBackupJsonPayload(
+                    savingJsonArray,
+                    transactionJsonArray,
+                    debtJsonArray,
+                    debtTransactionJsonArray,
+                    serializeTrackers(trackers),
+                    serializeTrackerLogs(trackerLogs),
+                    prefsObj,
+                    prefs.getCurrency(),
+                    System.currentTimeMillis()
+            );
         }
+    }
+
+    @NonNull
+    public static String buildBackupJsonPayload(
+            @NonNull JSONArray savingJsonArray,
+            @NonNull JSONArray transactionJsonArray,
+            @NonNull JSONArray debtJsonArray,
+            @NonNull JSONArray debtTransactionJsonArray,
+            @NonNull JSONArray trackerJsonArray,
+            @NonNull JSONArray trackerLogJsonArray,
+            @Nullable JSONObject prefsObj,
+            @Nullable String currency,
+            long timestamp) throws JSONException {
+        JSONObject root = new JSONObject();
+        root.put("app", "Centsation");
+        root.put("version", CURRENT_BACKUP_VERSION);
+        root.put("timestamp", timestamp);
+        root.put("savings_count", savingJsonArray.length());
+        root.put("transactions_count", transactionJsonArray.length());
+        root.put("debts_count", debtJsonArray.length());
+        root.put("debt_transactions_count", debtTransactionJsonArray.length());
+        root.put("trackers_count", trackerJsonArray.length());
+        root.put("tracker_logs_count", trackerLogJsonArray.length());
+
+        if (prefsObj != null) {
+            root.put("preferences", prefsObj);
+        }
+        if (currency != null) {
+            root.put("currency", currency);
+        }
+
+        // Support both direct table names and generic keys for compatibility
+        root.put(Database.TABLE_SAVING, savingJsonArray);
+        root.put(Database.TABLE_TRANSACTION, transactionJsonArray);
+        root.put(Database.TABLE_DEBT, debtJsonArray);
+        root.put(Database.TABLE_DEBT_TRANSACTION, debtTransactionJsonArray);
+        root.put(TABLE_TRACKERS, trackerJsonArray);
+        root.put(TABLE_TRACKER_LOGS, trackerLogJsonArray);
+
+        return root.toString(2);
+    }
+
+    @NonNull
+    public static JSONArray serializeTrackers(@NonNull List<TrackerEntity> trackers) throws JSONException {
+        JSONArray array = new JSONArray();
+        for (TrackerEntity tracker : trackers) {
+            if (tracker == null) continue;
+            JSONObject obj = new JSONObject();
+            obj.put("id", tracker.getId());
+            obj.put("title", tracker.getTitle());
+            obj.put("baseDailyTarget", tracker.getBaseDailyTarget());
+            obj.put("unit", tracker.getUnit());
+            obj.put("scheduledHour", tracker.getScheduledHour());
+            obj.put("scheduledMinute", tracker.getScheduledMinute());
+            obj.put("syncCalendar", tracker.getSyncCalendar());
+            if (tracker.getCalendarId() != null) {
+                obj.put("calendarId", tracker.getCalendarId());
+            }
+            if (tracker.getCalendarEventId() != null) {
+                obj.put("calendarEventId", tracker.getCalendarEventId());
+            }
+            obj.put("isActive", tracker.isActive());
+            obj.put("createdAt", tracker.getCreatedAt());
+            array.put(obj);
+        }
+        return array;
+    }
+
+    @NonNull
+    public static JSONArray serializeTrackerLogs(@NonNull List<TrackerLogEntity> logs) throws JSONException {
+        JSONArray array = new JSONArray();
+        for (TrackerLogEntity log : logs) {
+            if (log == null) continue;
+            JSONObject obj = new JSONObject();
+            obj.put("id", log.getId());
+            obj.put("trackerId", log.getTrackerId());
+            obj.put("date", log.getDate());
+            obj.put("completedCount", log.getCompletedCount());
+            obj.put("timestamp", log.getTimestamp());
+            array.put(obj);
+        }
+        return array;
     }
 
     @Nullable
     public static BackupInfo detectExistingBackup(@NonNull Context context) {
         try {
-            // Candidate file paths that persist after uninstallation
-            List<File> candidates = new ArrayList<>();
-
-            try {
-                File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-                if (docsDir != null) {
-                    candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
-                    candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/exported_savings.json"));
-                    candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
-                    candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/exported_savings.json"));
-                }
-            } catch (Throwable ignored) {
+            // Check MediaStore query first on Android 10+ (Scoped Storage)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                BackupInfo mediaStoreInfo = queryMediaStoreForBackup(context);
+                if (mediaStoreInfo != null) return mediaStoreInfo;
             }
 
-            try {
-                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                if (downloadsDir != null) {
-                    candidates.add(new File(downloadsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
-                    candidates.add(new File(downloadsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
-                    candidates.add(new File(downloadsDir, AUTO_BACKUP_FILE_NAME));
-                    candidates.add(new File(downloadsDir, "exported_savings.json"));
+            // Candidate file paths (Android 7-9 public paths + app-scoped backup mirror)
+            List<File> candidates = new ArrayList<>();
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                try {
+                    File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                    if (docsDir != null) {
+                        candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
+                        candidates.add(new File(docsDir, BACKUP_DIR_NAME + "/exported_savings.json"));
+                        candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
+                        candidates.add(new File(docsDir, LEGACY_BACKUP_DIR_NAME + "/exported_savings.json"));
+                    }
+                } catch (Throwable ignored) {
                 }
-            } catch (Throwable ignored) {
+
+                try {
+                    File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (downloadsDir != null) {
+                        candidates.add(new File(downloadsDir, BACKUP_DIR_NAME + "/" + AUTO_BACKUP_FILE_NAME));
+                        candidates.add(new File(downloadsDir, LEGACY_BACKUP_DIR_NAME + "/" + LEGACY_AUTO_BACKUP_FILE_NAME));
+                        candidates.add(new File(downloadsDir, AUTO_BACKUP_FILE_NAME));
+                        candidates.add(new File(downloadsDir, "exported_savings.json"));
+                    }
+                } catch (Throwable ignored) {
+                }
             }
 
             for (File candidate : candidates) {
@@ -265,12 +371,6 @@ public class BackupManager {
                     }
                 } catch (Throwable ignored) {
                 }
-            }
-
-            // Check MediaStore query on Android 10+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                BackupInfo mediaStoreInfo = queryMediaStoreForBackup(context);
-                if (mediaStoreInfo != null) return mediaStoreInfo;
             }
         } catch (Throwable t) {
             Log.e(TAG, "Error in detectExistingBackup", t);
@@ -314,6 +414,10 @@ public class BackupManager {
             JSONArray txArray = root.optJSONArray(Database.TABLE_TRANSACTION);
             JSONArray debtsArray = root.optJSONArray(Database.TABLE_DEBT);
             JSONArray debtTxArray = root.optJSONArray(Database.TABLE_DEBT_TRANSACTION);
+            JSONArray trackersArray = root.optJSONArray(TABLE_TRACKERS);
+            if (trackersArray == null) trackersArray = root.optJSONArray("habits");
+            JSONArray trackerLogsArray = root.optJSONArray(TABLE_TRACKER_LOGS);
+            if (trackerLogsArray == null) trackerLogsArray = root.optJSONArray("habit_logs");
 
             BackupInfo info = new BackupInfo();
             info.timestamp = root.optLong("timestamp", file != null ? file.lastModified() : System.currentTimeMillis());
@@ -321,6 +425,8 @@ public class BackupManager {
             info.transactionsCount = txArray != null ? txArray.length() : root.optInt("transactions_count", 0);
             info.debtsCount = debtsArray != null ? debtsArray.length() : root.optInt("debts_count", 0);
             info.debtTransactionsCount = debtTxArray != null ? debtTxArray.length() : root.optInt("debt_transactions_count", 0);
+            info.trackersCount = trackersArray != null ? trackersArray.length() : root.optInt("trackers_count", 0);
+            info.trackerLogsCount = trackerLogsArray != null ? trackerLogsArray.length() : root.optInt("tracker_logs_count", 0);
             info.fileSizeBytes = size > 0 ? size : sb.length();
             info.sourceFile = file;
             info.sourceUri = uri;
@@ -372,7 +478,20 @@ public class BackupManager {
                 debtRepo.bulkImport(debts, debtTransactions);
             }
 
-            if (savingsArray == null && debtsArray == null) return false;
+            JSONArray trackersArray = jsonImport.optJSONArray(TABLE_TRACKERS);
+            if (trackersArray == null) trackersArray = jsonImport.optJSONArray("habits");
+
+            JSONArray trackerLogsArray = jsonImport.optJSONArray(TABLE_TRACKER_LOGS);
+            if (trackerLogsArray == null) trackerLogsArray = jsonImport.optJSONArray("habit_logs");
+
+            if (trackersArray != null) {
+                List<TrackerEntity> trackers = parseTrackers(trackersArray);
+                List<TrackerLogEntity> trackerLogs = trackerLogsArray != null ? parseTrackerLogs(trackerLogsArray) : new ArrayList<>();
+                TrackerRepository.getInstance(context).bulkImportSync(trackers, trackerLogs);
+                notifyTrackersRestored(context);
+            }
+
+            if (savingsArray == null && debtsArray == null && trackersArray == null) return false;
 
             // Restore user preferences/settings if present
             PreferenceUtil prefs = new PreferenceUtil(context);
@@ -409,6 +528,9 @@ public class BackupManager {
                 }
                 if (prefsObj.has("sort_order")) {
                     prefs.setSortOrder(prefsObj.getBoolean("sort_order"));
+                }
+                if (prefsObj.has("regional_number_format")) {
+                    prefs.setRegionalNumberFormat(prefsObj.getString("regional_number_format"));
                 }
             } else if (jsonImport.has("currency")) {
                 prefs.setCurrency(jsonImport.getString("currency"));
@@ -527,6 +649,61 @@ public class BackupManager {
         return result;
     }
 
+    @NonNull
+    public static List<TrackerEntity> parseTrackers(@NonNull JSONArray array) throws JSONException {
+        List<TrackerEntity> result = new ArrayList<>(array.length());
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject obj = array.getJSONObject(i);
+            long id = obj.optLong("id", 0L);
+            String title = obj.getString("title");
+            int baseDailyTarget = Math.max(1, obj.optInt("baseDailyTarget", 1));
+            String unit = obj.optString("unit", "reps");
+            int scheduledHour = obj.optInt("scheduledHour", 21);
+            int scheduledMinute = obj.optInt("scheduledMinute", 0);
+            boolean syncCalendar = obj.optBoolean("syncCalendar", false);
+            Long calendarId = obj.has("calendarId") && !obj.isNull("calendarId") ? obj.getLong("calendarId") : null;
+            Long calendarEventId = obj.has("calendarEventId") && !obj.isNull("calendarEventId") ? obj.getLong("calendarEventId") : null;
+            boolean isActive = obj.optBoolean("isActive", true);
+            long createdAt = obj.optLong("createdAt", System.currentTimeMillis());
+
+            result.add(new TrackerEntity(
+                    id, title, baseDailyTarget, unit,
+                    scheduledHour, scheduledMinute, syncCalendar,
+                    calendarId, calendarEventId, isActive, createdAt
+            ));
+        }
+        return result;
+    }
+
+    @NonNull
+    public static List<TrackerLogEntity> parseTrackerLogs(@NonNull JSONArray array) throws JSONException {
+        List<TrackerLogEntity> result = new ArrayList<>(array.length());
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject obj = array.getJSONObject(i);
+            long id = obj.optLong("id", 0L);
+            long trackerId = obj.getLong("trackerId");
+            String date = obj.getString("date");
+            int completedCount = Math.max(0, obj.optInt("completedCount", 0));
+            long timestamp = obj.optLong("timestamp", System.currentTimeMillis());
+
+            result.add(new TrackerLogEntity(id, trackerId, date, completedCount, timestamp));
+        }
+        return result;
+    }
+
+    private static void notifyTrackersRestored(@NonNull Context context) {
+        try {
+            HabitWidgetSyncManager.INSTANCE.enqueueUpdate(context);
+        } catch (Throwable t) {
+            Log.w(TAG, "Post-restore widget sync failed", t);
+        }
+        try {
+            TrackerAlarmScheduler.INSTANCE.rescheduleAllAsync(context);
+        } catch (Throwable t) {
+            Log.w(TAG, "Post-restore alarm reschedule failed", t);
+        }
+    }
+
     private static boolean writeStringToFile(File target, String content) {
         try (FileOutputStream out = new FileOutputStream(target)) {
             out.write(content.getBytes(StandardCharsets.UTF_8));
@@ -538,32 +715,74 @@ public class BackupManager {
         }
     }
 
-    private static void writeViaMediaStore(Context context, String content) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+    private static boolean writeViaMediaStore(Context context, String content) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false;
+        ContentResolver resolver = context.getContentResolver();
+        Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
 
+        // Try overwriting our own existing MediaStore backup entry first to avoid duplicate files
+        try (Cursor cursor = resolver.query(
+                collection,
+                new String[]{MediaStore.Downloads._ID},
+                MediaStore.Downloads.DISPLAY_NAME + " = ?",
+                new String[]{AUTO_BACKUP_FILE_NAME},
+                MediaStore.Downloads.DATE_MODIFIED + " DESC"
+        )) {
+            if (cursor != null && cursor.moveToFirst()) {
+                long id = cursor.getLong(0);
+                Uri existingUri = Uri.withAppendedPath(collection, String.valueOf(id));
+                try (OutputStream os = resolver.openOutputStream(existingUri, "wt")) {
+                    if (os != null) {
+                        os.write(bytes);
+                        os.flush();
+                        return true;
+                    }
+                } catch (SecurityException se) {
+                    Log.d(TAG, "Existing MediaStore backup not owned by this install; creating a fresh entry");
+                }
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "MediaStore lookup failed before insert", e);
+        }
+
+        Uri createdUri = null;
+        try {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Downloads.DISPLAY_NAME, AUTO_BACKUP_FILE_NAME);
             values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
             values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + BACKUP_DIR_NAME);
             values.put(MediaStore.Downloads.IS_PENDING, 1);
 
-            Uri uri = resolver.insert(collection, values);
-            if (uri != null) {
-                try (OutputStream os = resolver.openOutputStream(uri)) {
-                    if (os != null) {
-                        os.write(content.getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                    }
+            createdUri = resolver.insert(collection, values);
+            if (createdUri == null) return false;
+
+            boolean wrote = false;
+            try (OutputStream os = resolver.openOutputStream(createdUri, "w")) {
+                if (os != null) {
+                    os.write(bytes);
+                    os.flush();
+                    wrote = true;
                 }
-                values.clear();
-                values.put(MediaStore.Downloads.IS_PENDING, 0);
-                resolver.update(uri, values, null, null);
             }
+            if (!wrote) {
+                resolver.delete(createdUri, null, null);
+                return false;
+            }
+
+            values.clear();
+            values.put(MediaStore.Downloads.IS_PENDING, 0);
+            resolver.update(createdUri, values, null, null);
+            return true;
         } catch (Exception e) {
-            Log.d(TAG, "MediaStore backup write ignored", e);
+            Log.w(TAG, "MediaStore backup write failed", e);
+            if (createdUri != null) {
+                try {
+                    resolver.delete(createdUri, null, null);
+                } catch (Exception ignored) {
+                }
+            }
+            return false;
         }
     }
 
@@ -576,7 +795,13 @@ public class BackupManager {
             String selection = MediaStore.Downloads.DISPLAY_NAME + " = ?";
             String[] args = new String[]{AUTO_BACKUP_FILE_NAME};
 
-            try (Cursor cursor = resolver.query(collection, new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME}, selection, args, null)) {
+            try (Cursor cursor = resolver.query(
+                    collection,
+                    new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
+                    selection,
+                    args,
+                    MediaStore.Downloads.DATE_MODIFIED + " DESC"
+            )) {
                 if (cursor != null && cursor.moveToFirst()) {
                     long id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID));
                     Uri uri = Uri.withAppendedPath(collection, String.valueOf(id));

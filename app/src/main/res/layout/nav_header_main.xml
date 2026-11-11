@@ -35,9 +35,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Personal Productivity &amp; Finance Hub"
+        android:text="@string/drawer_subtitle"
         android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        tools:ignore="HardcodedText" />
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
 </LinearLayout>

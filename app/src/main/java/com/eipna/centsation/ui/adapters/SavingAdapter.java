@@ -40,18 +40,19 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
         void onOperationClick(SavingOperation operation, int position);
     }
 
-    private final Context context;
     private final PreferenceUtil preferences;
     private final Listener listener;
 
     public SavingAdapter(Context context, Listener listener) {
         super(DIFF_CALLBACK);
-        this.context = context;
-        this.preferences = new PreferenceUtil(context);
+        this.preferences = new PreferenceUtil(context.getApplicationContext());
         this.listener = listener;
     }
 
     public Saving getSavingAt(int position) {
+        if (position < 0 || position >= getItemCount()) {
+            return null;
+        }
         return getItem(position);
     }
 
@@ -76,7 +77,7 @@ public class SavingAdapter extends ListAdapter<Saving, SavingAdapter.ViewHolder>
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View savingView = LayoutInflater.from(context).inflate(R.layout.recycler_saving, parent, false);
+        View savingView = LayoutInflater.from(parent.getContext()).inflate(R.layout.recycler_saving, parent, false);
         return new ViewHolder(savingView, listener);
     }
 

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import androidx.core.graphics.createBitmap
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
 import java.util.Calendar
@@ -237,136 +238,245 @@ object HabitHeatmapUtil {
     }
 
     /**
-     * Renders the GitHub-style contribution squares onto a hardware-accelerated Bitmap.
+     * Generates an exact [numWeeks]-column Sunday-aligned heatmap grid ending on today's week.
+     * Ensures even 1 completed rep produces a visible level (>= 1).
      */
-    fun renderHeatmapBitmap(
+    fun generateHeatmapGridForWeeks(
+        tracker: TrackerEntity,
+        logs: List<TrackerLogEntity>,
+        numWeeks: Int,
+        todayDate: String = TrackerDateUtil.getTodayDateString()
+    ): Pair<List<DayHeatmapItem>, Int> {
+        val safeWeeks = numWeeks.coerceIn(1, 54)
+        val logsByDate = logs.associate { it.date to it.completedCount }
+        val target = tracker.baseDailyTarget.coerceAtLeast(1)
+
+        val todayCal = parseDate(todayDate)
+        val todayDow = todayCal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
+        val startCal = (todayCal.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_MONTH, -todayDow - (safeWeeks - 1) * 7)
+        }
+
+        val todayAbsoluteIdx = (safeWeeks - 1) * 7 + todayDow
+        val items = ArrayList<DayHeatmapItem>(safeWeeks * 7)
+        val walkCal = startCal.clone() as Calendar
+
+        for (week in 0 until safeWeeks) {
+            for (dow in 0 until 7) {
+                val idx = week * 7 + dow
+                val dStr = formatDate(walkCal)
+                val isFuture = idx > todayAbsoluteIdx
+                val isToday = idx == todayAbsoluteIdx
+                val count = if (isFuture) 0 else (logsByDate[dStr] ?: 0)
+
+                val level = when {
+                    isFuture || count <= 0 -> 0
+                    count < (target * 0.5) -> 1
+                    count < target -> 2
+                    count == target -> 3
+                    else -> 4
+                }
+
+                items.add(
+                    DayHeatmapItem(
+                        dateString = dStr,
+                        weekIndex = week,
+                        dayOfWeek = dow,
+                        completedCount = count,
+                        target = target,
+                        level = level,
+                        isToday = isToday,
+                        isFuture = isFuture
+                    )
+                )
+                walkCal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+        }
+
+        return Pair(items, safeWeeks)
+    }
+
+    /**
+     * Renders a full-bleed GitHub-style contribution heatmap scaling edge-to-edge across the widget bitmap.
+     * When [stackedBands] is true, splits the weeks into two wide 7-row bands stacked vertically so
+     * taller / full-page widgets display large, crisp tiles with zero dead whitespace.
+     */
+    fun renderFullBleedHeatmapBitmap(
         items: List<DayHeatmapItem>,
         numWeeks: Int,
-        is365Days: Boolean,
+        showMonthLabels: Boolean,
+        stackedBands: Boolean,
         isDarkMode: Boolean,
         widthPx: Int,
         heightPx: Int,
         density: Float
     ): Bitmap {
-        val cappedDensity = min(density, 1.75f).coerceAtLeast(1.0f)
-        val safeWidth = widthPx.coerceAtLeast(100)
-        val safeHeight = heightPx.coerceAtLeast(60)
+        val cappedDensity = density.coerceIn(1.0f, 1.5f)
+        val safeWidth = widthPx.coerceAtLeast(140)
+        val safeHeight = heightPx.coerceAtLeast(80)
+        val safeWeeks = numWeeks.coerceAtLeast(1)
 
-        val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
+        val bitmap = createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
-        // Fill background with surface color for RGB_565 (matching widget card background)
-        val bgColor = if (isDarkMode) 0xFF121620.toInt() else 0xFFFFFFFF.toInt()
+        val bgColor = if (isDarkMode) 0xFF111620.toInt() else 0xFFFFFFFF.toInt()
         canvas.drawColor(bgColor)
 
-        // Color definitions matching GitHub contribution palette & M3 Emerald
-        val emptyColor = if (isDarkMode) 0xFF1E2533.toInt() else 0xFFF1F5F9.toInt()
-        val emptyBorderColor = if (isDarkMode) 0xFF2A3447.toInt() else 0xFFE2E8F0.toInt()
-        val level1Color = if (isDarkMode) 0xFF0E4429.toInt() else 0xFFA7F3D0.toInt()
-        val level2Color = if (isDarkMode) 0xFF006D32.toInt() else 0xFF34D399.toInt()
-        val level3Color = if (isDarkMode) 0xFF059669.toInt() else 0xFF10B981.toInt()
-        val level4Color = if (isDarkMode) 0xFF00E676.toInt() else 0xFF00875A.toInt()
-        val todayRingColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
-        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF64748B.toInt()
+        val emptyColor = if (isDarkMode) 0xFF1E2634.toInt() else 0xFFF1F5F9.toInt()
+        val emptyBorderColor = if (isDarkMode) 0xFF2D384B.toInt() else 0xFFCBD5E1.toInt()
+        val level1Color = if (isDarkMode) 0xFF218C54.toInt() else 0xFF6EE7B7.toInt()
+        val level2Color = if (isDarkMode) 0xFF2CB55C.toInt() else 0xFF34D399.toInt()
+        val level3Color = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
+        val level4Color = if (isDarkMode) 0xFF69F0AE.toInt() else 0xFF047857.toInt()
 
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-        }
+        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF475569.toInt()
+        val todayRingColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
 
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 1f * cappedDensity
         }
-
         val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 1.5f * cappedDensity
             color = todayRingColor
+            strokeWidth = 1.4f * cappedDensity
         }
-
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = labelColor
-            textSize = if (is365Days) 8f * cappedDensity else 9f * cappedDensity
+            textSize = 9f * cappedDensity
         }
 
-        val leftMargin = if (is365Days) 16f * cappedDensity else 14f * cappedDensity
-        val topMargin = if (is365Days) 14f * cappedDensity else 4f * cappedDensity
+        val showDayLabels = safeWidth >= (170f * cappedDensity).toInt()
+        val leftGutter = if (showDayLabels) 13f * cappedDensity else 2f * cappedDensity
         val rightMargin = 4f * cappedDensity
-        val bottomMargin = 4f * cappedDensity
+        val rect = RectF()
+        val ringRect = RectF()
+        var lastDrawnMonth = -1
 
-        val availWidth = safeWidth - leftMargin - rightMargin
-        val availHeight = safeHeight - topMargin - bottomMargin
+        fun drawBand(
+            bandItems: List<DayHeatmapItem>,
+            bandWeekOffset: Int,
+            bandWeekCount: Int,
+            bandTop: Float,
+            bandHeight: Float,
+            drawMonths: Boolean
+        ) {
+            if (bandWeekCount <= 0) return
+            val monthH = if (drawMonths) 12f * cappedDensity else 2f * cappedDensity
+            val bottomPad = 3f * cappedDensity
+            val availW = (safeWidth - leftGutter - rightMargin).coerceAtLeast(40f)
+            val availH = (bandHeight - monthH - bottomPad).coerceAtLeast(30f)
 
-        val gap = if (is365Days) 2f * cappedDensity else 3.5f * cappedDensity
-        val cellW = (availWidth - (numWeeks - 1) * gap) / numWeeks
-        val cellH = (availHeight - 6 * gap) / 7
-        val cellSize = min(cellW, cellH).coerceAtLeast(3f * cappedDensity)
-        val cornerRadius = if (is365Days) max(1.5f * cappedDensity, cellSize * 0.2f) else max(3f * cappedDensity, cellSize * 0.25f)
+            val rawPitch = min(availW / bandWeekCount, availH / 7f)
+            val minGap = if (bandWeekCount >= 35) 1.0f else 1.5f * cappedDensity
+            val gap = (rawPitch * 0.16f).coerceIn(minGap, 4f * cappedDensity)
+            val cellW = (availW - (bandWeekCount - 1) * gap) / bandWeekCount
+            val cellH = (availH - 6f * gap) / 7f
+            val cellSize = min(cellW, cellH).coerceAtLeast(1.5f)
 
-        // Draw Weekday Labels ("M", "W", "F") on the left
-        val weekdayRowLabels = listOf(1 to "M", 3 to "W", 5 to "F")
+            val gridW = bandWeekCount * cellSize + (bandWeekCount - 1) * gap
+            val gridH = 7f * cellSize + 6f * gap
+            val startX = leftGutter + max(0f, (availW - gridW) / 2f)
+            val startY = bandTop + monthH + max(0f, (availH - gridH) / 2f)
+            val radius = (cellSize * 0.22f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
 
-        for ((row, label) in weekdayRowLabels) {
-            val y = topMargin + row * (cellSize + gap) + cellSize * 0.8f
-            canvas.drawText(label, 2f * cappedDensity, y, textPaint)
-        }
+            if (showDayLabels) {
+                textPaint.textSize = (cellSize * 0.65f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
+                val dayRows = intArrayOf(1, 3, 5)
+                val dayNames = arrayOf("M", "W", "F")
+                for (i in dayRows.indices) {
+                    val yCenter = startY + dayRows[i] * (cellSize + gap) + cellSize * 0.72f
+                    canvas.drawText(dayNames[i], 1f * cappedDensity, yCenter, textPaint)
+                }
+            }
 
-        // Draw Month Labels on Top for 365-day view
-        if (is365Days) {
-            var lastDrawnMonth = -1
-            for (w in 0 until numWeeks) {
-                val item = items.firstOrNull { it.weekIndex == w && it.dayOfWeek == 0 } ?: continue
-                val cal = parseDate(item.dateString)
-                val month = cal.get(Calendar.MONTH)
-                val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
-
-                // If week contains beginning of month or first week
-                if (month != lastDrawnMonth && (dayOfMonth <= 7 || w == 0)) {
-                    val x = leftMargin + w * (cellSize + gap)
-                    if (x + 20f * cappedDensity < safeWidth) {
-                        canvas.drawText(MONTH_NAMES[month], x, topMargin - 3f * cappedDensity, textPaint)
-                        lastDrawnMonth = month
+            if (drawMonths) {
+                textPaint.textSize = 9f * cappedDensity
+                var lastLabelX = -100f
+                for (w in 0 until bandWeekCount) {
+                    val globalWeek = bandWeekOffset + w
+                    val firstDay = bandItems.firstOrNull { it.weekIndex == globalWeek && it.dayOfWeek == 0 }
+                        ?: bandItems.firstOrNull { it.weekIndex == globalWeek }
+                        ?: continue
+                    val cal = parseDate(firstDay.dateString)
+                    val month = cal.get(Calendar.MONTH)
+                    val dom = cal.get(Calendar.DAY_OF_MONTH)
+                    if (month != lastDrawnMonth && (dom <= 7 || (w == 0 && bandWeekOffset == 0))) {
+                        val x = startX + w * (cellSize + gap)
+                        if (x - lastLabelX >= 18f * cappedDensity) {
+                            val labelW = textPaint.measureText(MONTH_NAMES[month])
+                            val drawX = x.coerceAtMost(safeWidth - labelW - 2f)
+                            if (drawX - lastLabelX >= 14f * cappedDensity) {
+                                canvas.drawText(MONTH_NAMES[month], drawX, startY - 3f * cappedDensity, textPaint)
+                                lastDrawnMonth = month
+                                lastLabelX = drawX
+                            }
+                        }
                     }
+                }
+            }
+
+            for (item in bandItems) {
+                if (item.isFuture) continue
+                val localWeek = item.weekIndex - bandWeekOffset
+                if (localWeek !in 0 until bandWeekCount) continue
+
+                val x = startX + localWeek * (cellSize + gap)
+                val y = startY + item.dayOfWeek * (cellSize + gap)
+                rect.set(x, y, x + cellSize, y + cellSize)
+
+                fillPaint.color = when (item.level) {
+                    1 -> level1Color
+                    2 -> level2Color
+                    3 -> level3Color
+                    4 -> level4Color
+                    else -> emptyColor
+                }
+                canvas.drawRoundRect(rect, radius, radius, fillPaint)
+
+                if (item.level == 0) {
+                    strokePaint.color = emptyBorderColor
+                    canvas.drawRoundRect(rect, radius, radius, strokePaint)
+                }
+
+                if (item.isToday) {
+                    val pad = 1.2f * cappedDensity
+                    ringRect.set(x - pad, y - pad, x + cellSize + pad, y + cellSize + pad)
+                    canvas.drawRoundRect(ringRect, radius + pad, radius + pad, todayRingPaint)
                 }
             }
         }
 
-        // Draw squares
-        val rect = RectF()
-        val ringRect = RectF()
-
-        for (item in items) {
-            if (item.isFuture) continue
-
-            val x = leftMargin + item.weekIndex * (cellSize + gap)
-            val y = topMargin + item.dayOfWeek * (cellSize + gap)
-
-            rect.set(x, y, x + cellSize, y + cellSize)
-
-            // Select fill color by level
-            val color = when (item.level) {
-                1 -> level1Color
-                2 -> level2Color
-                3 -> level3Color
-                4 -> level4Color
-                else -> emptyColor
-            }
-
-            fillPaint.color = color
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, fillPaint)
-
-            // Subtle border for empty squares
-            if (item.level == 0) {
-                strokePaint.color = emptyBorderColor
-                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
-            }
-
-            // Highlight ring around today's cell
-            if (item.isToday) {
-                val ringPad = 1f * cappedDensity
-                ringRect.set(x - ringPad, y - ringPad, x + cellSize + ringPad, y + cellSize + ringPad)
-                canvas.drawRoundRect(ringRect, cornerRadius + ringPad, cornerRadius + ringPad, todayRingPaint)
-            }
+        if (stackedBands && safeWeeks >= 8) {
+            val splitWeek = safeWeeks / 2
+            val bandGap = 8f * cappedDensity
+            val bandHeight = (safeHeight - bandGap) / 2f
+            drawBand(
+                bandItems = items.filter { it.weekIndex < splitWeek },
+                bandWeekOffset = 0,
+                bandWeekCount = splitWeek,
+                bandTop = 0f,
+                bandHeight = bandHeight,
+                drawMonths = showMonthLabels
+            )
+            drawBand(
+                bandItems = items.filter { it.weekIndex >= splitWeek },
+                bandWeekOffset = splitWeek,
+                bandWeekCount = safeWeeks - splitWeek,
+                bandTop = bandHeight + bandGap,
+                bandHeight = bandHeight,
+                drawMonths = showMonthLabels
+            )
+        } else {
+            drawBand(
+                bandItems = items,
+                bandWeekOffset = 0,
+                bandWeekCount = safeWeeks,
+                bandTop = 0f,
+                bandHeight = safeHeight.toFloat(),
+                drawMonths = showMonthLabels
+            )
         }
 
         return bitmap

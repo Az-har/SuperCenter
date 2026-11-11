@@ -42,4 +42,25 @@ class DeviceHardwareOptimizerTest {
         assertNotNull(name)
         assertTrue(name.isNotEmpty())
     }
+
+    @Test
+    fun testEvaluatePerformanceMode_Thresholds() {
+        val normal = DeviceHardwareOptimizer.BatterySnapshot(80, 100, 80, 32f, false, false, false, "Good")
+        assertEquals(DeviceHardwareOptimizer.PerformanceMode.BALANCED, DeviceHardwareOptimizer.evaluatePerformanceMode(normal))
+
+        val hot = normal.copy(temperatureCelsius = 41.5f, isFastCharging = true)
+        assertEquals(DeviceHardwareOptimizer.PerformanceMode.THERMAL_THROTTLE, DeviceHardwareOptimizer.evaluatePerformanceMode(hot))
+
+        val low = normal.copy(percentage = 15)
+        assertEquals(DeviceHardwareOptimizer.PerformanceMode.POWER_SAVING, DeviceHardwareOptimizer.evaluatePerformanceMode(low))
+
+        val charging = normal.copy(isCharging = true, isFastCharging = true)
+        assertEquals(DeviceHardwareOptimizer.PerformanceMode.HIGH_PERFORMANCE, DeviceHardwareOptimizer.evaluatePerformanceMode(charging))
+    }
+
+    @Test
+    fun testGetOriginOsVersion_SafeOnJvm() {
+        // Must resolve without spawning shell subprocesses or crashing on non-Android JVM
+        DeviceHardwareOptimizer.getOriginOsVersion()
+    }
 }

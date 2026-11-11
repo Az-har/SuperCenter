@@ -64,7 +64,6 @@ public class HistoryViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        executor.shutdown();
         savingRepository.close();
         transactionRepository.close();
     }

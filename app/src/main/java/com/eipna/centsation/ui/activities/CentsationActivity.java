@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.eipna.centsation.CentsationApp;
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Contrast;
-import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.google.android.material.color.DynamicColors;
 
@@ -27,11 +26,6 @@ public abstract class CentsationActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.FLAG_SECURE,
                     WindowManager.LayoutParams.FLAG_SECURE
             );
-        }
-
-        try {
-            NotificationHandler.createChannels(this);
-        } catch (Throwable ignored) {
         }
 
         // Apply theme using shared method without redundant recreation

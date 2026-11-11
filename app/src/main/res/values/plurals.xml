@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="goals_count">
+        <item quantity="one">%d active goal</item>
+        <item quantity="other">%d active goals</item>
+    </plurals>
+
+    <plurals name="debts_count">
+        <item quantity="one">%d debt</item>
+        <item quantity="other">%d debts</item>
+    </plurals>
+
+    <plurals name="days_count">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+
+    <plurals name="days_overdue">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+
+    <plurals name="days_remaining">
+        <item quantity="one">in %d day</item>
+        <item quantity="other">in %d days</item>
+    </plurals>
+
+    <plurals name="deposits_count">
+        <item quantity="one">%d Inflow</item>
+        <item quantity="other">%d Inflows</item>
+    </plurals>
+
+    <plurals name="repayments_count">
+        <item quantity="one">%d Record</item>
+        <item quantity="other">%d Records</item>
+    </plurals>
+
+    <plurals name="individual_repayments_count">
+        <item quantity="one">%d Repayment</item>
+        <item quantity="other">%d Repayments</item>
+    </plurals>
+</resources>

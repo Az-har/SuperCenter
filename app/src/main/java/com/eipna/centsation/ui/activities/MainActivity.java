@@ -1,9 +1,12 @@
 package com.eipna.centsation.ui.activities;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,6 +18,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuCompat;
@@ -41,18 +45,20 @@ import com.eipna.centsation.databinding.PageHabitsBinding;
 import com.eipna.centsation.databinding.PageSavingsBinding;
 import com.eipna.centsation.habit.ui.HabitTrackerActivity;
 import com.eipna.centsation.habit.ui.HabitViewBinder;
+import com.eipna.centsation.habit.ui.HabitViewModel;
 import com.eipna.centsation.ui.adapters.DebtAdapter;
 import com.eipna.centsation.ui.adapters.MainPagerAdapter;
 import com.eipna.centsation.ui.adapters.SavingAdapter;
 import com.eipna.centsation.ui.analytics.AnalyticsViewController;
-import com.eipna.centsation.ui.dialogs.AnalyticsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.CreateDebtBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.DebtDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.TransactionBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.MainViewModel;
+import com.eipna.centsation.habit.widget.HabitWidgetSyncManager;
 import com.eipna.centsation.util.AlarmSetter;
 import com.eipna.centsation.util.AnimationUtil;
+import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.CrashReporter;
 import com.eipna.centsation.util.DateParser;
@@ -60,13 +66,13 @@ import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.HapticUtil;
 import com.eipna.centsation.util.SavingsCalculator;
 import com.eipna.centsation.util.SwipeActionCallback;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MainActivity extends CentsationActivity implements SavingAdapter.Listener, DebtAdapter.Listener {
 
@@ -84,7 +90,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     private boolean isDebtMode = false;
     private final List<Debt> cachedDebts = new java.util.ArrayList<>();
     private double previousTotalSaved = 0.0;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = AppExecutors.getInstance().diskIO();
+
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                // Choice recorded via PreferenceUtil so declined users are not repeatedly prompted.
+            });
 
     private final ActivityResultLauncher<Intent> saveCrashLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -191,7 +202,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             } else if (id == R.id.nav_analytics) {
                 binding.mainViewPager.setCurrentItem(3, true);
             } else if (id == R.id.nav_archive) {
-                startActivity(new Intent(MainActivity.this, ArchiveActivity.class));
+                openArchiveScreen();
             } else if (id == R.id.nav_settings) {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             } else if (id == R.id.nav_about) {
@@ -260,6 +271,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     @Override
                     public void onSwipeRight(int position) {
                         Saving saving = savingAdapter.getSavingAt(position);
+                        if (saving == null) return;
                         savingAdapter.notifyItemChanged(position);
                         showTransactionBottomSheet(saving);
                     }
@@ -267,18 +279,45 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     @Override
                     public void onSwipeLeft(int position) {
                         Saving saving = savingAdapter.getSavingAt(position);
+                        if (saving == null) return;
                         archiveWithUndo(saving);
                     }
                 }
         ));
         itemTouchHelper.attachToRecyclerView(savingsBinding.savingList);
 
+        // Swipe Gestures for Debts (Right = Record Payment, Left = Archive)
+        ItemTouchHelper debtTouchHelper = new ItemTouchHelper(new SwipeActionCallback(
+                this,
+                R.drawable.ic_add,
+                R.drawable.ic_archive,
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                com.google.android.material.R.attr.colorSecondaryContainer,
+                com.google.android.material.R.attr.colorOnPrimaryContainer,
+                com.google.android.material.R.attr.colorOnSecondaryContainer,
+                new SwipeActionCallback.SwipeListener() {
+                    @Override
+                    public void onSwipeRight(int position) {
+                        Debt debt = debtAdapter.getDebtAt(position);
+                        if (debt == null) return;
+                        debtAdapter.notifyItemChanged(position);
+                        showDebtDetails(debt.getId());
+                    }
+
+                    @Override
+                    public void onSwipeLeft(int position) {
+                        Debt debt = debtAdapter.getDebtAt(position);
+                        if (debt == null) return;
+                        archiveDebtWithUndo(debt);
+                    }
+                }
+        ));
+        debtTouchHelper.attachToRecyclerView(debtsBinding.debtList);
+
         // Fluid touch animations
         AnimationUtil.applySpringPressEffect(binding.createSaving);
         AnimationUtil.applySpringPressEffect(savingsBinding.dashboardCard);
-        AnimationUtil.applySpringPressEffect(savingsBinding.btnDashboardAnalytics);
         AnimationUtil.applySpringPressEffect(debtsBinding.debtDashboardCard);
-        AnimationUtil.applySpringPressEffect(debtsBinding.btnDebtDashboardAnalytics);
 
         // Savings Filter Chips
         savingsBinding.filterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
@@ -300,20 +339,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             filterAndDisplayDebts();
         });
 
-        // Insights / Analytics Triggers from cards
+        // Insights / Analytics Triggers from dashboard summary cards
         savingsBinding.dashboardCard.setOnClickListener(v -> {
             HapticUtil.performTap(v);
             binding.mainViewPager.setCurrentItem(3, true);
         });
-        savingsBinding.btnDashboardAnalytics.setOnClickListener(v -> {
-            HapticUtil.performTap(v);
-            binding.mainViewPager.setCurrentItem(3, true);
-        });
         debtsBinding.debtDashboardCard.setOnClickListener(v -> {
-            HapticUtil.performTap(v);
-            binding.mainViewPager.setCurrentItem(3, true);
-        });
-        debtsBinding.btnDebtDashboardAnalytics.setOnClickListener(v -> {
             HapticUtil.performTap(v);
             binding.mainViewPager.setCurrentItem(3, true);
         });
@@ -322,8 +353,12 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
 
         // FAB Click
         binding.createSaving.setOnClickListener(v -> {
-            if (binding.mainViewPager.getCurrentItem() == 1) {
+            int currentItem = binding.mainViewPager.getCurrentItem();
+            if (currentItem == 1) {
                 showCreateDebtDialog();
+            } else if (currentItem == 2) {
+                maybeRequestNotificationPermission();
+                new ViewModelProvider(this).get(HabitViewModel.class).requestAddHabit();
             } else {
                 startActivity(new Intent(this, CreateActivity.class));
             }
@@ -341,39 +376,63 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             CrashReporter.showDialogIfPending(this, saveCrashLauncher);
             handleNotificationLaunch(getIntent());
             checkForReinstallBackup();
+            maybeRequestNotificationPermission();
+        }
+    }
+
+    private void openArchiveScreen() {
+        Intent intent = new Intent(this, ArchiveActivity.class);
+        if (isDebtMode) {
+            intent.putExtra(ArchiveActivity.EXTRA_ARCHIVE_TAB, "debts");
+        }
+        startActivity(intent);
+    }
+
+    private void maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        if (!preferenceUtil.hasPromptedNotifications()) {
+            preferenceUtil.setPromptedNotifications(true);
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
 
     private void onMainPageSelected(int position) {
+        isDebtMode = (position == 1);
         int navItemId;
         switch (position) {
             case 0: // Savings
                 navItemId = R.id.nav_bottom_savings;
                 binding.toolbar.setTitle(R.string.toolbar_main);
                 binding.navigationView.setCheckedItem(R.id.nav_savings);
+                binding.createSaving.setContentDescription(getString(R.string.fab_add_saving));
                 binding.createSaving.show();
-                isDebtMode = false;
                 viewModel.loadSavings();
                 break;
             case 1: // Debts
                 navItemId = R.id.nav_bottom_debts;
-                binding.toolbar.setTitle("Debts & Owed");
+                binding.toolbar.setTitle(R.string.toolbar_debts);
                 binding.navigationView.setCheckedItem(R.id.nav_debts);
+                binding.createSaving.setContentDescription(getString(R.string.fab_add_debt));
                 binding.createSaving.show();
-                isDebtMode = true;
                 loadDebts();
                 break;
             case 2: // Habits
                 navItemId = R.id.nav_bottom_habits;
-                binding.toolbar.setTitle("Daily Quotas & Habits");
+                binding.toolbar.setTitle(R.string.toolbar_habits);
                 binding.navigationView.setCheckedItem(R.id.nav_habits);
-                binding.createSaving.hide();
+                binding.createSaving.setContentDescription(getString(R.string.fab_add_habit));
+                binding.createSaving.show();
                 break;
             case 3: // Insights
             default:
                 navItemId = R.id.nav_bottom_analytics;
-                binding.toolbar.setTitle("Insights & Analytics");
+                binding.toolbar.setTitle(R.string.toolbar_insights);
                 binding.navigationView.setCheckedItem(R.id.nav_analytics);
+                binding.createSaving.setContentDescription(null);
                 binding.createSaving.hide();
                 if (analyticsController != null) {
                     analyticsController.loadData();
@@ -383,6 +442,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         if (binding.bottomNavigation.getSelectedItemId() != navItemId) {
             binding.bottomNavigation.setSelectedItemId(navItemId);
         }
+        invalidateOptionsMenu();
     }
 
     private void checkForReinstallBackup() {
@@ -394,12 +454,17 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                         return;
                     }
                 }
+                try (DebtRepository dRepo = new DebtRepository(appContext)) {
+                    if (!dRepo.getAllDebts().isEmpty()) {
+                        return;
+                    }
+                }
                 if (preferenceUtil.hasDismissedReinstallRestore()) {
                     return;
                 }
 
                 BackupManager.BackupInfo backupInfo = BackupManager.detectExistingBackup(appContext);
-                if (backupInfo != null && (backupInfo.savingsCount > 0 || backupInfo.debtsCount > 0)) {
+                if (backupInfo != null && (backupInfo.savingsCount > 0 || backupInfo.debtsCount > 0 || backupInfo.trackersCount > 0)) {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed()) {
                             showReinstallRestoreDialog(backupInfo);
@@ -418,30 +483,25 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         String currencyNotice = (backupInfo.currency != null && !backupInfo.currency.isEmpty())
                 ? " (Currency: " + backupInfo.currency + ")"
                 : "";
-        String message;
+        int totalLogs = backupInfo.transactionsCount + backupInfo.debtTransactionsCount + backupInfo.trackerLogsCount;
+        StringBuilder message = new StringBuilder();
+        message.append("We found a previous backup from ")
+                .append(backupInfo.dateFormatted)
+                .append(currencyNotice)
+                .append(" containing:\n");
+        message.append("• ").append(backupInfo.savingsCount).append(" savings goal(s)\n");
         if (backupInfo.debtsCount > 0) {
-            message = String.format(
-                    "We found a previous backup from %s containing %d savings goal(s), %d debt(s), and %d transaction(s)%s.\n\nWould you like to restore your data and settings?",
-                    backupInfo.dateFormatted,
-                    backupInfo.savingsCount,
-                    backupInfo.debtsCount,
-                    backupInfo.transactionsCount + backupInfo.debtTransactionsCount,
-                    currencyNotice
-            );
-        } else {
-            message = String.format(
-                    "We found a previous backup from %s containing %d savings goal(s) and %d transaction(s)%s.\n\nWould you like to restore your savings and settings?",
-                    backupInfo.dateFormatted,
-                    backupInfo.savingsCount,
-                    backupInfo.transactionsCount,
-                    currencyNotice
-            );
+            message.append("• ").append(backupInfo.debtsCount).append(" debt(s)\n");
         }
+        if (backupInfo.trackersCount > 0) {
+            message.append("• ").append(backupInfo.trackersCount).append(" habit tracker(s)\n");
+        }
+        message.append("• ").append(totalLogs).append(" transaction / activity entry(ies)\n\nWould you like to restore your data and settings?");
 
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Previous Backup Found")
                 .setIcon(R.drawable.ic_unarchive)
-                .setMessage(message)
+                .setMessage(message.toString())
                 .setCancelable(true)
                 .setPositiveButton("Restore Everything", (dialog, which) -> restoreBackup(backupInfo))
                 .setNegativeButton("Start Fresh", (dialog, which) -> preferenceUtil.setDismissedReinstallRestore(true))
@@ -457,16 +517,16 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             } else if (backupInfo.sourceUri != null) {
                 success = BackupManager.restoreFromUri(appContext, backupInfo.sourceUri);
             }
+            if (success) {
+                HabitWidgetSyncManager.INSTANCE.enqueueUpdate(appContext);
+            }
             final boolean ok = success;
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     if (ok) {
-                        Toast.makeText(this, "Savings restored successfully!", Toast.LENGTH_SHORT).show();
-                        if (isDebtMode) {
-                            loadDebts();
-                        } else {
-                            viewModel.loadSavings();
-                        }
+                        Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
+                        viewModel.loadSavings();
+                        loadDebts();
                         recreate();
                     } else {
                         Toast.makeText(this, "Could not restore backup", Toast.LENGTH_SHORT).show();
@@ -482,7 +542,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             BackupManager.BackupInfo info = BackupManager.detectExistingBackup(appContext);
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
-                    if (info != null && info.savingsCount > 0) {
+                    if (info != null && (info.savingsCount > 0 || info.debtsCount > 0 || info.trackersCount > 0)) {
                         showReinstallRestoreDialog(info);
                     } else {
                         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -499,15 +559,15 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         final Context appContext = getApplicationContext();
         executor.execute(() -> {
             boolean success = BackupManager.restoreFromUri(appContext, uri);
+            if (success) {
+                HabitWidgetSyncManager.INSTANCE.enqueueUpdate(appContext);
+            }
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     if (success) {
                         Toast.makeText(this, "Backup restored successfully!", Toast.LENGTH_SHORT).show();
-                        if (isDebtMode) {
-                            loadDebts();
-                        } else {
-                            viewModel.loadSavings();
-                        }
+                        viewModel.loadSavings();
+                        loadDebts();
                         recreate();
                     } else {
                         Toast.makeText(this, "Failed to restore backup", Toast.LENGTH_SHORT).show();
@@ -551,7 +611,9 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
+        if (analyticsController != null) {
+            analyticsController.release();
+        }
         binding = null;
         savingsBinding = null;
         debtsBinding = null;
@@ -696,8 +758,10 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         }
 
-        int errorColor = com.google.android.material.color.MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorError);
-        int primaryColor = com.google.android.material.color.MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorPrimary);
+        int errorColor = MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorError);
+        int primaryColor = MaterialColors.getColor(debtsBinding.debtTotalSaved, androidx.appcompat.R.attr.colorPrimary);
+        int onErrorContainer = MaterialColors.getColor(debtsBinding.debtOverallPercent, com.google.android.material.R.attr.colorOnErrorContainer);
+        int onPrimaryContainer = MaterialColors.getColor(debtsBinding.debtOverallPercent, com.google.android.material.R.attr.colorOnPrimaryContainer);
 
         if (filterMode == 1) { // Only I Owe
             debtsBinding.debtCardHeader.setText("TOTAL DEBT (I OWE)");
@@ -709,6 +773,9 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     currencySymbol, FormatUtil.formatAmount(totalIOwePaid, this)));
             int pct = totalIOweOriginal > 0 ? (int) Math.round((totalIOwePaid / totalIOweOriginal) * 100.0) : 100;
             debtsBinding.debtOverallPercent.setText(String.format("%d%% Paid", pct));
+            boolean settled = totalIOweRemaining <= 0.001;
+            debtsBinding.debtOverallPercent.setBackgroundResource(settled ? R.drawable.bg_pill_accent : R.drawable.bg_pill_error);
+            debtsBinding.debtOverallPercent.setTextColor(settled ? onPrimaryContainer : onErrorContainer);
             AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
             debtsBinding.debtChipActive.setText(String.format("%d Active Debts", iOweActive));
             debtsBinding.debtChipCompleted.setText(String.format("%d Paid Off", iOweCompleted));
@@ -722,6 +789,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                     currencySymbol, FormatUtil.formatAmount(totalOwedPaid, this)));
             int pct = totalOwedOriginal > 0 ? (int) Math.round((totalOwedPaid / totalOwedOriginal) * 100.0) : 100;
             debtsBinding.debtOverallPercent.setText(String.format("%d%% Collected", pct));
+            debtsBinding.debtOverallPercent.setBackgroundResource(R.drawable.bg_pill_accent);
+            debtsBinding.debtOverallPercent.setTextColor(onPrimaryContainer);
             AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
             debtsBinding.debtChipActive.setText(String.format("%d Pending Owed", owedActive));
             debtsBinding.debtChipCompleted.setText(String.format("%d Settled", owedCompleted));
@@ -732,21 +801,27 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                 debtsBinding.debtTotalSaved.setText(String.format("-%s%s", currencySymbol,
                         FormatUtil.formatAmount(netDebt, this)));
                 debtsBinding.debtTotalSaved.setTextColor(errorColor);
+                debtsBinding.debtOverallPercent.setBackgroundResource(R.drawable.bg_pill_error);
+                debtsBinding.debtOverallPercent.setTextColor(onErrorContainer);
             } else if (netDebt < 0) {
                 debtsBinding.debtTotalSaved.setText(String.format("+%s%s", currencySymbol,
                         FormatUtil.formatAmount(Math.abs(netDebt), this)));
                 debtsBinding.debtTotalSaved.setTextColor(primaryColor);
+                debtsBinding.debtOverallPercent.setBackgroundResource(R.drawable.bg_pill_accent);
+                debtsBinding.debtOverallPercent.setTextColor(onPrimaryContainer);
             } else {
                 debtsBinding.debtTotalSaved.setText(String.format("%s0.00", currencySymbol));
                 debtsBinding.debtTotalSaved.setTextColor(primaryColor);
+                debtsBinding.debtOverallPercent.setBackgroundResource(R.drawable.bg_pill_accent);
+                debtsBinding.debtOverallPercent.setTextColor(onPrimaryContainer);
             }
             debtsBinding.debtTotalGoal.setText(String.format("Liabilities: %s%s | Assets: %s%s",
                     currencySymbol, FormatUtil.formatAmount(totalIOweRemaining, this),
                     currencySymbol, FormatUtil.formatAmount(totalOwedRemaining, this)));
 
-            int totalOriginal = (int) (totalIOweOriginal + totalOwedOriginal);
-            int totalPaid = (int) (totalIOwePaid + totalOwedPaid);
-            int pct = totalOriginal > 0 ? (int) Math.round(((double) totalPaid / totalOriginal) * 100.0) : 100;
+            double totalOriginal = totalIOweOriginal + totalOwedOriginal;
+            double totalPaid = totalIOwePaid + totalOwedPaid;
+            int pct = totalOriginal > 0 ? (int) Math.round((totalPaid / totalOriginal) * 100.0) : 100;
             debtsBinding.debtOverallPercent.setText(String.format("%d%% Settled", pct));
             AnimationUtil.animateProgress(debtsBinding.debtDashboardProgress, Math.min(pct, 100), 500);
 
@@ -783,6 +858,35 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     @Override
+    public void onArchiveClick(Debt debt) {
+        archiveDebtWithUndo(debt);
+    }
+
+    private void archiveDebtWithUndo(Debt debt) {
+        if (debt == null) return;
+        setDebtArchived(debt.getId(), true);
+        Snackbar.make(binding.getRoot(), getString(R.string.snackbar_archived, debt.getName()), Snackbar.LENGTH_LONG)
+                .setAction(R.string.snackbar_undo, v -> setDebtArchived(debt.getId(), false))
+                .setAnchorView(binding.bottomNavigation)
+                .show();
+    }
+
+    private void setDebtArchived(String debtId, boolean archived) {
+        final Context appContext = getApplicationContext();
+        executor.execute(() -> {
+            try (DebtRepository repo = new DebtRepository(appContext)) {
+                repo.setArchived(debtId, archived);
+            }
+            BackupManager.triggerAutoBackup(appContext);
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed() && binding != null) {
+                    loadDebts();
+                }
+            });
+        });
+    }
+
+    @Override
     public void onDeleteClick(Debt debt) {
         if (debt == null) return;
         new MaterialAlertDialogBuilder(this)
@@ -794,6 +898,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
                         try (DebtRepository repo = new DebtRepository(appContext)) {
                             repo.delete(debt.getId());
                         }
+                        BackupManager.triggerAutoBackup(appContext);
                         runOnUiThread(this::loadDebts);
                     });
                 })
@@ -843,6 +948,26 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
         return true;
     }
 
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        int currentItem = binding != null ? binding.mainViewPager.getCurrentItem() : 0;
+        boolean onSavings = currentItem == 0;
+
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        if (searchItem != null) {
+            if (!onSavings && searchItem.isActionViewExpanded()) {
+                searchItem.collapseActionView();
+            }
+            searchItem.setVisible(onSavings);
+        }
+
+        MenuItem sortItem = menu.findItem(R.id.sort);
+        if (sortItem != null) {
+            sortItem.setVisible(onSavings);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
     private void loadSortingMenu(Menu menu) {
         String criteria = viewModel.getSortCriteria();
         if (SavingSort.NAME.SORT.equals(criteria)) {
@@ -866,12 +991,8 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_analytics) {
-            showAnalytics();
-            return true;
-        }
         if (id == R.id.archive) {
-            startActivity(new Intent(this, ArchiveActivity.class));
+            openArchiveScreen();
             return true;
         }
         if (id == R.id.settings) {
@@ -909,6 +1030,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     public void onClick(int position) {
         Saving selectedSaving = savingAdapter.getSavingAt(position);
+        if (selectedSaving == null) return;
         showSavingDetails(selectedSaving.getID());
     }
 
@@ -962,6 +1084,7 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     @Override
     public void onOperationClick(SavingOperation operation, int position) {
         Saving selectedSaving = savingAdapter.getSavingAt(position);
+        if (selectedSaving == null) return;
         switch (operation) {
             case DELETE:      showDeleteDialog(selectedSaving); break;
             case SHARE:       shareSaving(selectedSaving); break;
@@ -972,10 +1095,11 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
     }
 
     private void archiveWithUndo(Saving saving) {
+        if (saving == null) return;
         viewModel.archiveSaving(saving);
         Snackbar.make(binding.getRoot(), getString(R.string.snackbar_archived, saving.getName()), Snackbar.LENGTH_LONG)
                 .setAction(R.string.snackbar_undo, v -> viewModel.unarchiveSaving(saving))
-                .setAnchorView(binding.createSaving)
+                .setAnchorView(binding.bottomNavigation)
                 .show();
     }
 
@@ -1045,12 +1169,6 @@ public class MainActivity extends CentsationActivity implements SavingAdapter.Li
             }
         });
         sheet.show(getSupportFragmentManager(), "transaction_bottom_sheet");
-    }
-
-    private void showAnalytics() {
-        if (binding != null) {
-            binding.mainViewPager.setCurrentItem(3, true);
-        }
     }
 
     private void showHistoryActivity(Saving saving) {

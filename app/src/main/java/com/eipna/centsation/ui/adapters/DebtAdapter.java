@@ -1,12 +1,17 @@
 package com.eipna.centsation.ui.adapters;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.StrikethroughSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.eipna.centsation.R;
@@ -17,39 +22,77 @@ import com.eipna.centsation.databinding.RecyclerDebtBinding;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder> {
+public class DebtAdapter extends ListAdapter<Debt, DebtAdapter.DebtViewHolder> {
 
     public interface Listener {
         void onDebtClick(Debt debt);
         void onPaymentClick(Debt debt);
         void onHistoryClick(Debt debt);
         void onDeleteClick(Debt debt);
+        default void onArchiveClick(Debt debt) {}
+        default void onUnarchiveClick(Debt debt) {}
     }
 
-    private final List<Debt> debts = new ArrayList<>();
+    @Nullable
+    public Debt getDebtAt(int position) {
+        if (position < 0 || position >= getItemCount()) {
+            return null;
+        }
+        return getItem(position);
+    }
+
     private final Listener listener;
     private String currencySymbol = "$";
     private String deadlineFormat = "MM/dd/yyyy";
 
+    private static final DiffUtil.ItemCallback<Debt> DIFF_CALLBACK = new DiffUtil.ItemCallback<Debt>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Debt oldItem, @NonNull Debt newItem) {
+            return Objects.equals(oldItem.getId(), newItem.getId());
+        }
+
+        @Override
+        public boolean areContentsTheSame(@NonNull Debt oldItem, @NonNull Debt newItem) {
+            return Objects.equals(oldItem.getName(), newItem.getName())
+                    && Double.compare(oldItem.getTotalAmount(), newItem.getTotalAmount()) == 0
+                    && Double.compare(oldItem.getAmountPaid(), newItem.getAmountPaid()) == 0
+                    && oldItem.getDebtType() == newItem.getDebtType()
+                    && Objects.equals(oldItem.getCategory(), newItem.getCategory())
+                    && oldItem.getIsArchived() == newItem.getIsArchived()
+                    && oldItem.getDeadline() == newItem.getDeadline()
+                    && Objects.equals(oldItem.getNotes(), newItem.getNotes());
+        }
+    };
+
     public DebtAdapter(Listener listener) {
+        super(DIFF_CALLBACK);
         this.listener = listener;
     }
 
     public void setDebts(List<Debt> newDebts, Context context) {
+        boolean prefsChanged = false;
         if (context != null) {
             PreferenceUtil prefs = new PreferenceUtil(context);
-            this.currencySymbol = Currency.getSymbol(prefs.getCurrency());
-            this.deadlineFormat = prefs.getDeadlineFormat();
+            String newCurrency = Currency.getSymbol(prefs.getCurrency());
+            String newDateFormat = prefs.getDeadlineFormat();
+            prefsChanged = !Objects.equals(this.currencySymbol, newCurrency)
+                    || !Objects.equals(this.deadlineFormat, newDateFormat);
+            this.currencySymbol = newCurrency;
+            this.deadlineFormat = newDateFormat;
         }
-        this.debts.clear();
-        if (newDebts != null) {
-            this.debts.addAll(newDebts);
-        }
-        notifyDataSetChanged();
+        final boolean formatChanged = prefsChanged;
+        List<Debt> snapshot = newDebts != null ? new ArrayList<>(newDebts) : new ArrayList<>();
+        submitList(snapshot, () -> {
+            if (formatChanged && getItemCount() > 0) {
+                notifyItemRangeChanged(0, getItemCount());
+            }
+        });
     }
 
     @NonNull
@@ -62,12 +105,7 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull DebtViewHolder holder, int position) {
-        holder.bind(debts.get(position));
-    }
-
-    @Override
-    public int getItemCount() {
-        return debts.size();
+        holder.bind(getItem(position));
     }
 
     class DebtViewHolder extends RecyclerView.ViewHolder {
@@ -80,33 +118,62 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
 
         public void bind(Debt debt) {
             Context context = itemView.getContext();
-            binding.debtName.setText(debt.getName());
+            boolean isArchived = debt.getIsArchived() == Debt.IS_ARCHIVE;
+            if (isArchived) {
+                SpannableString spannable = new SpannableString(debt.getName());
+                spannable.setSpan(new StrikethroughSpan(), 0, debt.getName().length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                binding.debtName.setText(spannable);
+                binding.debtName.setAlpha(0.6f);
+                binding.btnDebtPay.setVisibility(View.GONE);
+                binding.btnDebtArchive.setVisibility(View.GONE);
+                binding.btnDebtUnarchive.setVisibility(View.VISIBLE);
+            } else {
+                binding.debtName.setText(debt.getName());
+                binding.debtName.setAlpha(1.0f);
+                binding.btnDebtPay.setVisibility(View.VISIBLE);
+                binding.btnDebtArchive.setVisibility(View.VISIBLE);
+                binding.btnDebtUnarchive.setVisibility(View.GONE);
+            }
 
             boolean isOwed = debt.isOwedToMe();
-            int primaryColor = com.google.android.material.color.MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorPrimary);
-            int errorColor = com.google.android.material.color.MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorError);
+            int primaryColor = MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorPrimary);
+            int errorColor = MaterialColors.getColor(itemView, androidx.appcompat.R.attr.colorError);
+            int onPrimaryContainer = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorOnPrimaryContainer);
+            int onErrorContainer = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorOnErrorContainer);
+            int onSurfaceVariant = MaterialColors.getColor(itemView, com.google.android.material.R.attr.colorOnSurfaceVariant);
 
             if (isOwed) {
                 binding.debtTypeBadge.setText("📥 Owed to Me");
-                binding.debtTypeBadge.setTextColor(primaryColor);
+                binding.debtTypeBadge.setBackgroundResource(R.drawable.bg_pill_accent);
+                binding.debtTypeBadge.setTextColor(onPrimaryContainer);
                 binding.debtRemainingAmount.setTextColor(primaryColor);
                 binding.debtRemainingLabel.setText(" pending");
+                binding.debtPercent.setBackgroundResource(R.drawable.bg_pill_accent);
+                binding.debtPercent.setTextColor(onPrimaryContainer);
                 binding.debtPercent.setText(debt.isPaidOff() ? "Settled 🎉" : debt.getProgressPercent() + "% Collected");
-                binding.btnDebtPay.setText("Record Received");
+                binding.btnDebtPay.setText(R.string.action_record_received);
             } else {
                 binding.debtTypeBadge.setText("💸 I Owe");
-                binding.debtTypeBadge.setTextColor(errorColor);
+                binding.debtTypeBadge.setBackgroundResource(R.drawable.bg_pill_error);
+                binding.debtTypeBadge.setTextColor(onErrorContainer);
                 binding.debtRemainingAmount.setTextColor(errorColor);
                 binding.debtRemainingLabel.setText(" remaining");
-                binding.debtPercent.setText(debt.isPaidOff() ? "Paid Off 🎉" : debt.getProgressPercent() + "% Paid");
-                binding.btnDebtPay.setText("Record Payment");
+                if (debt.isPaidOff()) {
+                    binding.debtPercent.setBackgroundResource(R.drawable.bg_pill_accent);
+                    binding.debtPercent.setTextColor(onPrimaryContainer);
+                    binding.debtPercent.setText("Paid Off 🎉");
+                } else {
+                    binding.debtPercent.setBackgroundResource(R.drawable.bg_pill_error);
+                    binding.debtPercent.setTextColor(onErrorContainer);
+                    binding.debtPercent.setText(debt.getProgressPercent() + "% Paid");
+                }
+                binding.btnDebtPay.setText(R.string.action_record_payment);
             }
 
             DebtCategory category = DebtCategory.fromId(debt.getCategory());
             binding.debtCategoryBadge.setText(category.getFormattedLabel());
-            try {
-                binding.debtCategoryBadge.setTextColor(Color.parseColor(category.getColorHex()));
-            } catch (Exception ignored) {}
+            binding.debtCategoryBadge.setBackgroundResource(R.drawable.bg_pill_neutral);
+            binding.debtCategoryBadge.setTextColor(onSurfaceVariant);
 
             int progressPercent = debt.getProgressPercent();
             binding.debtProgress.setProgress(progressPercent);
@@ -150,6 +217,14 @@ public class DebtAdapter extends RecyclerView.Adapter<DebtAdapter.DebtViewHolder
 
             binding.btnDebtHistory.setOnClickListener(v -> {
                 if (listener != null) listener.onHistoryClick(debt);
+            });
+
+            binding.btnDebtArchive.setOnClickListener(v -> {
+                if (listener != null) listener.onArchiveClick(debt);
+            });
+
+            binding.btnDebtUnarchive.setOnClickListener(v -> {
+                if (listener != null) listener.onUnarchiveClick(debt);
             });
 
             binding.btnDebtDelete.setOnClickListener(v -> {

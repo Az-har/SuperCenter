@@ -1,6 +1,7 @@
 package com.eipna.centsation.data.saving;
 
 import java.util.Comparator;
+import java.util.Locale;
 
 public class Saving {
 
@@ -13,8 +14,8 @@ public class Saving {
     private int isArchived;
     private long deadline;
 
-    public static int IS_ARCHIVE = 1;
-    public static int NOT_ARCHIVE = 0;
+    public static final int IS_ARCHIVE = 1;
+    public static final int NOT_ARCHIVE = 0;
 
     public Saving() {
         this.ID = null;
@@ -38,7 +39,10 @@ public class Saving {
         this.deadline = other.deadline;
     }
 
-    public static final Comparator<Saving> SORT_NAME = Comparator.comparing(firstSaving -> firstSaving.getName().toLowerCase());
+    public static final Comparator<Saving> SORT_NAME = Comparator.comparing(
+            saving -> saving != null && saving.getName() != null ? saving.getName().toLowerCase(Locale.ROOT) : "",
+            Comparator.naturalOrder()
+    );
 
     public static final Comparator<Saving> SORT_VALUE = Comparator.comparingDouble(Saving::getCurrentSaving);
 

@@ -15,6 +15,9 @@ interface TrackerDao {
     @Query("SELECT * FROM trackers WHERE isActive = 1 ORDER BY id DESC")
     fun getActiveTrackers(): Flow<List<TrackerEntity>>
 
+    @Query("SELECT COUNT(*) FROM trackers WHERE isActive = 1")
+    suspend fun getActiveTrackerCount(): Int
+
     @Query("SELECT * FROM trackers WHERE id = :id LIMIT 1")
     suspend fun getTrackerById(id: Long): TrackerEntity?
 
@@ -23,6 +26,18 @@ interface TrackerDao {
 
     @Update
     suspend fun update(tracker: TrackerEntity)
+
+    @Query("SELECT * FROM trackers ORDER BY id ASC")
+    fun getAllTrackersSync(): List<TrackerEntity>
+
+    @Query("SELECT * FROM trackers WHERE id = :id LIMIT 1")
+    fun getTrackerByIdSync(id: Long): TrackerEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertSync(tracker: TrackerEntity): Long
+
+    @Update
+    fun updateSync(tracker: TrackerEntity)
 
     @Delete
     suspend fun delete(tracker: TrackerEntity)

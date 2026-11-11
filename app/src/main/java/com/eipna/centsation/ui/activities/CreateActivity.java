@@ -257,7 +257,6 @@ public class CreateActivity extends CentsationActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
         if (savingRepository != null) {
             savingRepository.close();
         }

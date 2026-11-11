@@ -119,7 +119,6 @@ public class MainViewModel extends AndroidViewModel {
         }
 
         savingsLiveData.postValue(list);
-        BackupManager.triggerAutoBackup(getApplication());
     }
 
     public void setSortCriteria(String criteria) {
@@ -161,6 +160,7 @@ public class MainViewModel extends AndroidViewModel {
         executor.execute(() -> {
             AlarmSetter.cancel(getApplication(), saving);
             savingRepository.delete(saving.getID());
+            BackupManager.triggerAutoBackup(getApplication());
             loadSavingsBlocking();
         });
     }
@@ -171,6 +171,7 @@ public class MainViewModel extends AndroidViewModel {
         AlarmSetter.cancel(getApplication(), saving);
         executor.execute(() -> {
             savingRepository.edit(archived);
+            BackupManager.triggerAutoBackup(getApplication());
             loadSavingsBlocking();
         });
     }
@@ -185,6 +186,7 @@ public class MainViewModel extends AndroidViewModel {
                     && unarchived.getCurrentSaving() < unarchived.getGoal()) {
                 AlarmSetter.set(getApplication(), unarchived);
             }
+            BackupManager.triggerAutoBackup(getApplication());
             loadSavingsBlocking();
         });
     }
@@ -201,6 +203,7 @@ public class MainViewModel extends AndroidViewModel {
 
         executor.execute(() -> {
             savingRepository.makeTransaction(updated, amount, TransactionType.DEPOSIT);
+            BackupManager.triggerAutoBackup(getApplication());
             loadSavingsBlocking();
         });
     }
@@ -220,6 +223,7 @@ public class MainViewModel extends AndroidViewModel {
 
         executor.execute(() -> {
             savingRepository.makeTransaction(updated, amount, TransactionType.WITHDRAW);
+            BackupManager.triggerAutoBackup(getApplication());
             loadSavingsBlocking();
         });
         return true;
@@ -228,7 +232,6 @@ public class MainViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        executor.shutdown();
         savingRepository.close();
     }
 }

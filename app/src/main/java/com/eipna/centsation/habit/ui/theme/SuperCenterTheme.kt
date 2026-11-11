@@ -10,6 +10,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
+import com.eipna.centsation.data.Theme
+import com.eipna.centsation.util.PreferenceUtil
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF00875A),
@@ -65,16 +68,35 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun SuperCenterTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
+    darkTheme: Boolean? = null,
+    dynamicColor: Boolean? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val context = LocalContext.current
+    val inPreview = LocalInspectionMode.current
+    val systemDark = isSystemInDarkTheme()
+
+    val resolvedDark = darkTheme ?: if (inPreview) {
+        systemDark
+    } else {
+        when (PreferenceUtil(context).theme) {
+            Theme.DARK.VALUE -> true
+            Theme.LIGHT.VALUE -> false
+            else -> systemDark
         }
-        darkTheme -> DarkColors
+    }
+
+    val resolvedDynamic = dynamicColor ?: if (inPreview) {
+        false
+    } else {
+        PreferenceUtil(context).isDynamicColors
+    }
+
+    val colorScheme = when {
+        resolvedDynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (resolvedDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        resolvedDark -> DarkColors
         else -> LightColors
     }
 

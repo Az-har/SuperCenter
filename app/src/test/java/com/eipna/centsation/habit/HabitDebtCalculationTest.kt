@@ -168,4 +168,20 @@ class HabitDebtCalculationTest {
         assertTrue(executedSql.contains("CREATE INDEX IF NOT EXISTS index_trackers_isActive ON trackers(isActive)"))
         assertTrue(executedSql.contains("CREATE INDEX IF NOT EXISTS index_tracker_logs_date ON tracker_logs(date)"))
     }
+
+    @Test
+    fun extremeDaysActive_clampsTotalExpectedQuotaToIntMaxWithoutOverflow() {
+        // 3000 days (~8+ years) * 1_000_000 reps/day overflows 32-bit Int if not guarded in Long arithmetic
+        val refDate = LocalDate.of(2026, 11, 5)
+        val tracker = createTracker(baseTarget = 1_000_000, daysAgo = 3_000, referenceDate = refDate)
+        val item = TrackerWithProgress(
+            tracker = tracker,
+            logs = emptyList(),
+            todayDate = refDate.toString()
+        )
+
+        assertEquals(Int.MAX_VALUE, item.totalExpectedQuota)
+        assertTrue(item.remainingToday > 0)
+        assertEquals(Int.MAX_VALUE, item.remainingToday)
+    }
 }

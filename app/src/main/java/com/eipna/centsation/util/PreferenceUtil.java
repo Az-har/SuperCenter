@@ -114,4 +114,12 @@ public class PreferenceUtil {
     public void setRegionalNumberFormat(String value) {
         sharedPreferences.edit().putString("regional_number_format", value).apply();
     }
+
+    public boolean hasPromptedNotifications() {
+        return sharedPreferences.getBoolean("prompted_notifications", false);
+    }
+
+    public void setPromptedNotifications(boolean value) {
+        sharedPreferences.edit().putBoolean("prompted_notifications", value).apply();
+    }
 }

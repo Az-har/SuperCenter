@@ -52,6 +52,8 @@
         <item name="popupTheme">@style/Widget.Material3.PopupMenu</item>
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
+        <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
     </style>
 
     <style name="Theme.Centsation.MediumContrast" parent="ThemeOverlay.Centsation.MediumContrast">
@@ -59,6 +61,8 @@
         <item name="popupTheme">@style/Widget.Material3.PopupMenu</item>
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
+        <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
     </style>
 
     <style name="Theme.Centsation.HighContrast" parent="ThemeOverlay.Centsation.HighContrast">
@@ -66,6 +70,8 @@
         <item name="popupTheme">@style/Widget.Material3.PopupMenu</item>
         <item name="homeAsUpIndicator">@drawable/ic_arrow_back</item>
         <item name="alertDialogTheme">@style/Theme.Centsation.AlertDialog</item>
+        <item name="bottomSheetDialogTheme">@style/Theme.Centsation.BottomSheetDialog</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Centsation.ActivitySlide</item>
     </style>
 
     <style name="Theme.Centsation.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">

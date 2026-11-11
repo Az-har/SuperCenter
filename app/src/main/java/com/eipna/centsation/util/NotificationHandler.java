@@ -1,13 +1,18 @@
 package com.eipna.centsation.util;
 
+import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
@@ -17,20 +22,38 @@ import com.eipna.centsation.ui.activities.MainActivity;
 
 public class NotificationHandler {
 
+    private static final String TAG = "NotificationHandler";
     public static final String CHANNEL_DEADLINE_ID = "channel_deadline_v3";
     public static final String CHANNEL_DEADLINE_NAME = "Deadlines & Milestones";
     public static final int CHANNEL_DEADLINE_IMPORTANCE = NotificationManager.IMPORTANCE_HIGH;
+
+    public static boolean canPostNotifications(Context context) {
+        if (context == null) return false;
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
 
     public static void createChannels(Context context) {
         if (context == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
-                // Delete legacy channels so Android applies new HIGH importance channel cleanly
                 try {
-                    notificationManager.deleteNotificationChannel("channel_deadline");
-                    notificationManager.deleteNotificationChannel("channel_deadline_v2");
-                } catch (Exception ignored) {}
+                    if (notificationManager.getNotificationChannel("channel_deadline") != null) {
+                        notificationManager.deleteNotificationChannel("channel_deadline");
+                    }
+                    if (notificationManager.getNotificationChannel("channel_deadline_v2") != null) {
+                        notificationManager.deleteNotificationChannel("channel_deadline_v2");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed cleaning legacy notification channels", e);
+                }
 
                 NotificationChannel deadlineChannel = new NotificationChannel(
                         CHANNEL_DEADLINE_ID,
@@ -51,6 +74,12 @@ public class NotificationHandler {
 
     public static void create(Context context, Saving saving, boolean isAdvanceNotice) {
         if (context == null || saving == null || saving.getID() == null) return;
+        if (!canPostNotifications(context)) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager == null) return;
 
@@ -102,7 +131,11 @@ public class NotificationHandler {
                 .setAutoCancel(true)
                 .setOngoing(false);
 
-        notificationManager.notify(notificationId, builder.build());
+        try {
+            notificationManager.notify(notificationId, builder.build());
+        } catch (SecurityException se) {
+            Log.w(TAG, "POST_NOTIFICATIONS permission denied while posting deadline notification", se);
+        }
     }
 
     private static int savingsPercent(Saving saving) {

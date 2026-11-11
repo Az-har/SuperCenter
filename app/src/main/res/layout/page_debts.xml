@@ -57,28 +57,13 @@
                         android:layout_height="wrap_content"
                         tools:ignore="HardcodedText" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_debt_dashboard_analytics"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:text="Insights"
-                        app:icon="@drawable/ic_insights"
-                        app:iconSize="16dp"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="12dp"
-                        android:layout_marginEnd="8dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        tools:ignore="HardcodedText" />
-
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/debt_overall_percent"
                         android:text="0%"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textStyle="bold"
-                        android:textColor="?attr/colorError"
-                        android:background="@drawable/bg_pill_accent"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        android:background="@drawable/bg_pill_error"
                         android:paddingStart="10dp"
                         android:paddingEnd="10dp"
                         android:paddingTop="4dp"
@@ -165,6 +150,7 @@
             android:scrollbars="none"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
+            android:paddingTop="2dp"
             android:paddingBottom="6dp"
             android:clipToPadding="false"
             android:layout_width="match_parent"
@@ -174,6 +160,7 @@
                 android:id="@+id/debt_filter_chip_group"
                 app:singleSelection="true"
                 app:selectionRequired="true"
+                app:chipSpacingHorizontal="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">
 
@@ -181,26 +168,23 @@
                     android:id="@+id/chip_debt_filter_all"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:checked="true"
-                    android:text="All"
+                    android:text="@string/chip_debt_all"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_debt_filter_i_owe"
                     style="@style/Widget.Material3.Chip.Filter"
-                    android:text="💸 I Owe"
+                    android:text="@string/chip_debt_i_owe"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_debt_filter_owed_to_me"
                     style="@style/Widget.Material3.Chip.Filter"
-                    android:text="📥 Owed to Me"
+                    android:text="@string/chip_debt_owed_to_me"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:ignore="HardcodedText" />
+                    android:layout_height="wrap_content" />
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>
     </com.google.android.material.appbar.AppBarLayout>
@@ -224,7 +208,7 @@
                 android:layout_width="100dp"
                 android:layout_height="100dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_savings"
+                android:src="@drawable/ic_debt"
                 android:background="@drawable/bg_pill_accent"
                 android:padding="22dp"
                 tools:ignore="ContentDescription"

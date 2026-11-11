@@ -84,12 +84,26 @@ public class DebtRepository implements AutoCloseable {
     }
 
     public void makePayment(@NonNull Debt debt, double paymentAmount, @Nullable String notes) {
-        if (dbHelper == null) return;
+        if (!Double.isFinite(paymentAmount) || paymentAmount <= 0.0) {
+            throw new IllegalArgumentException("Payment amount must be a positive finite number");
+        }
+        if (dbHelper == null || debt.getId() == null) return;
         SQLiteDatabase database = dbHelper.getWritableDatabase();
+        boolean committed = false;
+        double newAmountPaid = debt.getAmountPaid();
         database.beginTransaction();
         try {
-            double newAmountPaid = debt.getAmountPaid() + paymentAmount;
-            debt.setAmountPaid(newAmountPaid);
+            String query = "SELECT " + Database.COLUMN_DEBT_AMOUNT_PAID + " FROM " + Database.TABLE_DEBT
+                    + " WHERE " + Database.COLUMN_DEBT_ID + " = ? LIMIT 1;";
+            double currentPaid;
+            try (Cursor cursor = database.rawQuery(query, new String[]{debt.getId()})) {
+                if (cursor == null || !cursor.moveToFirst()) {
+                    return;
+                }
+                currentPaid = cursor.getDouble(0);
+            }
+
+            newAmountPaid = currentPaid + paymentAmount;
 
             ContentValues values = new ContentValues();
             values.put(Database.COLUMN_DEBT_AMOUNT_PAID, newAmountPaid);
@@ -97,15 +111,27 @@ public class DebtRepository implements AutoCloseable {
 
             ContentValues txValues = new ContentValues();
             txValues.put(Database.COLUMN_DEBT_TRANSACTION_DEBT_ID, debt.getId());
-            txValues.put(Database.COLUMN_DEBT_TRANSACTION_AMOUNT, Math.abs(paymentAmount));
+            txValues.put(Database.COLUMN_DEBT_TRANSACTION_AMOUNT, paymentAmount);
             txValues.put(Database.COLUMN_DEBT_TRANSACTION_DATE, System.currentTimeMillis());
             txValues.put(Database.COLUMN_DEBT_TRANSACTION_NOTES, notes);
             database.insert(Database.TABLE_DEBT_TRANSACTION, null, txValues);
 
             database.setTransactionSuccessful();
+            committed = true;
         } finally {
             database.endTransaction();
         }
+        if (committed) {
+            debt.setAmountPaid(newAmountPaid);
+        }
+    }
+
+    public void setArchived(@NonNull String debtId, boolean archived) {
+        if (dbHelper == null) return;
+        SQLiteDatabase database = dbHelper.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(Database.COLUMN_DEBT_IS_ARCHIVED, archived ? Debt.IS_ARCHIVE : Debt.NOT_ARCHIVE);
+        database.update(Database.TABLE_DEBT, values, Database.COLUMN_DEBT_ID + " = ?", new String[]{debtId});
     }
 
     public List<Debt> getDebts(int isArchived) {

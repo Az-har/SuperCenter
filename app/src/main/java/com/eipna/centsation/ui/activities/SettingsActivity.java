@@ -15,6 +15,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -25,6 +26,7 @@ import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreferenceCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.eipna.centsation.R;
 import com.eipna.centsation.data.Currency;
@@ -54,7 +56,7 @@ public class SettingsActivity extends CentsationActivity {
         setContentView(binding.getRoot());
         ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
+            v.setPadding(systemBars.left, 0, systemBars.right, 0);
             return insets;
         });
 
@@ -124,6 +126,20 @@ public class SettingsActivity extends CentsationActivity {
                     }
                 });
 
+
+        @Override
+        public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+            super.onViewCreated(view, savedInstanceState);
+            RecyclerView list = getListView();
+            list.setClipToPadding(false);
+            int extraBottom = (int) (24 * getResources().getDisplayMetrics().density);
+            ViewCompat.setOnApplyWindowInsetsListener(list, (v, insets) -> {
+                Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), systemBars.bottom + extraBottom);
+                return insets;
+            });
+            ViewCompat.requestApplyInsets(list);
+        }
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -238,7 +254,7 @@ public class SettingsActivity extends CentsationActivity {
                     "Optimization Engine:\n" +
                     "• State: " + modeName + "\n" +
                     "• Adaptive Widget Debounce: " + debounceMs + "ms\n" +
-                    "• Memory Footprint: RGB_565 Compact Canvas";
+                    "• Render Profile: Compact Low-Memory Canvas";
 
             new MaterialAlertDialogBuilder(ctx)
                     .setTitle("Hardware & Battery Telemetry")
@@ -254,12 +270,6 @@ public class SettingsActivity extends CentsationActivity {
         public void onDestroyView() {
             super.onDestroyView();
             dismissProgressDialog();
-        }
-
-        @Override
-        public void onDestroy() {
-            super.onDestroy();
-            executor.shutdown();
         }
 
         private void findPreferences() {
@@ -299,18 +309,21 @@ public class SettingsActivity extends CentsationActivity {
                         Toast.makeText(requireContext(), R.string.toast_no_auto_backup, Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    String message;
+                    StringBuilder message = new StringBuilder();
+                    message.append("Found backup from ").append(info.dateFormatted).append(" containing:\n");
+                    message.append("• ").append(info.savingsCount).append(" savings goal(s)\n");
                     if (info.debtsCount > 0) {
-                        message = String.format("Found backup from %s containing %d goal(s), %d debt(s), and transactions.\n\nRestore now?",
-                                info.dateFormatted, info.savingsCount, info.debtsCount);
-                    } else {
-                        message = String.format("Found backup from %s containing %d goal(s) and %d transaction(s).\n\nRestore now?",
-                                info.dateFormatted, info.savingsCount, info.transactionsCount);
+                        message.append("• ").append(info.debtsCount).append(" debt(s)\n");
                     }
+                    if (info.trackersCount > 0) {
+                        message.append("• ").append(info.trackersCount).append(" habit tracker(s)\n");
+                    }
+                    int totalEntries = info.transactionsCount + info.debtTransactionsCount + info.trackerLogsCount;
+                    message.append("• ").append(totalEntries).append(" transaction / activity entry(ies).\n\nRestore now?");
                     new MaterialAlertDialogBuilder(requireContext())
                             .setTitle(R.string.preference_restore_auto_title)
                             .setIcon(R.drawable.ic_unarchive)
-                            .setMessage(message)
+                            .setMessage(message.toString())
                             .setPositiveButton("Restore", (d, w) -> executeAutoRestore(info))
                             .setNegativeButton(R.string.dialog_button_cancel, null)
                             .show();
@@ -334,6 +347,9 @@ public class SettingsActivity extends CentsationActivity {
                     Toast.makeText(requireContext(),
                             success ? R.string.toast_import_successful : R.string.toast_import_failed,
                             Toast.LENGTH_SHORT).show();
+                    if (success && getActivity() != null) {
+                        getActivity().recreate();
+                    }
                 });
             });
         }

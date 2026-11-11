@@ -4,17 +4,17 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -29,6 +29,20 @@ object DeviceHardwareOptimizer {
     private const val PREFS_NAME = "hardware_telemetry_prefs"
     private const val KEY_BATTERY_LOGS = "battery_snapshots"
     private const val MAX_LOGS = 20
+    private const val MIN_LOG_INTERVAL_MS = 60_000L
+
+    @Volatile
+    private var hasResolvedOriginOsVersion = false
+    @Volatile
+    private var cachedOriginOsVersion: String? = null
+    @Volatile
+    private var lastRecordedAtMs = 0L
+    @Volatile
+    private var lastRecordedPercentage = -1
+    @Volatile
+    private var lastRecordedCharging: Boolean? = null
+    @Volatile
+    private var lastRecordedPowerSave: Boolean? = null
 
     data class BatterySnapshot(
         val level: Int,
@@ -77,25 +91,30 @@ object DeviceHardwareOptimizer {
     }
 
     fun getOriginOsVersion(): String? {
-        return getSystemProperty("ro.vivo.os.version")
+        if (hasResolvedOriginOsVersion) return cachedOriginOsVersion
+        val resolved = getSystemProperty("ro.vivo.os.version")
             ?: getSystemProperty("ro.vivo.os.name")
             ?: getSystemProperty("ro.iqoo.os.version")
             ?: if (isVivoOrIqoo) "OriginOS / Funtouch" else null
+        cachedOriginOsVersion = resolved
+        hasResolvedOriginOsVersion = true
+        return resolved
     }
 
+    @Suppress("PrivateApi")
     private fun getSystemProperty(key: String): String? {
         return try {
-            val process = Runtime.getRuntime().exec("getprop $key")
-            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                val line = reader.readLine()?.trim()
-                if (!line.isNullOrEmpty()) line else null
-            }
+            val clazz = Class.forName("android.os.SystemProperties")
+            val method = clazz.getMethod("get", String::class.java, String::class.java)
+            val value = (method.invoke(null, key, "") as? String)?.trim()
+            if (!value.isNullOrEmpty()) value else null
         } catch (_: Exception) {
             null
         }
     }
 
-    fun getBatterySnapshot(context: Context): BatterySnapshot {
+    @JvmOverloads
+    fun getBatterySnapshot(context: Context, recordTelemetry: Boolean = true): BatterySnapshot {
         val appContext = context.applicationContext
         val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         val batteryIntent = appContext.registerReceiver(null, filter)
@@ -141,18 +160,23 @@ object DeviceHardwareOptimizer {
             health = healthStr
         )
 
-        recordSnapshot(appContext, snapshot)
+        if (recordTelemetry && shouldRecordSnapshot(snapshot)) {
+            recordSnapshot(appContext, snapshot)
+        }
         return snapshot
     }
 
-    fun getPerformanceMode(context: Context): PerformanceMode {
-        val snapshot = getBatterySnapshot(context)
+    internal fun evaluatePerformanceMode(snapshot: BatterySnapshot): PerformanceMode {
         return when {
             snapshot.temperatureCelsius >= 41.0f -> PerformanceMode.THERMAL_THROTTLE
             snapshot.isPowerSaveMode || snapshot.percentage < 20 -> PerformanceMode.POWER_SAVING
             snapshot.isFastCharging -> PerformanceMode.HIGH_PERFORMANCE
             else -> PerformanceMode.BALANCED
         }
+    }
+
+    fun getPerformanceMode(context: Context): PerformanceMode {
+        return evaluatePerformanceMode(getBatterySnapshot(context, recordTelemetry = false))
     }
 
     /**
@@ -194,12 +218,7 @@ object DeviceHardwareOptimizer {
                 component = ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             },
-            // Standard Android Battery Optimization Whitelist Request
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:${context.packageName}")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            },
-            // General Battery Optimization Settings
+            // General Battery Optimization Settings (policy-compliant)
             Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
@@ -219,7 +238,7 @@ object DeviceHardwareOptimizer {
         // Final fallback: App Details Settings
         return try {
             val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.parse("package:${context.packageName}")
+                data = "package:${context.packageName}".toUri()
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(appDetailsIntent)
@@ -227,6 +246,16 @@ object DeviceHardwareOptimizer {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun shouldRecordSnapshot(snapshot: BatterySnapshot): Boolean {
+        val now = snapshot.timestamp
+        if (lastRecordedAtMs == 0L) return true
+        if (now - lastRecordedAtMs >= MIN_LOG_INTERVAL_MS) return true
+        if (abs(snapshot.percentage - lastRecordedPercentage) >= 2) return true
+        if (snapshot.isCharging != lastRecordedCharging) return true
+        if (snapshot.isPowerSaveMode != lastRecordedPowerSave) return true
+        return false
     }
 
     private fun recordSnapshot(context: Context, snapshot: BatterySnapshot) {
@@ -250,7 +279,11 @@ object DeviceHardwareOptimizer {
                 trimmed.put(jsonArray.get(i))
             }
 
-            prefs.edit().putString(KEY_BATTERY_LOGS, trimmed.toString()).apply()
+            prefs.edit { putString(KEY_BATTERY_LOGS, trimmed.toString()) }
+            lastRecordedAtMs = snapshot.timestamp
+            lastRecordedPercentage = snapshot.percentage
+            lastRecordedCharging = snapshot.isCharging
+            lastRecordedPowerSave = snapshot.isPowerSaveMode
         } catch (_: Exception) {}
     }
 

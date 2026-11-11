@@ -1,9 +1,11 @@
 package com.eipna.centsation.habit.ui
 
+import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,13 +56,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
-import java.util.Locale
+import com.eipna.centsation.habit.util.TrackerDateUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +76,12 @@ fun HabitDashboardScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingTracker by remember { mutableStateOf<TrackerEntity?>(null) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.addHabitEvents.collect {
+            showAddDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -108,11 +118,13 @@ fun HabitDashboardScreen(
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Habit") }
-            )
+            if (showTopBar) {
+                ExtendedFloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text("Add Habit") }
+                )
+            }
         }
     ) { paddingValues ->
         Box(
@@ -254,7 +266,7 @@ fun HabitHeroSummaryCard(trackers: List<TrackerWithProgress>) {
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
                 strokeCap = StrokeCap.Round
             )
@@ -263,7 +275,8 @@ fun HabitHeroSummaryCard(trackers: List<TrackerWithProgress>) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
             ) {
                 Column {
                     Text(
@@ -285,12 +298,28 @@ fun HabitHeroSummaryCard(trackers: List<TrackerWithProgress>) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
-                    Text(
-                        text = if (totalDebt > 0) "+$totalDebt reps backlog" else "0 (No Backlog! 🎉)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (totalDebt > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                    )
+                    if (totalDebt > 0) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Text(
+                                text = "+$totalDebt reps backlog",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "0 (No Backlog! 🎉)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         }
@@ -305,6 +334,8 @@ fun TrackerCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val is24Hour = DateFormat.is24HourFormat(context)
     val tracker = item.tracker
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -312,10 +343,8 @@ fun TrackerCard(
         HabitHeatmapUtil.calculateStreakStats(tracker, item.logs, item.todayDate)
     }
 
-    val formattedTime = remember(tracker.scheduledHour, tracker.scheduledMinute) {
-        val h = if (tracker.scheduledHour == 0) 12 else if (tracker.scheduledHour > 12) tracker.scheduledHour - 12 else tracker.scheduledHour
-        val amPm = if (tracker.scheduledHour < 12) "AM" else "PM"
-        String.format(Locale.getDefault(), "%02d:%02d %s", h, tracker.scheduledMinute, amPm)
+    val formattedTime = remember(tracker.scheduledHour, tracker.scheduledMinute, is24Hour) {
+        TrackerDateUtil.formatReminderTime(is24Hour, tracker.scheduledHour, tracker.scheduledMinute)
     }
 
     Card(
@@ -455,7 +484,11 @@ fun TrackerCard(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(CircleShape),
-                color = if (item.isCompletedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                color = if (item.accumulatedBacklogDebt > 0 && !item.isCompletedToday) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeCap = StrokeCap.Round
             )
@@ -489,13 +522,22 @@ fun TrackerCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Quick Increment Buttons
+            // Action Quick Increment & Undo Buttons
             AnimatedVisibility(visible = !item.isCompletedToday) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    OutlinedButton(
+                        onClick = { onLogReps(-1) },
+                        enabled = item.todayCompletedReps > 0,
+                        modifier = Modifier.weight(0.75f),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Text(text = "\u22121", maxLines = 1)
+                    }
+
                     val increments = when {
                         tracker.baseDailyTarget >= 1000 -> listOf(100, 500, 1000)
                         tracker.baseDailyTarget >= 50 -> listOf(5, 10, 25)
@@ -508,24 +550,24 @@ fun TrackerCard(
                         FilledTonalButton(
                             onClick = { onLogReps(inc) },
                             modifier = Modifier.weight(1f),
-                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                            contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
-                            Text(text = "+$inc")
+                            Text(text = "+$inc", maxLines = 1)
                         }
                     }
 
                     Button(
                         onClick = onMarkDone,
-                        modifier = Modifier.weight(1.2f),
-                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                        modifier = Modifier.weight(1.15f),
+                        contentPadding = PaddingValues(horizontal = 6.dp)
                     ) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Done")
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(text = "Done", maxLines = 1)
                     }
                 }
             }
@@ -540,14 +582,29 @@ fun TrackerCard(
                         text = "Quota met for today! Streak intact.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp)
                     )
 
-                    OutlinedButton(
-                        onClick = { onLogReps(1) },
-                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "+1 Bonus")
+                        OutlinedButton(
+                            onClick = { onLogReps(-1) },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(text = "\u22121")
+                        }
+
+                        OutlinedButton(
+                            onClick = { onLogReps(1) },
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                        ) {
+                            Text(text = "+1 Bonus")
+                        }
                     }
                 }
             }

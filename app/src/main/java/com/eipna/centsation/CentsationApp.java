@@ -6,8 +6,10 @@ import android.util.Log;
 import androidx.appcompat.app.AppCompatDelegate;
 
 import com.eipna.centsation.data.Theme;
+import com.eipna.centsation.habit.notification.TrackerNotificationHandler;
 import com.eipna.centsation.util.CrashHandler;
 import com.eipna.centsation.util.DeadlineWorker;
+import com.eipna.centsation.util.NotificationHandler;
 import com.eipna.centsation.util.PreferenceUtil;
 
 public class CentsationApp extends Application {
@@ -18,6 +20,14 @@ public class CentsationApp extends Application {
     public void onCreate() {
         super.onCreate();
         CrashHandler.install(this);
+
+        // Initialize notification channels once at app process start
+        try {
+            NotificationHandler.createChannels(this);
+            TrackerNotificationHandler.INSTANCE.createNotificationChannel(this);
+        } catch (Throwable t) {
+            Log.e(TAG, "Failed to initialize notification channels", t);
+        }
 
         // Apply theme early in Application process lifecycle to prevent activity recreation flicker/crashes on cold start
         try {

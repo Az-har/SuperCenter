@@ -23,6 +23,32 @@
             app:layout_scrollFlags="snap|scroll|enterAlways"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/archive_mode_toggle_group"
+            app:singleSelection="true"
+            app:selectionRequired="true"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_archive_tab_savings"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:text="@string/archive_tab_savings"
+                android:minHeight="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_archive_tab_debts"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:text="@string/archive_tab_debts"
+                android:minHeight="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
     </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
@@ -45,6 +71,7 @@
             app:tint="?attr/colorPrimary" />
 
         <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/empty_archive_title"
             android:text="@string/empty_indicator_archive"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textStyle="bold"
@@ -62,6 +89,16 @@
         android:layoutAnimation="@anim/layout_animation_fall_down"
         android:clipToPadding="false"
         android:paddingBottom="24dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/debt_list"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:layoutAnimation="@anim/layout_animation_fall_down"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
+        android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 

@@ -1,18 +1,25 @@
 package com.eipna.centsation.habit.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
+import androidx.core.content.ContextCompat
 import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
 
 object TrackerNotificationHandler {
+
+    private const val TAG = "TrackerNotificationHdlr"
 
     const val CHANNEL_ID = "channel_habit_tracker_v1"
     const val CHANNEL_NAME = "Daily Quota & Habit Tracker"
@@ -41,6 +48,12 @@ object TrackerNotificationHandler {
     }
 
     fun showTrackerNotification(context: Context, item: TrackerWithProgress) {
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         createNotificationChannel(context)
 
@@ -67,7 +80,7 @@ object TrackerNotificationHandler {
         }
         val pendingContentIntent = PendingIntent.getActivity(
             context,
-            tracker.id.toInt(),
+            TrackerAlarmScheduler.contentRequestCode(tracker.id),
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -93,7 +106,7 @@ object TrackerNotificationHandler {
             }
             val replyPendingIntent = PendingIntent.getBroadcast(
                 context,
-                (tracker.id * 10 + 1).toInt(),
+                TrackerAlarmScheduler.directReplyRequestCode(tracker.id),
                 replyIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
@@ -104,21 +117,21 @@ object TrackerNotificationHandler {
                 replyPendingIntent
             ).addRemoteInput(remoteInput).build()
 
-            // 2. Quick Complete Action (+Base Target)
+            // 2. Quick Complete Action (+Remaining)
             val quickCompleteIntent = Intent(context, TrackerNotificationReceiver::class.java).apply {
                 action = ACTION_QUICK_COMPLETE
                 putExtra(TrackerAlarmScheduler.EXTRA_TRACKER_ID, tracker.id)
             }
             val quickCompletePendingIntent = PendingIntent.getBroadcast(
                 context,
-                (tracker.id * 10 + 2).toInt(),
+                TrackerAlarmScheduler.quickCompleteRequestCode(tracker.id),
                 quickCompleteIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             val quickCompleteAction = NotificationCompat.Action.Builder(
                 R.drawable.ic_save,
-                "+${tracker.baseDailyTarget} Done",
+                "+$remaining Done",
                 quickCompletePendingIntent
             ).build()
 
@@ -129,7 +142,7 @@ object TrackerNotificationHandler {
             }
             val snoozePendingIntent = PendingIntent.getBroadcast(
                 context,
-                (tracker.id * 10 + 3).toInt(),
+                TrackerAlarmScheduler.snoozeActionRequestCode(tracker.id),
                 snoozeIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -145,11 +158,15 @@ object TrackerNotificationHandler {
             builder.addAction(snoozeAction)
         }
 
-        notificationManager.notify(tracker.id.toInt(), builder.build())
+        try {
+            notificationManager.notify(TrackerAlarmScheduler.notificationId(tracker.id), builder.build())
+        } catch (se: SecurityException) {
+            Log.w(TAG, "POST_NOTIFICATIONS denied while posting tracker notification", se)
+        }
     }
 
     fun dismissNotification(context: Context, trackerId: Long) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        notificationManager.cancel(trackerId.toInt())
+        notificationManager.cancel(TrackerAlarmScheduler.notificationId(trackerId))
     }
 }

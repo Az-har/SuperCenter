@@ -61,12 +61,6 @@
 
 
     <item
-        android:id="@+id/action_analytics"
-        android:title="Insights &amp; Analytics"
-        android:icon="@drawable/ic_insights"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/archive"
         android:title="@string/menu_item_archive"
         app:showAsAction="never" />

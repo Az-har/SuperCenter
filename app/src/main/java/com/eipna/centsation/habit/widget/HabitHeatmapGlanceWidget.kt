@@ -1,11 +1,16 @@
 package com.eipna.centsation.habit.widget
 
 import android.content.Context
-import android.graphics.Bitmap
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.Button
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -13,7 +18,6 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -23,180 +27,216 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.state.GlanceStateDefinition
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.unit.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.compose.ui.graphics.Color
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
+import com.eipna.centsation.habit.util.DayHeatmapItem
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
 import com.eipna.centsation.habit.util.StreakStats
 import com.eipna.centsation.habit.util.TrackerDateUtil
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-val HeatmapTrackerIdKey = ActionParameters.Key<Long>("heatmap_tracker_id")
-val HeatmapDeltaKey = ActionParameters.Key<Int>("heatmap_delta")
 
 class HabitHeatmapGlanceReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HabitHeatmapGlanceWidget()
 }
 
+private data class HeatmapLayoutSpec(
+    val targetWeeks: Int,
+    val stackedBands: Boolean,
+    val showFooterLegend: Boolean,
+    val showMonthLabels: Boolean,
+    val padDp: Float,
+    val availWidthDp: Float,
+    val availHeightDp: Float
+)
+
 class HabitHeatmapGlanceWidget : GlanceAppWidget() {
 
     companion object {
-        val SIZE_COMPACT = DpSize(180.dp, 110.dp)
-        val SIZE_MEDIUM = DpSize(260.dp, 130.dp)
-        val SIZE_EXPANDED = DpSize(340.dp, 180.dp)
-        const val PREFS_NAME = "habit_heatmap_widget_prefs"
+        val SIZE_COMPACT = DpSize(180.dp, 100.dp)
+        val SIZE_MEDIUM = DpSize(250.dp, 115.dp)
+        val SIZE_WIDE = DpSize(320.dp, 130.dp)
+        val SIZE_TALL_MEDIUM = DpSize(250.dp, 200.dp)
+        val SIZE_LARGE = DpSize(320.dp, 200.dp)
+        val SIZE_FULL_PAGE = DpSize(320.dp, 280.dp)
+        val KEY_TRACKER_INDEX = intPreferencesKey("heatmap_tracker_index")
+        val KEY_IS_365_DAYS = booleanPreferencesKey("heatmap_is_365_days")
     }
 
+    override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
+
     override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(SIZE_COMPACT, SIZE_MEDIUM, SIZE_EXPANDED)
+        setOf(SIZE_COMPACT, SIZE_MEDIUM, SIZE_WIDE, SIZE_TALL_MEDIUM, SIZE_LARGE, SIZE_FULL_PAGE)
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = TrackerRepository.getInstance(context)
-        val allTrackers = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
-
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val idHash = id.hashCode()
-        val savedIndex = prefs.getInt("tracker_index_$idHash", 0)
-        val is365Days = prefs.getBoolean("is_365_$idHash", false)
-
-        val activeIndex = if (allTrackers.isNotEmpty()) {
-            savedIndex.coerceIn(0, allTrackers.size - 1)
-        } else {
-            0
-        }
-
-        val currentItem = allTrackers.getOrNull(activeIndex)
-
-        // Precompute streak & heatmap grids for active item
-        val streakStats = currentItem?.let {
-            HabitHeatmapUtil.calculateStreakStats(
-                tracker = it.tracker,
-                logs = it.logs,
-                todayDate = TrackerDateUtil.getTodayDateString()
-            )
-        }
-
-        val (grid35, numWeeks35) = currentItem?.let {
-            HabitHeatmapUtil.generateHeatmapGrid(
-                tracker = it.tracker,
-                logs = it.logs,
-                is365Days = false
-            )
-        } ?: Pair(emptyList(), 5)
-
-        val (grid365, numWeeks365) = if (is365Days && currentItem != null) {
-            HabitHeatmapUtil.generateHeatmapGrid(
-                tracker = currentItem.tracker,
-                logs = currentItem.logs,
-                is365Days = true
-            )
-        } else {
-            Pair(emptyList(), 0)
-        }
+        val initialTrackers = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
 
         provideContent {
-            GlanceTheme(colors = HabitGlanceTheme.Colors) {
+            val allTrackers by repository.getTrackersWithProgress().collectAsState(initial = initialTrackers)
+            val prefs = currentState<Preferences>()
+            val savedIndex = prefs[KEY_TRACKER_INDEX] ?: 0
+            val is365Days = prefs[KEY_IS_365_DAYS] ?: false
+
+            val activeIndex = if (allTrackers.isNotEmpty()) {
+                savedIndex.coerceIn(0, allTrackers.size - 1)
+            } else {
+                0
+            }
+
+            val currentItem = allTrackers.getOrNull(activeIndex)
+            val today = TrackerDateUtil.getTodayDateString()
+
+            val streakStats = remember(currentItem, today) {
+                currentItem?.let {
+                    HabitHeatmapUtil.calculateStreakStats(
+                        tracker = it.tracker,
+                        logs = it.logs,
+                        todayDate = today
+                    )
+                }
+            }
+
+            val fullYearGrid = remember(currentItem, today) {
+                currentItem?.let {
+                    HabitHeatmapUtil.generateHeatmapGridForWeeks(
+                        tracker = it.tracker,
+                        logs = it.logs,
+                        numWeeks = 53,
+                        todayDate = today
+                    ).first
+                } ?: emptyList()
+            }
+
+            GlanceTheme(colors = HabitGlanceTheme.colorsFor(context)) {
                 HeatmapWidgetContainer(
                     context = context,
                     item = currentItem,
                     stats = streakStats,
-                    grid35 = grid35,
-                    numWeeks35 = numWeeks35,
-                    grid365 = grid365,
-                    numWeeks365 = numWeeks365,
+                    fullYearGrid = fullYearGrid,
                     totalCount = allTrackers.size,
                     currentIndex = activeIndex,
-                    is365Days = is365Days,
-                    glanceIdHash = idHash
+                    is365Days = is365Days
                 )
             }
         }
     }
 
-    @androidx.compose.runtime.Composable
+    private fun computeLayoutSpec(size: DpSize, is365Days: Boolean): HeatmapLayoutSpec {
+        val padDp = if (size.width < 220.dp) 8f else 10f
+        val showFooterLegend = size.height >= 120.dp
+        val headerHeightDp = 34f
+        val footerHeightDp = if (showFooterLegend) 18f else 0f
+        val spacingDp = if (showFooterLegend) 8f else 4f
+
+        val availWidthDp = (size.width.value - padDp * 2f).coerceAtLeast(130f)
+        val availHeightDp = (size.height.value - padDp * 2f - headerHeightDp - footerHeightDp - spacingDp).coerceAtLeast(62f)
+
+        val isTall = availHeightDp >= 135f || (is365Days && availHeightDp >= 95f)
+        val stackedBands = isTall
+
+        val targetWeeks = if (is365Days) {
+            53
+        } else if (stackedBands) {
+            val singleBandH = (availHeightDp - 8f) / 2f
+            val pitch = ((singleBandH - 12f) / 7f).coerceAtLeast(5f)
+            val colsPerBand = ((availWidthDp - 14f) / pitch).roundToInt().coerceIn(10, 26)
+            (colsPerBand * 2).coerceIn(20, 52)
+        } else {
+            val showMonths = size.width >= 240.dp
+            val headerReserve = if (showMonths) 12f else 2f
+            val pitch = ((availHeightDp - headerReserve) / 7f).coerceAtLeast(5f)
+            ((availWidthDp - 14f) / pitch).roundToInt().coerceIn(8, 28)
+        }
+
+        val showMonthLabels = is365Days || size.width >= 240.dp
+        return HeatmapLayoutSpec(
+            targetWeeks = targetWeeks,
+            stackedBands = stackedBands,
+            showFooterLegend = showFooterLegend,
+            showMonthLabels = showMonthLabels,
+            padDp = padDp,
+            availWidthDp = availWidthDp,
+            availHeightDp = availHeightDp
+        )
+    }
+
+    /**
+     * Slices the trailing [targetWeeks] from the 53-week master grid and re-indexes weekIndex cleanly from 0.
+     */
+    private fun sliceWeeks(fullYearGrid: List<DayHeatmapItem>, targetWeeks: Int): List<DayHeatmapItem> {
+        val clampedWeeks = targetWeeks.coerceIn(1, 53)
+        val startWeek = 53 - clampedWeeks
+        if (startWeek == 0) return fullYearGrid
+        return fullYearGrid
+            .filter { it.weekIndex >= startWeek }
+            .map { it.copy(weekIndex = it.weekIndex - startWeek) }
+    }
+
+    @Composable
     private fun HeatmapWidgetContainer(
         context: Context,
         item: TrackerWithProgress?,
         stats: StreakStats?,
-        grid35: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
-        numWeeks35: Int,
-        grid365: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
-        numWeeks365: Int,
+        fullYearGrid: List<DayHeatmapItem>,
         totalCount: Int,
         currentIndex: Int,
-        is365Days: Boolean,
-        glanceIdHash: Int
+        is365Days: Boolean
     ) {
         val size = LocalSize.current
+        val padDp = if (size.width < 220.dp) 8.dp else 10.dp
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .cornerRadius(20.dp)
                 .background(GlanceTheme.colors.surface)
-                .padding(10.dp)
+                .padding(padDp)
         ) {
             if (item == null || stats == null) {
                 EmptyHeatmapState()
-            } else if (size.width < 240.dp || size.height < 120.dp) {
-                CompactHeatmapLayout(
-                    context = context,
-                    item = item,
-                    stats = stats,
-                    gridItems = grid35,
-                    numWeeks = numWeeks35,
-                    totalCount = totalCount,
-                    currentIndex = currentIndex
-                )
-            } else if (size.width >= 320.dp && size.height >= 160.dp) {
-                ExpandedHeatmapLayout(
-                    context = context,
-                    item = item,
-                    stats = stats,
-                    gridItems = if (is365Days) grid365 else grid35,
-                    numWeeks = if (is365Days) numWeeks365 else numWeeks35,
-                    totalCount = totalCount,
-                    currentIndex = currentIndex,
-                    is365Days = is365Days,
-                    glanceIdHash = glanceIdHash
-                )
             } else {
-                MediumHeatmapLayout(
+                val spec = computeLayoutSpec(size, is365Days)
+                val gridSlice = sliceWeeks(fullYearGrid, spec.targetWeeks)
+                DedicatedHeatmapLayout(
                     context = context,
                     item = item,
                     stats = stats,
-                    gridItems = if (is365Days) grid365 else grid35,
-                    numWeeks = if (is365Days) numWeeks365 else numWeeks35,
+                    gridItems = gridSlice,
+                    spec = spec,
                     totalCount = totalCount,
                     currentIndex = currentIndex,
-                    is365Days = is365Days,
-                    glanceIdHash = glanceIdHash
+                    is365Days = is365Days
                 )
             }
         }
     }
 
-    @androidx.compose.runtime.Composable
+    @Composable
     private fun EmptyHeatmapState() {
         Column(
             modifier = GlanceModifier
@@ -207,7 +247,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "🟩 Habit Heatmap",
+                text = "Habit Activity Heatmap",
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
@@ -216,7 +256,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             )
             Spacer(modifier = GlanceModifier.height(4.dp))
             Text(
-                text = "Tap to set up habits and view streak activity",
+                text = "Tap to create a habit and track your contribution grid",
                 style = TextStyle(
                     fontSize = 12.sp,
                     color = GlanceTheme.colors.primary
@@ -225,36 +265,42 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    @androidx.compose.runtime.Composable
-    private fun CompactHeatmapLayout(
+    @Composable
+    private fun DedicatedHeatmapLayout(
         context: Context,
         item: TrackerWithProgress,
         stats: StreakStats,
-        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
-        numWeeks: Int,
+        gridItems: List<DayHeatmapItem>,
+        spec: HeatmapLayoutSpec,
         totalCount: Int,
-        currentIndex: Int
+        currentIndex: Int,
+        is365Days: Boolean
     ) {
         val tracker = item.tracker
-        val isDark = isSystemInDarkTheme(context)
-        val density = context.resources.displayMetrics.density
+        val isDark = HabitGlanceTheme.resolveDarkMode(context)
+        val renderDensity = context.resources.displayMetrics.density.coerceIn(1.0f, 1.5f)
 
-        val bitmap = HabitHeatmapUtil.renderHeatmapBitmap(
-            items = gridItems,
-            numWeeks = numWeeks,
-            is365Days = false,
-            isDarkMode = isDark,
-            widthPx = (160 * density).roundToInt(),
-            heightPx = (52 * density).roundToInt(),
-            density = density
-        )
+        val bitmap = remember(gridItems, spec, isDark, renderDensity) {
+            HabitHeatmapUtil.renderFullBleedHeatmapBitmap(
+                items = gridItems,
+                numWeeks = spec.targetWeeks,
+                showMonthLabels = spec.showMonthLabels,
+                stackedBands = spec.stackedBands,
+                isDarkMode = isDark,
+                widthPx = (spec.availWidthDp * renderDensity).roundToInt(),
+                heightPx = (spec.availHeightDp * renderDensity).roundToInt(),
+                density = renderDensity
+            )
+        }
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
-            // Header Row
+            // Slim GitHub-style Header Bar
             Row(
-                modifier = GlanceModifier.fillMaxWidth(),
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(34.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -265,493 +311,178 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                         fontSize = 13.sp,
                         color = GlanceTheme.colors.onSurface
                     ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-
-                if (stats.currentStreak > 0) {
-                    Text(
-                        text = "🔥 ${stats.currentStreak}d",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = GlanceTheme.colors.primary
-                        )
-                    )
-                }
-
-                if (totalCount > 1) {
-                    Spacer(modifier = GlanceModifier.width(4.dp))
-                    Text(
-                        text = "${currentIndex + 1}/$totalCount ❯",
-                        style = TextStyle(
-                            fontSize = 10.sp,
-                            color = GlanceTheme.colors.outline
-                        ),
-                        modifier = GlanceModifier.clickable(actionRunCallback<HabitHeatmapCycleAction>())
-                    )
-                }
-            }
-
-            Spacer(modifier = GlanceModifier.height(4.dp))
-
-            // Heatmap Canvas Image
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .clickable(actionStartActivity<HabitTrackerActivity>())
-            ) {
-                Image(
-                    provider = ImageProvider(bitmap),
-                    contentDescription = "30-Day Habit Heatmap Grid",
-                    modifier = GlanceModifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = GlanceModifier.defaultWeight())
-
-            // Footer with quick log
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (item.isCompletedToday) "✅ Done" else "${item.todayCompletedReps}/${tracker.baseDailyTarget} ${tracker.unit}",
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = if (item.isCompletedToday) GlanceTheme.colors.primary else GlanceTheme.colors.outline
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-
-                Box(
                     modifier = GlanceModifier
-                        .cornerRadius(10.dp)
-                        .background(GlanceTheme.colors.primary)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to 1
-                            )
-                        ))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+1",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = GlanceTheme.colors.onPrimary
-                        )
-                    )
-                }
-            }
-        }
-    }
+                        .defaultWeight()
+                        .clickable(actionStartActivity<HabitTrackerActivity>())
+                )
 
-    @androidx.compose.runtime.Composable
-    private fun MediumHeatmapLayout(
-        context: Context,
-        item: TrackerWithProgress,
-        stats: StreakStats,
-        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
-        numWeeks: Int,
-        totalCount: Int,
-        currentIndex: Int,
-        is365Days: Boolean,
-        glanceIdHash: Int
-    ) {
-        val tracker = item.tracker
-        val isDark = isSystemInDarkTheme(context)
-        val density = context.resources.displayMetrics.density
+                Spacer(modifier = GlanceModifier.width(6.dp))
 
-        val targetWidth = if (is365Days) 240 else 220
-        val targetHeight = if (is365Days) 62 else 56
-        val bitmap = HabitHeatmapUtil.renderHeatmapBitmap(
-            items = gridItems,
-            numWeeks = numWeeks,
-            is365Days = is365Days,
-            isDarkMode = isDark,
-            widthPx = (targetWidth * density).roundToInt(),
-            heightPx = (targetHeight * density).roundToInt(),
-            density = density
-        )
-
-        Column(
-            modifier = GlanceModifier.fillMaxSize()
-        ) {
-            // Header Row: Title, Streak, Range Toggle, Switcher
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 Text(
-                    text = tracker.title,
+                    text = "${item.todayCompletedReps}/${item.effectiveTargetToday}",
                     maxLines = 1,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = GlanceTheme.colors.onSurface
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
-                )
-
-                Text(
-                    text = "🔥 ${stats.currentStreak}d",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = GlanceTheme.colors.primary
+                        fontSize = 11.sp,
+                        color = if (item.todayCompletedReps > 0) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
                     )
                 )
 
                 Spacer(modifier = GlanceModifier.width(6.dp))
 
-                // Range Toggle Button
                 Text(
-                    text = if (is365Days) "[365D]" else "[30D]",
+                    text = "🔥${stats.currentStreak}d",
+                    maxLines = 1,
                     style = TextStyle(
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
-                        color = GlanceTheme.colors.primary
-                    ),
-                    modifier = GlanceModifier.clickable(actionRunCallback<HabitHeatmapToggleRangeAction>())
+                        color = if (stats.currentStreak > 0) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
+                    )
                 )
+
+                Spacer(modifier = GlanceModifier.width(6.dp))
+
+                Box(
+                    modifier = GlanceModifier
+                        .height(32.dp)
+                        .cornerRadius(10.dp)
+                        .background(GlanceTheme.colors.primaryContainer)
+                        .clickable(actionRunCallback<HabitHeatmapToggleRangeAction>())
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (is365Days) "365D" else "${spec.targetWeeks}W",
+                        maxLines = 1,
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = GlanceTheme.colors.onPrimaryContainer
+                        )
+                    )
+                }
 
                 if (totalCount > 1) {
                     Spacer(modifier = GlanceModifier.width(6.dp))
-                    Text(
-                        text = "${currentIndex + 1}/$totalCount ❯",
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            color = GlanceTheme.colors.outline
-                        ),
-                        modifier = GlanceModifier.clickable(actionRunCallback<HabitHeatmapCycleAction>())
-                    )
+                    Box(
+                        modifier = GlanceModifier
+                            .height(32.dp)
+                            .cornerRadius(10.dp)
+                            .background(GlanceTheme.colors.secondaryContainer)
+                            .clickable(actionRunCallback<HabitHeatmapCycleAction>())
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${currentIndex + 1}/$totalCount ❯",
+                            maxLines = 1,
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = GlanceTheme.colors.onSecondaryContainer
+                            )
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = GlanceModifier.height(4.dp))
 
-            // Heatmap Graphic
+            // Dedicated Full-Bleed Heatmap Matrix taking all remaining widget area
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .clickable(actionStartActivity<HabitTrackerActivity>())
+                    .defaultWeight()
+                    .clickable(actionStartActivity<HabitTrackerActivity>()),
+                contentAlignment = Alignment.Center
             ) {
                 Image(
                     provider = ImageProvider(bitmap),
-                    contentDescription = "Contribution Heatmap Grid",
-                    modifier = GlanceModifier.fillMaxWidth()
+                    contentDescription = "Habit Contribution Heatmap",
+                    contentScale = ContentScale.Fit,
+                    modifier = GlanceModifier.fillMaxSize()
                 )
             }
 
-            Spacer(modifier = GlanceModifier.defaultWeight())
-
-            // Footer controls
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val statusText = if (item.isCompletedToday) {
-                    "✅ Met (${item.todayCompletedReps}/${tracker.baseDailyTarget})"
-                } else {
-                    "⏳ ${item.remainingToday} ${tracker.unit} due"
-                }
-
-                Text(
-                    text = statusText,
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = if (item.isCompletedToday) GlanceTheme.colors.primary else GlanceTheme.colors.outline
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
+            if (spec.showFooterLegend) {
+                Spacer(modifier = GlanceModifier.height(4.dp))
+                HeatmapFooterLegend(
+                    completedDays = stats.completedDays,
+                    totalLogged = stats.totalLogged,
+                    unit = tracker.unit,
+                    isDark = isDark
                 )
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(10.dp)
-                        .background(GlanceTheme.colors.surfaceVariant)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to -1
-                            )
-                        ))
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "−1",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.width(6.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(10.dp)
-                        .background(GlanceTheme.colors.primary)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to 1
-                            )
-                        ))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+1",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = GlanceTheme.colors.onPrimary
-                        )
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.width(6.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(10.dp)
-                        .background(GlanceTheme.colors.surfaceVariant)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to tracker.baseDailyTarget
-                            )
-                        ))
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+${tracker.baseDailyTarget}",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
-                    )
-                }
             }
         }
     }
 
-    @androidx.compose.runtime.Composable
-    private fun ExpandedHeatmapLayout(
-        context: Context,
-        item: TrackerWithProgress,
-        stats: StreakStats,
-        gridItems: List<com.eipna.centsation.habit.util.DayHeatmapItem>,
-        numWeeks: Int,
-        totalCount: Int,
-        currentIndex: Int,
-        is365Days: Boolean,
-        glanceIdHash: Int
+    @Composable
+    private fun HeatmapFooterLegend(
+        completedDays: Int,
+        totalLogged: Int,
+        unit: String,
+        isDark: Boolean
     ) {
-        val tracker = item.tracker
-        val isDark = isSystemInDarkTheme(context)
-        val density = context.resources.displayMetrics.density
+        val swatchColors = if (isDark) {
+            listOf(
+                Color(0xFF1E2634),
+                Color(0xFF218C54),
+                Color(0xFF2CB55C),
+                Color(0xFF00E676),
+                Color(0xFF69F0AE)
+            )
+        } else {
+            listOf(
+                Color(0xFFF1F5F9),
+                Color(0xFF6EE7B7),
+                Color(0xFF34D399),
+                Color(0xFF10B981),
+                Color(0xFF047857)
+            )
+        }
 
-        val bitmap = HabitHeatmapUtil.renderHeatmapBitmap(
-            items = gridItems,
-            numWeeks = numWeeks,
-            is365Days = is365Days,
-            isDarkMode = isDark,
-            widthPx = (310 * density).roundToInt(),
-            heightPx = (72 * density).roundToInt(),
-            density = density
-        )
-
-        Column(
-            modifier = GlanceModifier.fillMaxSize()
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            val goalsLabel = if (completedDays == 1) "goal" else "goals"
+            Text(
+                text = "$completedDays $goalsLabel met • $totalLogged $unit total",
+                maxLines = 1,
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    color = GlanceTheme.colors.onSurfaceVariant
+                ),
+                modifier = GlanceModifier.defaultWeight()
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "🎯 ${tracker.title}",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = GlanceTheme.colors.onSurface
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
+                    text = "Less",
+                    style = TextStyle(fontSize = 9.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    modifier = GlanceModifier.padding(end = 3.dp)
                 )
 
-                // Range Toggle
-                Text(
-                    text = if (is365Days) "View: 365 Days ▾" else "View: 35 Days ▾",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 11.sp,
-                        color = GlanceTheme.colors.primary
-                    ),
-                    modifier = GlanceModifier.clickable(actionRunCallback<HabitHeatmapToggleRangeAction>())
-                )
-
-                if (totalCount > 1) {
-                    Spacer(modifier = GlanceModifier.width(8.dp))
-                    Text(
-                        text = "Habit ${currentIndex + 1}/$totalCount ❯",
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            color = GlanceTheme.colors.outline
-                        ),
-                        modifier = GlanceModifier.clickable(actionRunCallback<HabitHeatmapCycleAction>())
-                    )
-                }
-            }
-
-            Spacer(modifier = GlanceModifier.height(4.dp))
-
-            // Subheader Stats Badges
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "🔥 ${stats.currentStreak}d Streak",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = GlanceTheme.colors.primary
-                    )
-                )
-
-                Spacer(modifier = GlanceModifier.width(10.dp))
-
-                Text(
-                    text = "🏆 ${stats.longestStreak}d Best",
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = GlanceTheme.colors.onSurface
-                    )
-                )
-
-                Spacer(modifier = GlanceModifier.width(10.dp))
-
-                val pct = (stats.completionRate * 100f).roundToInt()
-                Text(
-                    text = "📊 $pct% Consistency",
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = GlanceTheme.colors.outline
-                    )
-                )
-            }
-
-            Spacer(modifier = GlanceModifier.height(6.dp))
-
-            // Heatmap Canvas Image
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .clickable(actionStartActivity<HabitTrackerActivity>())
-            ) {
-                Image(
-                    provider = ImageProvider(bitmap),
-                    contentDescription = "Contribution Streak Heatmap Grid",
-                    modifier = GlanceModifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = GlanceModifier.defaultWeight())
-
-            // Footer controls
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val statusText = if (item.isCompletedToday) {
-                    "✅ Target Cleared Today (${item.todayCompletedReps}/${tracker.baseDailyTarget} ${tracker.unit})"
-                } else if (item.accumulatedBacklogDebt > 0) {
-                    "⚠️ ${item.remainingToday} ${tracker.unit} due (+${item.accumulatedBacklogDebt} debt)"
-                } else {
-                    "⏳ ${item.remainingToday} ${tracker.unit} remaining today"
+                swatchColors.forEach { swatch ->
+                    Box(modifier = GlanceModifier.padding(end = 2.dp)) {
+                        Box(
+                            modifier = GlanceModifier
+                                .size(7.dp)
+                                .cornerRadius(2.dp)
+                                .background(ColorProvider(swatch))
+                        ) {}
+                    }
                 }
 
                 Text(
-                    text = statusText,
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = if (item.isCompletedToday) GlanceTheme.colors.primary else GlanceTheme.colors.onSurface
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
+                    text = "More",
+                    style = TextStyle(fontSize = 9.sp, color = GlanceTheme.colors.onSurfaceVariant),
+                    modifier = GlanceModifier.padding(start = 1.dp)
                 )
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(12.dp)
-                        .background(GlanceTheme.colors.surfaceVariant)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to -1
-                            )
-                        ))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "−1",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(12.dp)
-                        .background(GlanceTheme.colors.primary)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to 1
-                            )
-                        ))
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+1",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = GlanceTheme.colors.onPrimary
-                        )
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .cornerRadius(12.dp)
-                        .background(GlanceTheme.colors.surfaceVariant)
-                        .clickable(actionRunCallback<HabitHeatmapLogAction>(
-                            actionParametersOf(
-                                HeatmapTrackerIdKey to tracker.id,
-                                HeatmapDeltaKey to tracker.baseDailyTarget
-                            )
-                        ))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+${tracker.baseDailyTarget}",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
-                    )
-                }
             }
         }
-    }
-
-    private fun isSystemInDarkTheme(context: Context): Boolean {
-        val mode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 }
 
@@ -761,16 +492,17 @@ class HabitHeatmapCycleAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        val prefs = context.getSharedPreferences(HabitHeatmapGlanceWidget.PREFS_NAME, Context.MODE_PRIVATE)
-        val key = "tracker_index_${glanceId.hashCode()}"
-
         val repository = TrackerRepository.getInstance(context)
-        val allTrackers = repository.getTrackersWithProgress().firstOrNull() ?: emptyList()
-        if (allTrackers.isEmpty()) return
+        val totalCount = repository.getActiveTrackerCount()
+        if (totalCount <= 0) return
 
-        val current = prefs.getInt(key, 0)
-        val next = (current + 1) % allTrackers.size
-        prefs.edit().putInt(key, next).apply()
+        updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+            prefs.toMutablePreferences().apply {
+                val current = this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] ?: 0
+                this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] =
+                    HabitWidgetSyncManager.computeNextTrackerIndex(current, totalCount)
+            }
+        }
 
         HabitHeatmapGlanceWidget().update(context, glanceId)
     }
@@ -782,30 +514,13 @@ class HabitHeatmapToggleRangeAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        val prefs = context.getSharedPreferences(HabitHeatmapGlanceWidget.PREFS_NAME, Context.MODE_PRIVATE)
-        val key = "is_365_${glanceId.hashCode()}"
-        val current = prefs.getBoolean(key, false)
-        prefs.edit().putBoolean(key, !current).apply()
+        updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+            prefs.toMutablePreferences().apply {
+                val current = this[HabitHeatmapGlanceWidget.KEY_IS_365_DAYS] ?: false
+                this[HabitHeatmapGlanceWidget.KEY_IS_365_DAYS] = !current
+            }
+        }
 
         HabitHeatmapGlanceWidget().update(context, glanceId)
     }
-}
-
-class HabitHeatmapLogAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        val trackerId = parameters[HeatmapTrackerIdKey] ?: return
-        val delta = parameters[HeatmapDeltaKey] ?: return
-
-        val repository = TrackerRepository.getInstance(context)
-        repository.logReps(trackerId, delta)
-        updateAllHabitWidgets(context)
-    }
-}
-
-fun updateAllHabitHeatmapWidgets(context: Context) {
-    HabitWidgetSyncManager.enqueueUpdate(context)
 }

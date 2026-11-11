@@ -1,7 +1,6 @@
 package com.eipna.centsation.ui.dialogs;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,15 +18,17 @@ import com.eipna.centsation.data.debt.DebtCategory;
 import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.debt.DebtTransaction;
 import com.eipna.centsation.databinding.DialogBottomSheetDebtDetailsBinding;
+import com.eipna.centsation.util.AppExecutors;
+import com.eipna.centsation.util.BackupManager;
 import com.eipna.centsation.util.DateParser;
 import com.eipna.centsation.util.FormatUtil;
 import com.eipna.centsation.util.PreferenceUtil;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import com.eipna.centsation.util.AppExecutors;
 
 public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -74,8 +75,10 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
             return;
         }
 
+        binding.btnDebtDetailClose.setOnClickListener(v -> dismiss());
         binding.btnSubmitPayment.setOnClickListener(v -> submitPayment());
         binding.btnEditDebt.setOnClickListener(v -> openEditDialog());
+        binding.btnArchiveDebt.setOnClickListener(v -> toggleArchive());
         binding.btnDeleteDebt.setOnClickListener(v -> confirmDelete());
 
         loadDebtDetails();
@@ -109,30 +112,38 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.detailDebtName.setText(debt.getName());
 
         boolean isOwed = debt.isOwedToMe();
-        int primaryColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorPrimary);
-        int errorColor = com.google.android.material.color.MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorError);
+        int primaryColor = MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorPrimary);
+        int errorColor = MaterialColors.getColor(binding.getRoot(), androidx.appcompat.R.attr.colorError);
+        int onPrimaryContainer = MaterialColors.getColor(binding.getRoot(), com.google.android.material.R.attr.colorOnPrimaryContainer);
+        int onErrorContainer = MaterialColors.getColor(binding.getRoot(), com.google.android.material.R.attr.colorOnErrorContainer);
+        int onSurfaceVariant = MaterialColors.getColor(binding.getRoot(), com.google.android.material.R.attr.colorOnSurfaceVariant);
+
+        boolean isArchived = debt.getIsArchived() == Debt.IS_ARCHIVE;
+        binding.btnArchiveDebt.setIconResource(isArchived ? R.drawable.ic_unarchive : R.drawable.ic_archive);
+        binding.btnArchiveDebt.setContentDescription(getString(isArchived ? R.string.action_unarchive_debt : R.string.action_archive_debt));
 
         if (isOwed) {
             binding.detailDebtTypeBadge.setText("📥 Owed to Me");
-            binding.detailDebtTypeBadge.setTextColor(primaryColor);
+            binding.detailDebtTypeBadge.setBackgroundResource(R.drawable.bg_pill_accent);
+            binding.detailDebtTypeBadge.setTextColor(onPrimaryContainer);
             binding.detailDebtRemainingLabel.setText("PENDING TO COLLECT");
             binding.detailDebtRemainingLabel.setTextColor(primaryColor);
-            binding.btnSubmitPayment.setText("Record Received");
+            binding.btnSubmitPayment.setText(R.string.action_record_received);
             binding.paymentAmountLayout.setHint("Payment Received (" + currencySymbol + ")");
         } else {
             binding.detailDebtTypeBadge.setText("💸 I Owe");
-            binding.detailDebtTypeBadge.setTextColor(errorColor);
+            binding.detailDebtTypeBadge.setBackgroundResource(R.drawable.bg_pill_error);
+            binding.detailDebtTypeBadge.setTextColor(onErrorContainer);
             binding.detailDebtRemainingLabel.setText("REMAINING DEBT");
             binding.detailDebtRemainingLabel.setTextColor(errorColor);
-            binding.btnSubmitPayment.setText("Record Payment");
+            binding.btnSubmitPayment.setText(R.string.action_record_payment);
             binding.paymentAmountLayout.setHint("Repayment Amount (" + currencySymbol + ")");
         }
 
         DebtCategory category = DebtCategory.fromId(debt.getCategory());
         binding.detailDebtCategoryBadge.setText(category.getFormattedLabel());
-        try {
-            binding.detailDebtCategoryBadge.setTextColor(Color.parseColor(category.getColorHex()));
-        } catch (Exception ignored) {}
+        binding.detailDebtCategoryBadge.setBackgroundResource(R.drawable.bg_pill_neutral);
+        binding.detailDebtCategoryBadge.setTextColor(onSurfaceVariant);
 
         double remaining = debt.getRemainingDebt();
         binding.detailDebtRemaining.setText(String.format("%s%s", currencySymbol,
@@ -165,8 +176,8 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
         binding.detailPaymentsContainer.removeAllViews();
         if (txs == null || txs.isEmpty()) {
             TextView emptyTv = new TextView(context);
-            emptyTv.setText(isOwed ? "No received payments logged yet." : "No payments logged yet.");
-            emptyTv.setTextColor(Color.GRAY);
+            emptyTv.setText(isOwed ? R.string.analytics_no_received_payments : R.string.analytics_no_repayments_logged);
+            emptyTv.setTextColor(onSurfaceVariant);
             binding.detailPaymentsContainer.addView(emptyTv);
         } else {
             for (DebtTransaction tx : txs) {
@@ -219,6 +230,7 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
             try (DebtRepository repo = new DebtRepository(appContext)) {
                 repo.makePayment(currentDebt, paymentAmt, isOwed ? "Payment received" : "Repayment");
             }
+            BackupManager.triggerAutoBackup(appContext);
 
             if (isAdded() && getActivity() != null) {
                 requireActivity().runOnUiThread(() -> {
@@ -241,6 +253,34 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
         dialog.show(getParentFragmentManager(), "EDIT_DEBT_DIALOG");
     }
 
+    private void toggleArchive() {
+        Context context = getContext();
+        if (context == null || currentDebt == null) return;
+
+        final boolean archiveTarget = currentDebt.getIsArchived() != Debt.IS_ARCHIVE;
+        final Context appContext = context.getApplicationContext();
+        executor.execute(() -> {
+            try (DebtRepository repo = new DebtRepository(appContext)) {
+                repo.setArchived(currentDebt.getId(), archiveTarget);
+            }
+            BackupManager.triggerAutoBackup(appContext);
+
+            if (isAdded() && getActivity() != null) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(
+                            appContext,
+                            archiveTarget
+                                    ? getString(R.string.snackbar_archived, currentDebt.getName())
+                                    : getString(R.string.snackbar_unarchived, currentDebt.getName()),
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    if (listener != null) listener.onDebtUpdated();
+                    dismiss();
+                });
+            }
+        });
+    }
+
     private void confirmDelete() {
         Context context = getContext();
         if (context == null || currentDebt == null) return;
@@ -255,6 +295,7 @@ public class DebtDetailsBottomSheetDialogFragment extends BottomSheetDialogFragm
                         try (DebtRepository repo = new DebtRepository(appContext)) {
                             repo.delete(currentDebt.getId());
                         }
+                        BackupManager.triggerAutoBackup(appContext);
                         if (isAdded() && getActivity() != null) {
                             requireActivity().runOnUiThread(() -> {
                                 Toast.makeText(appContext, isOwed ? "Owed entry deleted" : "Debt deleted", Toast.LENGTH_SHORT).show();

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.eipna.centsation.data.Database;
+import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.saving.Saving;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.Transaction;
@@ -65,7 +66,22 @@ public class PersistenceAndConcurrencyTest {
     public void backupManagerConstants_areCorrect() {
         assertEquals("SuperCenter", BackupManager.BACKUP_DIR_NAME);
         assertEquals("supercenter_auto_backup.json", BackupManager.AUTO_BACKUP_FILE_NAME);
-        assertEquals(1, BackupManager.CURRENT_BACKUP_VERSION);
+        assertEquals(2, BackupManager.CURRENT_BACKUP_VERSION);
+        assertEquals("Centsation", BackupManager.LEGACY_BACKUP_DIR_NAME);
+        assertEquals("centsation_auto_backup.json", BackupManager.LEGACY_AUTO_BACKUP_FILE_NAME);
+        assertEquals("trackers", BackupManager.TABLE_TRACKERS);
+        assertEquals("tracker_logs", BackupManager.TABLE_TRACKER_LOGS);
+    }
+
+    @Test
+    public void debtRepository_implementsAutoCloseableAndHandlesNullSafely() {
+        assertTrue("DebtRepository must implement AutoCloseable",
+                AutoCloseable.class.isAssignableFrom(DebtRepository.class));
+        try (DebtRepository repo = new DebtRepository(null)) {
+            assertNotNull(repo);
+        } catch (Exception e) {
+            org.junit.Assert.fail("DebtRepository.close() should not throw: " + e.getMessage());
+        }
     }
 
     @Test

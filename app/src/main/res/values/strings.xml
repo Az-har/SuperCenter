@@ -4,7 +4,7 @@
     <string name="widget_single_habit_title">Daily Quota (Quick Counter)</string>
     <string name="widget_single_habit_description">Quick +/- counter and 1-tap completion for a specific daily habit.</string>
     <string name="widget_heatmap_title">Habit Heatmap &amp; Streaks</string>
-    <string name="widget_heatmap_description">GitHub-style 30-day and 365-day contribution square grid and streak tracker.</string>
+    <string name="widget_heatmap_description">Full-width GitHub-style contribution heatmap and streak tracker.</string>
     <string name="habit_tracker_title">Daily Quota &amp; Habit Tracker</string>
     <string name="app_easter_egg">Crafted with care by Az-har — Keep saving, keep growing!</string>
     <string name="app_license">GNU General Public License v3.0</string>
@@ -139,7 +139,7 @@
     <string name="theme_dark">Dark</string>
 
     <!-- Contrast options -->
-    <string name="contrast_low">Low</string>
+    <string name="contrast_low">Standard (Default)</string>
     <string name="contrast_medium">Medium</string>
     <string name="contrast_high">High</string>
 
@@ -160,4 +160,58 @@
     <string name="snackbar_archived">%s archived</string>
     <string name="snackbar_unarchived">%s restored</string>
     <string name="snackbar_undo">UNDO</string>
+
+    <!-- Navigation & toolbar -->
+    <string name="nav_savings">Savings</string>
+    <string name="nav_debts">Debts</string>
+    <string name="nav_habits">Habits</string>
+    <string name="nav_insights">Insights</string>
+    <string name="nav_savings_goals">Savings Goals</string>
+    <string name="nav_debts_loans">Debts, Loans &amp; Owed</string>
+    <string name="nav_habits_quotas">Habits &amp; Quotas</string>
+    <string name="nav_insights_analytics">Insights &amp; Analytics</string>
+    <string name="nav_tools_and_settings">Tools &amp; Settings</string>
+    <string name="nav_open_menu">Open navigation menu</string>
+    <string name="drawer_subtitle">Personal Productivity &amp; Finance Hub</string>
+    <string name="toolbar_debts">Debts &amp; Owed</string>
+    <string name="toolbar_habits">Habits</string>
+    <string name="toolbar_insights">Insights</string>
+
+    <!-- Floating action button accessibility -->
+    <string name="fab_add_saving">Add saving goal</string>
+    <string name="fab_add_debt">Add debt or owed entry</string>
+    <string name="fab_add_habit">Add habit quota</string>
+
+    <!-- Archive & filters -->
+    <string name="archive_tab_savings">Savings</string>
+    <string name="archive_tab_debts">Debts</string>
+    <string name="empty_indicator_archive_debts">No archived debts</string>
+    <string name="chip_filter_all">All Goals</string>
+    <string name="chip_filter_in_progress">In Progress</string>
+    <string name="chip_filter_due_soon">Due Soon</string>
+    <string name="chip_filter_completed">Completed</string>
+    <string name="chip_debt_all">All</string>
+    <string name="chip_debt_i_owe">I Owe</string>
+    <string name="chip_debt_owed_to_me">Owed to Me</string>
+
+    <!-- Card & dialog actions -->
+    <string name="action_transact">Transact</string>
+    <string name="action_make_payment">Make Payment</string>
+    <string name="action_record_payment">Record Payment</string>
+    <string name="action_record_received">Record Received</string>
+    <string name="action_payment_history">Payment History</string>
+    <string name="action_delete_debt">Delete Debt</string>
+    <string name="action_archive_debt">Archive</string>
+    <string name="action_unarchive_debt">Restore Debt</string>
+    <string name="action_copy_note">Copy note</string>
+    <string name="action_edit_note">Edit note</string>
+
+    <!-- Analytics empty states -->
+    <string name="analytics_no_category_savings">No category savings data available yet.</string>
+    <string name="analytics_all_deadlines_achieved">All active deadlines achieved!</string>
+    <string name="analytics_set_deadlines_hint">Set deadlines on your savings goals to unlock daily pace recommendations.</string>
+    <string name="analytics_no_debts_added">No debts added yet.</string>
+    <string name="analytics_all_debts_paid">All tracked debts are 100% paid off!</string>
+    <string name="analytics_no_received_payments">No received payments logged yet.</string>
+    <string name="analytics_no_repayments_logged">No repayments logged yet.</string>
 </resources>

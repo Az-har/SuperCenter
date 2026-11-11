@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 import android.os.Environment;
 
 import com.eipna.centsation.data.Database;
+import com.eipna.centsation.data.debt.DebtRepository;
 import com.eipna.centsation.data.saving.SavingRepository;
 import com.eipna.centsation.data.transaction.TransactionRepository;
 import com.eipna.centsation.receiver.DeadlineReceiver;
@@ -16,10 +17,13 @@ import com.eipna.centsation.ui.activities.CreateActivity;
 import com.eipna.centsation.ui.activities.EditActivity;
 import com.eipna.centsation.ui.activities.HistoryActivity;
 import com.eipna.centsation.ui.activities.MainActivity;
+import com.eipna.centsation.ui.activities.SettingsActivity;
+import com.eipna.centsation.ui.dialogs.DebtDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.dialogs.SavingDetailsBottomSheetDialogFragment;
 import com.eipna.centsation.ui.viewmodel.ArchiveViewModel;
 import com.eipna.centsation.ui.viewmodel.HistoryViewModel;
 import com.eipna.centsation.ui.viewmodel.MainViewModel;
+import com.eipna.centsation.util.AppExecutors;
 import com.eipna.centsation.util.BackupManager;
 
 import org.junit.Test;
@@ -77,9 +81,11 @@ public class ChallengerThreadingAndLifecycleTest {
         Method onDestroyMethod = CreateActivity.class.getDeclaredMethod("onDestroy");
         assertNotNull("CreateActivity must override onDestroy", onDestroyMethod);
 
-        // Bytecode invariant: onDestroy must invoke ExecutorService.shutdown() and SavingRepository.close()
+        // Bytecode invariant: shared AppExecutors.diskIO() must NEVER be shut down by Activity lifecycle
         String bytecodeStrings = getConstantPoolUtf8Strings(CreateActivity.class);
-        assertTrue("CreateActivity must call shutdown() on executor in onDestroy",
+        assertTrue("CreateActivity must obtain executor from AppExecutors",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("CreateActivity must NOT call shutdown() on shared AppExecutors singleton",
                 bytecodeStrings.contains("shutdown"));
         assertTrue("CreateActivity must call close() on savingRepository in onDestroy",
                 bytecodeStrings.contains("close"));
@@ -107,7 +113,10 @@ public class ChallengerThreadingAndLifecycleTest {
         assertNotNull("EditActivity must override onDestroy", onDestroyMethod);
 
         String bytecodeStrings = getConstantPoolUtf8Strings(EditActivity.class);
-        assertTrue("EditActivity must invoke shutdown()", bytecodeStrings.contains("shutdown"));
+        assertTrue("EditActivity must use shared AppExecutors",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("EditActivity must NOT call shutdown() on shared AppExecutors singleton",
+                bytecodeStrings.contains("shutdown"));
         assertTrue("EditActivity must invoke close()", bytecodeStrings.contains("close"));
 
         // Verify loadSaving method exists for asynchronous loading
@@ -174,13 +183,14 @@ public class ChallengerThreadingAndLifecycleTest {
         assertNotNull("MainActivity must override onDestroy", onDestroyMethod);
 
         String bytecodeStrings = getConstantPoolUtf8Strings(MainActivity.class);
-        assertTrue("MainActivity must call shutdown() on executor", bytecodeStrings.contains("shutdown"));
-
-        // MainActivity should NOT be directly instantiating ad-hoc newSingleThreadExecutor anymore
-        // It must use its managed instance executor
-        int newSingleThreadExecCount = countOccurrences(bytecodeStrings, "newSingleThreadExecutor");
-        assertEquals("MainActivity must only reference newSingleThreadExecutor for its own instance field",
-                1, newSingleThreadExecCount);
+        assertTrue("MainActivity must use AppExecutors shared pool",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("MainActivity must NOT call shutdown() on shared AppExecutors singleton",
+                bytecodeStrings.contains("shutdown"));
+        assertTrue("MainActivity must release analyticsController in onDestroy",
+                bytecodeStrings.contains("release"));
+        assertFalse("MainActivity must NOT instantiate ad-hoc single-thread executors",
+                bytecodeStrings.contains("newSingleThreadExecutor"));
     }
 
     // ==========================================
@@ -219,7 +229,10 @@ public class ChallengerThreadingAndLifecycleTest {
         assertNotNull(onClearedMethod);
 
         String bytecodeStrings = getConstantPoolUtf8Strings(HistoryViewModel.class);
-        assertTrue("HistoryViewModel must call shutdown()", bytecodeStrings.contains("shutdown"));
+        assertTrue("HistoryViewModel must use shared AppExecutors",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("HistoryViewModel must NOT call shutdown() on shared AppExecutors",
+                bytecodeStrings.contains("shutdown"));
         assertTrue("HistoryViewModel must call close()", bytecodeStrings.contains("close"));
     }
 
@@ -235,7 +248,10 @@ public class ChallengerThreadingAndLifecycleTest {
         assertNotNull(onClearedMethod);
 
         String bytecodeStrings = getConstantPoolUtf8Strings(MainViewModel.class);
-        assertTrue("MainViewModel must call shutdown()", bytecodeStrings.contains("shutdown"));
+        assertTrue("MainViewModel must use shared AppExecutors",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("MainViewModel must NOT call shutdown() on shared AppExecutors",
+                bytecodeStrings.contains("shutdown"));
         assertTrue("MainViewModel must call close()", bytecodeStrings.contains("close"));
     }
 
@@ -247,12 +263,36 @@ public class ChallengerThreadingAndLifecycleTest {
         Field repoField = ArchiveViewModel.class.getDeclaredField("savingRepository");
         assertEquals(SavingRepository.class, repoField.getType());
 
+        Field debtRepoField = ArchiveViewModel.class.getDeclaredField("debtRepository");
+        assertEquals(DebtRepository.class, debtRepoField.getType());
+
         Method onClearedMethod = ArchiveViewModel.class.getDeclaredMethod("onCleared");
         assertNotNull(onClearedMethod);
 
         String bytecodeStrings = getConstantPoolUtf8Strings(ArchiveViewModel.class);
-        assertTrue("ArchiveViewModel must call shutdown()", bytecodeStrings.contains("shutdown"));
+        assertTrue("ArchiveViewModel must use shared AppExecutors",
+                bytecodeStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("ArchiveViewModel must NOT call shutdown() on shared AppExecutors",
+                bytecodeStrings.contains("shutdown"));
         assertTrue("ArchiveViewModel must call close()", bytecodeStrings.contains("close"));
+    }
+
+    @Test
+    public void settingsAndDebtFragments_neverShutDownSharedExecutor() throws Exception {
+        String settingsStrings = getConstantPoolUtf8Strings(SettingsActivity.SettingsFragment.class);
+        assertTrue("SettingsFragment must use AppExecutors",
+                settingsStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("SettingsFragment must NOT shut down shared AppExecutors",
+                settingsStrings.contains("shutdown"));
+
+        String debtDetailsStrings = getConstantPoolUtf8Strings(DebtDetailsBottomSheetDialogFragment.class);
+        assertTrue("DebtDetailsBottomSheetDialogFragment must use AppExecutors",
+                debtDetailsStrings.contains("com/eipna/centsation/util/AppExecutors"));
+        assertFalse("DebtDetailsBottomSheetDialogFragment must NOT shut down shared AppExecutors",
+                debtDetailsStrings.contains("shutdown"));
+
+        assertNotNull(AppExecutors.getInstance().diskIO());
+        assertFalse(AppExecutors.getInstance().diskIO().isShutdown());
     }
 
     // ==========================================

@@ -5,21 +5,21 @@
     android:orientation="vertical"
     android:gravity="center"
     android:padding="16dp"
-    android:background="@drawable/bg_hero_card">
+    android:background="@drawable/bg_widget_preview_card">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Daily Quotas"
-        android:textSize="16sp"
+        android:text="Super Center Habits"
+        android:textSize="15sp"
         android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface" />
+        android:textColor="@color/md_theme_onSurface" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Loading quotas..."
+        android:text="Loading daily quotas..."
         android:textSize="12sp"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textColor="@color/md_theme_onSurfaceVariant" />
 </LinearLayout>

@@ -160,4 +160,25 @@ class HabitHeatmapUtilTest {
         assertEquals(numWeeks * 7, items.size)
         assertTrue(items.any { it.isToday })
     }
+
+    @Test
+    fun testHeatmapGridForWeeks_SingleRepOutOf100StillVisibleLevel1() {
+        val highTargetTracker = sampleTracker.copy(baseDailyTarget = 100)
+        val (items, numWeeks) = HabitHeatmapUtil.generateHeatmapGridForWeeks(
+            tracker = highTargetTracker,
+            logs = listOf(
+                TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 1)
+            ),
+            numWeeks = 20,
+            todayDate = "2026-11-05"
+        )
+
+        assertEquals(20, numWeeks)
+        assertEquals(20 * 7, items.size)
+        assertEquals(0, items.first().dayOfWeek)
+
+        val todayItem = items.first { it.isToday }
+        assertEquals(1, todayItem.completedCount)
+        assertEquals(1, todayItem.level) // 1 rep must always produce level >= 1
+    }
 }

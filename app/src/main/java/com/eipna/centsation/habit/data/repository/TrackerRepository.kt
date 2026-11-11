@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.combine
 
 class TrackerRepository(
     private val trackerDao: TrackerDao,
-    private val trackerLogDao: TrackerLogDao
+    private val trackerLogDao: TrackerLogDao,
+    private val database: HabitDatabase? = null
 ) {
 
     fun getTrackersWithProgress(): Flow<List<TrackerWithProgress>> {
@@ -28,6 +29,10 @@ class TrackerRepository(
                 )
             }
         }
+    }
+
+    suspend fun getActiveTrackerCount(): Int {
+        return trackerDao.getActiveTrackerCount()
     }
 
     suspend fun getTrackerById(id: Long): TrackerEntity? {
@@ -88,14 +93,58 @@ class TrackerRepository(
         return getTrackerWithProgressById(trackerId)
     }
 
+    fun exportTrackersSync(): List<TrackerEntity> = trackerDao.getAllTrackersSync()
+
+    fun exportTrackerLogsSync(): List<TrackerLogEntity> = trackerLogDao.getAllLogsSync()
+
+    fun bulkImportSync(trackers: List<TrackerEntity>, logs: List<TrackerLogEntity>) {
+        if (trackers.isEmpty() && logs.isEmpty()) return
+        val db = database
+        val importWork = {
+            val idMapping = mutableMapOf<Long, Long>()
+            for (tracker in trackers) {
+                val existing = if (tracker.id > 0) trackerDao.getTrackerByIdSync(tracker.id) else null
+                val targetId = when {
+                    existing == null -> trackerDao.insertSync(tracker)
+                    existing.title == tracker.title && existing.createdAt == tracker.createdAt -> {
+                        trackerDao.updateSync(tracker)
+                        existing.id
+                    }
+                    else -> trackerDao.insertSync(tracker.copy(id = 0))
+                }
+                if (tracker.id > 0) {
+                    idMapping[tracker.id] = targetId
+                }
+            }
+
+            for (log in logs) {
+                val resolvedTrackerId = idMapping[log.trackerId] ?: log.trackerId
+                if (trackerDao.getTrackerByIdSync(resolvedTrackerId) == null) continue
+                val existingLogId = trackerLogDao.findLogIdSync(resolvedTrackerId, log.date) ?: 0L
+                trackerLogDao.insertOrUpdateSync(
+                    log.copy(
+                        id = existingLogId,
+                        trackerId = resolvedTrackerId
+                    )
+                )
+            }
+        }
+        if (db != null) {
+            db.runInTransaction(importWork)
+        } else {
+            importWork()
+        }
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: TrackerRepository? = null
 
+        @JvmStatic
         fun getInstance(context: Context): TrackerRepository {
             return INSTANCE ?: synchronized(this) {
                 val db = HabitDatabase.getInstance(context)
-                val instance = TrackerRepository(db.trackerDao(), db.trackerLogDao())
+                val instance = TrackerRepository(db.trackerDao(), db.trackerLogDao(), db)
                 INSTANCE = instance
                 instance
             }

@@ -2,9 +2,11 @@ package com.eipna.centsation.util;
 
 import com.eipna.centsation.data.saving.Saving;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Calendar;
 
 public final class SavingsCalculator {
+
+    private static final double MILLIS_PER_DAY = 24.0 * 60.0 * 60.0 * 1000.0;
 
     private SavingsCalculator() {}
 
@@ -24,17 +26,44 @@ public final class SavingsCalculator {
         return saving.getCurrentSaving() >= saving.getGoal();
     }
 
+    /**
+     * Returns signed calendar-day difference between two timestamps using local mid-day
+     * normalization so DST transitions (+/-1h) do not distort day counts (API 24+ safe).
+     */
+    public static long getCalendarDaysBetween(long startMillis, long endMillis) {
+        long startNoon = toLocalNoonMillis(startMillis);
+        long endNoon = toLocalNoonMillis(endMillis);
+        return Math.round((endNoon - startNoon) / MILLIS_PER_DAY);
+    }
+
+    private static long toLocalNoonMillis(long timestampMillis) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(timestampMillis);
+        cal.set(Calendar.HOUR_OF_DAY, 12);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
     public static long getDaysRemaining(long deadlineMillis) {
-        if (deadlineMillis == AlarmSetter.NO_ALARM) return Long.MIN_VALUE;
-        long diff = deadlineMillis - System.currentTimeMillis();
-        return TimeUnit.MILLISECONDS.toDays(diff);
+        return getDaysRemaining(deadlineMillis, System.currentTimeMillis());
+    }
+
+    public static long getDaysRemaining(long deadlineMillis, long referenceMillis) {
+        if (deadlineMillis == AlarmSetter.NO_ALARM || deadlineMillis <= 0L) return Long.MIN_VALUE;
+        return getCalendarDaysBetween(referenceMillis, deadlineMillis);
     }
 
     public static double getDailySavingsRate(Saving saving) {
-        if (saving == null || saving.getDeadline() == AlarmSetter.NO_ALARM) return 0.0;
+        return getDailySavingsRate(saving, System.currentTimeMillis());
+    }
+
+    public static double getDailySavingsRate(Saving saving, long referenceMillis) {
+        if (saving == null || saving.getDeadline() == AlarmSetter.NO_ALARM || saving.getDeadline() <= 0L) return 0.0;
         if (isCompleted(saving)) return 0.0;
 
-        long days = getDaysRemaining(saving.getDeadline());
+        long days = getDaysRemaining(saving.getDeadline(), referenceMillis);
         if (days <= 0) {
             return getRemainingAmount(saving); // Due today or overdue
         }

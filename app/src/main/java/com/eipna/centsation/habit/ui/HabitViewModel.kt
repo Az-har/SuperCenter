@@ -10,8 +10,11 @@ import com.eipna.centsation.habit.notification.TrackerAlarmScheduler
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
 import com.eipna.centsation.habit.widget.updateAllHabitWidgets
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,12 +22,19 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = TrackerRepository.getInstance(application)
 
+    private val _addHabitEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val addHabitEvents: SharedFlow<Unit> = _addHabitEvents.asSharedFlow()
+
     val trackers: StateFlow<List<TrackerWithProgress>> = repository.getTrackersWithProgress()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun requestAddHabit() {
+        _addHabitEvents.tryEmit(Unit)
+    }
 
     fun addTracker(
         title: String,

@@ -7,23 +7,23 @@
         <item
             android:id="@+id/nav_savings"
             android:icon="@drawable/ic_savings"
-            android:title="Savings Goals"
+            android:title="@string/nav_savings_goals"
             android:checked="true" />
         <item
             android:id="@+id/nav_debts"
             android:icon="@drawable/ic_debt"
-            android:title="Debts, Loans &amp; Owed" />
+            android:title="@string/nav_debts_loans" />
         <item
             android:id="@+id/nav_habits"
             android:icon="@drawable/ic_habits"
-            android:title="Habits &amp; Quotas" />
+            android:title="@string/nav_habits_quotas" />
         <item
             android:id="@+id/nav_analytics"
             android:icon="@drawable/ic_insights"
-            android:title="Insights &amp; Analytics" />
+            android:title="@string/nav_insights_analytics" />
     </group>
 
-    <item android:title="Tools &amp; Settings">
+    <item android:title="@string/nav_tools_and_settings">
         <menu>
             <item
                 android:id="@+id/nav_archive"
