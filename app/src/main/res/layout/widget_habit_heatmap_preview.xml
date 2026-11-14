@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:paddingHorizontal="8dp"
             android:paddingVertical="2dp"
-            android:text="16W"
+            android:text="1M"
             android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="@color/md_theme_onPrimaryContainer"

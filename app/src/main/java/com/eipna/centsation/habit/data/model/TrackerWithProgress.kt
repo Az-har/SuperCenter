@@ -37,6 +37,9 @@ data class TrackerWithProgress(
     val isCompletedToday: Boolean
         get() = remainingToday == 0
 
+    val isSurplusToday: Boolean
+        get() = todayCompletedReps > tracker.baseDailyTarget
+
     val progressPercent: Int
         get() {
             if (totalExpectedQuota <= 0) return 100

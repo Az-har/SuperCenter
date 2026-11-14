@@ -55,11 +55,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
@@ -151,12 +154,35 @@ fun HabitDashboardScreen(
                     }
                 } else {
                     item {
-                        Text(
-                            text = "Active Quotas (${trackers.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Active Quotas (${trackers.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            FilledTonalButton(
+                                onClick = { showAddDialog = true },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Add Habit",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
 
                     items(trackers, key = { it.tracker.id }) { item ->
@@ -395,25 +421,41 @@ fun TrackerCard(
                             )
                         }
 
+                        val isSurplus = item.isSurplusToday
                         Surface(
                             shape = CircleShape,
-                            color = if (streakStats.currentStreak > 0) {
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
+                            color = when {
+                                isSurplus -> Color(0xFF0C3B5E)
+                                streakStats.currentStreak > 0 -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         ) {
-                            Text(
-                                text = if (streakStats.currentStreak > 0) "🔥 ${streakStats.currentStreak}d streak" else "🔥 0d streak",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
+                            Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                color = if (streakStats.currentStreak > 0) {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_fire),
+                                    contentDescription = "Streak Fire",
+                                    tint = when {
+                                        isSurplus -> Color(0xFF38BDF8)
+                                        streakStats.currentStreak > 0 -> Color(0xFFFBBF24)
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (streakStats.currentStreak > 0) "${streakStats.currentStreak}d streak" else "0d streak",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = when {
+                                        isSurplus -> Color(0xFF38BDF8)
+                                        streakStats.currentStreak > 0 -> MaterialTheme.colorScheme.onTertiaryContainer
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
                         }
                     }
                 }

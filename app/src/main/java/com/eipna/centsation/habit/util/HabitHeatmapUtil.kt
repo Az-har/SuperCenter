@@ -29,7 +29,8 @@ data class StreakStats(
     val totalLogged: Int,
     val completedDays: Int,
     val totalDays: Int,
-    val completionRate: Float
+    val completionRate: Float,
+    val isSurplusToday: Boolean = false
 )
 
 object HabitHeatmapUtil {
@@ -161,7 +162,8 @@ object HabitHeatmapUtil {
             totalLogged = totalLogged365,
             completedDays = completedDays365,
             totalDays = 365,
-            completionRate = completionRate
+            completionRate = completionRate,
+            isSurplusToday = todayCount > target
         )
     }
 
@@ -210,11 +212,10 @@ object HabitHeatmapUtil {
 
                 val count = if (isFuture) 0 else (logsByDate[dStr] ?: 0)
                 val level = when {
-                    isFuture || count == 0 -> 0
-                    count < (target * 0.5) -> 1
-                    count < target -> 2
-                    count == target -> 3
-                    else -> 4
+                    isFuture || count <= 0 -> 0
+                    count < target -> 1
+                    count == target -> 2
+                    else -> 3
                 }
 
                 items.add(
@@ -271,10 +272,9 @@ object HabitHeatmapUtil {
 
                 val level = when {
                     isFuture || count <= 0 -> 0
-                    count < (target * 0.5) -> 1
-                    count < target -> 2
-                    count == target -> 3
-                    else -> 4
+                    count < target -> 1
+                    count == target -> 2
+                    else -> 3
                 }
 
                 items.add(
@@ -324,10 +324,10 @@ object HabitHeatmapUtil {
 
         val emptyColor = if (isDarkMode) 0xFF1E2634.toInt() else 0xFFF1F5F9.toInt()
         val emptyBorderColor = if (isDarkMode) 0xFF2D384B.toInt() else 0xFFCBD5E1.toInt()
-        val level1Color = if (isDarkMode) 0xFF218C54.toInt() else 0xFF6EE7B7.toInt()
-        val level2Color = if (isDarkMode) 0xFF2CB55C.toInt() else 0xFF34D399.toInt()
-        val level3Color = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
-        val level4Color = if (isDarkMode) 0xFF69F0AE.toInt() else 0xFF047857.toInt()
+        val partialOutlineColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
+        val partialFillColor = if (isDarkMode) 0x2200E676.toInt() else 0x2210B981.toInt()
+        val completedColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
+        val surplusBlueColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
 
         val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF475569.toInt()
         val todayRingColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
@@ -354,6 +354,93 @@ object HabitHeatmapUtil {
         val ringRect = RectF()
         var lastDrawnMonth = -1
 
+        if (safeWeeks == 1) {
+            // Specialized 1-Week Horizontal Layout across the full widget width
+            val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            val cols = 7
+            val padX = 6f * cappedDensity
+            val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
+            val availH = (safeHeight - 6f * cappedDensity).coerceAtLeast(30f)
+
+            val gap = (availW * 0.02f).coerceIn(2f * cappedDensity, 6f * cappedDensity)
+            val colW = (availW - (cols - 1) * gap) / cols
+            val cellW = colW.coerceAtLeast(10f)
+
+            val headerH = (availH * 0.28f).coerceIn(12f * cappedDensity, 18f * cappedDensity)
+            val tileH = (availH - headerH - 4f * cappedDensity).coerceAtLeast(16f)
+            val startX = padX
+            val startY = 3f * cappedDensity
+            val tileRadius = (cellW * 0.22f).coerceIn(2f * cappedDensity, 8f * cappedDensity)
+
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.textSize = (cellW * 0.38f).coerceIn(8.5f * cappedDensity, 12f * cappedDensity)
+
+            for (i in 0 until 7) {
+                val item = items.getOrNull(i) ?: continue
+                val x = startX + i * (cellW + gap)
+                val centerX = x + cellW / 2f
+
+                val label = if (cellW >= 24f * cappedDensity) dayNames[item.dayOfWeek] else dayNames[item.dayOfWeek].substring(0, 1)
+                val cal = parseDate(item.dateString)
+                val dom = cal.get(Calendar.DAY_OF_MONTH)
+                val headerText = if (cellW >= 34f * cappedDensity) "$label $dom" else label
+
+                textPaint.color = if (item.isToday) (if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()) else labelColor
+                textPaint.isFakeBoldText = item.isToday
+                canvas.drawText(headerText, centerX, startY + headerH - 3f * cappedDensity, textPaint)
+
+                val tileTop = startY + headerH
+                rect.set(x, tileTop, x + cellW, tileTop + tileH)
+
+                when {
+                    item.isFuture || item.level == 0 -> {
+                        fillPaint.color = emptyColor
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = emptyBorderColor
+                        strokePaint.strokeWidth = 1f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    item.level == 1 -> {
+                        fillPaint.color = partialFillColor
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = partialOutlineColor
+                        strokePaint.strokeWidth = 1.8f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    item.level == 2 -> {
+                        fillPaint.color = completedColor
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
+                    else -> {
+                        fillPaint.color = surplusBlueColor
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
+                }
+
+                if (item.completedCount > 0 && tileH >= 18f * cappedDensity) {
+                    val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textAlign = Paint.Align.CENTER
+                        textSize = (tileH * 0.38f).coerceIn(8f * cappedDensity, 13f * cappedDensity)
+                        color = if (item.level == 1) {
+                            partialOutlineColor
+                        } else {
+                            if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
+                        }
+                        isFakeBoldText = true
+                    }
+                    val yCenter = tileTop + tileH / 2f + countPaint.textSize * 0.35f
+                    canvas.drawText("${item.completedCount}", centerX, yCenter, countPaint)
+                }
+
+                if (item.isToday) {
+                    val pad = 1.4f * cappedDensity
+                    ringRect.set(x - pad, tileTop - pad, x + cellW + pad, tileTop + tileH + pad)
+                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
+                }
+            }
+            return bitmap
+        }
+
         fun drawBand(
             bandItems: List<DayHeatmapItem>,
             bandWeekOffset: Int,
@@ -371,22 +458,26 @@ object HabitHeatmapUtil {
             val rawPitch = min(availW / bandWeekCount, availH / 7f)
             val minGap = if (bandWeekCount >= 35) 1.0f else 1.5f * cappedDensity
             val gap = (rawPitch * 0.16f).coerceIn(minGap, 4f * cappedDensity)
-            val cellW = (availW - (bandWeekCount - 1) * gap) / bandWeekCount
+            val cellW = (availW - (bandWeekCount - 1) * gap) / bandWeekCount.toFloat()
             val cellH = (availH - 6f * gap) / 7f
             val cellSize = min(cellW, cellH).coerceAtLeast(1.5f)
 
-            val gridW = bandWeekCount * cellSize + (bandWeekCount - 1) * gap
-            val gridH = 7f * cellSize + 6f * gap
+            val isMonthMode = bandWeekCount <= 5
+            val tileW = if (isMonthMode) cellW else cellSize
+            val tileH = if (isMonthMode) cellH else cellSize
+
+            val gridW = bandWeekCount * tileW + (bandWeekCount - 1) * gap
+            val gridH = 7f * tileH + 6f * gap
             val startX = leftGutter + max(0f, (availW - gridW) / 2f)
             val startY = bandTop + monthH + max(0f, (availH - gridH) / 2f)
-            val radius = (cellSize * 0.22f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
+            val radius = (min(tileW, tileH) * 0.25f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
 
             if (showDayLabels) {
-                textPaint.textSize = (cellSize * 0.65f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
+                textPaint.textSize = (min(tileW, tileH) * 0.65f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
                 val dayRows = intArrayOf(1, 3, 5)
                 val dayNames = arrayOf("M", "W", "F")
                 for (i in dayRows.indices) {
-                    val yCenter = startY + dayRows[i] * (cellSize + gap) + cellSize * 0.72f
+                    val yCenter = startY + dayRows[i] * (tileH + gap) + tileH * 0.72f
                     canvas.drawText(dayNames[i], 1f * cappedDensity, yCenter, textPaint)
                 }
             }
@@ -403,7 +494,7 @@ object HabitHeatmapUtil {
                     val month = cal.get(Calendar.MONTH)
                     val dom = cal.get(Calendar.DAY_OF_MONTH)
                     if (month != lastDrawnMonth && (dom <= 7 || (w == 0 && bandWeekOffset == 0))) {
-                        val x = startX + w * (cellSize + gap)
+                        val x = startX + w * (tileW + gap)
                         if (x - lastLabelX >= 18f * cappedDensity) {
                             val labelW = textPaint.measureText(MONTH_NAMES[month])
                             val drawX = x.coerceAtMost(safeWidth - labelW - 2f)
@@ -422,27 +513,53 @@ object HabitHeatmapUtil {
                 val localWeek = item.weekIndex - bandWeekOffset
                 if (localWeek !in 0 until bandWeekCount) continue
 
-                val x = startX + localWeek * (cellSize + gap)
-                val y = startY + item.dayOfWeek * (cellSize + gap)
-                rect.set(x, y, x + cellSize, y + cellSize)
+                val x = startX + localWeek * (tileW + gap)
+                val y = startY + item.dayOfWeek * (tileH + gap)
+                rect.set(x, y, x + tileW, y + tileH)
 
-                fillPaint.color = when (item.level) {
-                    1 -> level1Color
-                    2 -> level2Color
-                    3 -> level3Color
-                    4 -> level4Color
-                    else -> emptyColor
+                when (item.level) {
+                    0 -> {
+                        fillPaint.color = emptyColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                        strokePaint.color = emptyBorderColor
+                        strokePaint.strokeWidth = 1f * cappedDensity
+                        canvas.drawRoundRect(rect, radius, radius, strokePaint)
+                    }
+                    1 -> {
+                        fillPaint.color = partialFillColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                        strokePaint.color = partialOutlineColor
+                        strokePaint.strokeWidth = 1.6f * cappedDensity
+                        canvas.drawRoundRect(rect, radius, radius, strokePaint)
+                    }
+                    2 -> {
+                        fillPaint.color = completedColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
+                    else -> {
+                        fillPaint.color = surplusBlueColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
                 }
-                canvas.drawRoundRect(rect, radius, radius, fillPaint)
 
-                if (item.level == 0) {
-                    strokePaint.color = emptyBorderColor
-                    canvas.drawRoundRect(rect, radius, radius, strokePaint)
+                if (isMonthMode && item.completedCount > 0 && tileH >= 9f * cappedDensity && tileW >= 16f * cappedDensity) {
+                    val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textAlign = Paint.Align.CENTER
+                        textSize = (tileH * 0.65f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
+                        color = if (item.level == 1) {
+                            partialOutlineColor
+                        } else {
+                            if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
+                        }
+                        isFakeBoldText = true
+                    }
+                    val yCenter = y + tileH / 2f + countPaint.textSize * 0.35f
+                    canvas.drawText("${item.completedCount}", x + tileW / 2f, yCenter, countPaint)
                 }
 
                 if (item.isToday) {
                     val pad = 1.2f * cappedDensity
-                    ringRect.set(x - pad, y - pad, x + cellSize + pad, y + cellSize + pad)
+                    ringRect.set(x - pad, y - pad, x + tileW + pad, y + tileH + pad)
                     canvas.drawRoundRect(ringRect, radius + pad, radius + pad, todayRingPaint)
                 }
             }

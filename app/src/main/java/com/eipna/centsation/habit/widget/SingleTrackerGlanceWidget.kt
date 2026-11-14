@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
@@ -14,6 +15,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
@@ -40,6 +43,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -47,6 +51,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.notification.TrackerNotificationHandler
@@ -212,14 +217,22 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.defaultWeight()
                     )
                     if (streak > 0 && totalCount <= 1) {
-                        Text(
-                            text = "🔥 ${streak}d",
-                            style = TextStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = GlanceTheme.colors.primary
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                provider = ImageProvider(if (item.isSurplusToday) R.drawable.ic_fire_blue else R.drawable.ic_fire_amber),
+                                contentDescription = "Streak Fire",
+                                modifier = GlanceModifier.size(11.dp)
                             )
-                        )
+                            Spacer(modifier = GlanceModifier.width(2.dp))
+                            Text(
+                                text = "${streak}d",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (item.isSurplusToday) ColorProvider(Color(0xFF38BDF8)) else GlanceTheme.colors.primary
+                                )
+                            )
+                        }
                         Spacer(modifier = GlanceModifier.width(4.dp))
                     }
                     Text(
@@ -310,15 +323,23 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
 
                 if (streak > 0) {
                     Spacer(modifier = GlanceModifier.width(6.dp))
-                    Text(
-                        text = "🔥 ${streak}d",
-                        maxLines = 1,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = GlanceTheme.colors.primary
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            provider = ImageProvider(if (item.isSurplusToday) R.drawable.ic_fire_blue else R.drawable.ic_fire_amber),
+                            contentDescription = "Streak Fire",
+                            modifier = GlanceModifier.size(14.dp)
                         )
-                    )
+                        Spacer(modifier = GlanceModifier.width(2.dp))
+                        Text(
+                            text = "${streak}d",
+                            maxLines = 1,
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = if (item.isSurplusToday) ColorProvider(Color(0xFF38BDF8)) else GlanceTheme.colors.primary
+                            )
+                        )
+                    }
                 }
 
                 if (totalCount > 1) {
@@ -467,14 +488,27 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
                             color = GlanceTheme.colors.onSurface
                         )
                     )
-                    Text(
-                        text = "🔥 ${streak}d Streak • ${tracker.baseDailyTarget} $unit/day",
-                        maxLines = 1,
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = GlanceTheme.colors.primary
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            provider = ImageProvider(
+                                if (item.isSurplusToday) R.drawable.ic_fire_blue
+                                else if (streak > 0) R.drawable.ic_fire_amber
+                                else R.drawable.ic_fire_muted
+                            ),
+                            contentDescription = "Streak Fire",
+                            modifier = GlanceModifier.size(14.dp)
                         )
-                    )
+                        Spacer(modifier = GlanceModifier.width(3.dp))
+                        Text(
+                            text = "${streak}d Streak • ${tracker.baseDailyTarget} $unit/day",
+                            maxLines = 1,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (item.isSurplusToday) ColorProvider(Color(0xFF38BDF8)) else GlanceTheme.colors.primary
+                            )
+                        )
+                    }
                 }
 
                 if (totalCount > 1) {

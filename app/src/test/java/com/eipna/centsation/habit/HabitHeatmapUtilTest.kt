@@ -132,16 +132,16 @@ class HabitHeatmapUtilTest {
         // Find today
         val todayItem = items.first { it.isToday }
         assertEquals("2026-11-05", todayItem.dateString)
-        assertEquals(3, todayItem.level) // 10 == target -> level 3
+        assertEquals(2, todayItem.level) // 10 == target -> level 2 (solid green)
         assertFalse(todayItem.isFuture)
 
-        // Check level 2 (5 reps of 10 target)
+        // Check level 1 (5 reps of 10 target -> level 1, light green outline)
         val yesterdayItem = items.first { it.dateString == "2026-11-04" }
-        assertEquals(2, yesterdayItem.level)
+        assertEquals(1, yesterdayItem.level)
 
-        // Check level 4 (> target)
+        // Check level 3 (15 reps > 10 target -> level 3, surplus blue)
         val twoDaysAgo = items.first { it.dateString == "2026-11-03" }
-        assertEquals(4, twoDaysAgo.level)
+        assertEquals(3, twoDaysAgo.level)
 
         // Sunday is dayOfWeek = 0
         assertEquals(0, items.first().dayOfWeek)
@@ -180,5 +180,49 @@ class HabitHeatmapUtilTest {
         val todayItem = items.first { it.isToday }
         assertEquals(1, todayItem.completedCount)
         assertEquals(1, todayItem.level) // 1 rep must always produce level >= 1
+    }
+
+    @Test
+    fun testStreakStats_SurplusDetection() {
+        val normalLogs = listOf(
+            TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 10)
+        )
+        val normalStats = HabitHeatmapUtil.calculateStreakStats(sampleTracker, normalLogs, "2026-11-05")
+        assertFalse(normalStats.isSurplusToday)
+
+        val surplusLogs = listOf(
+            TrackerLogEntity(id = 2, trackerId = 1, date = "2026-11-05", completedCount = 15)
+        )
+        val surplusStats = HabitHeatmapUtil.calculateStreakStats(sampleTracker, surplusLogs, "2026-11-05")
+        assertTrue(surplusStats.isSurplusToday)
+    }
+
+    @Test
+    fun testHeatmapGridForWeeks_OneWeekMode_ProducesSevenItems() {
+        val (items, numWeeks) = HabitHeatmapUtil.generateHeatmapGridForWeeks(
+            tracker = sampleTracker,
+            logs = listOf(
+                TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 12)
+            ),
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(1, numWeeks)
+        assertEquals(7, items.size)
+        val todayItem = items.first { it.isToday }
+        assertEquals(3, todayItem.level) // 12 > 10 target -> level 3 (surplus blue)
+    }
+
+    @Test
+    fun testHeatmapGridForWeeks_FiveWeeksMonth_ProducesThirtyFiveItems() {
+        val (items, numWeeks) = HabitHeatmapUtil.generateHeatmapGridForWeeks(
+            tracker = sampleTracker,
+            logs = emptyList(),
+            numWeeks = 5,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(5, numWeeks)
+        assertEquals(35, items.size)
+        assertTrue(items.any { it.isToday })
     }
 }
