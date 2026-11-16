@@ -1,7 +1,16 @@
 package com.eipna.centsation.habit.ui
 
 import android.text.format.DateFormat
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +71,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.FastOutSlowInEasing
 import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
@@ -186,17 +196,30 @@ fun HabitDashboardScreen(
                     }
 
                     items(trackers, key = { it.tracker.id }) { item ->
-                        TrackerCard(
-                            item = item,
-                            onLogReps = { delta -> viewModel.logReps(item.tracker.id, delta) },
-                            onMarkDone = {
-                                if (item.remainingToday > 0) {
-                                    viewModel.logReps(item.tracker.id, item.remainingToday)
-                                }
-                            },
-                            onEdit = { editingTracker = item.tracker },
-                            onDelete = { viewModel.deleteTracker(item) }
-                        )
+                        AnimatedVisibility(
+                            enter = fadeIn(animationSpec = tween(300, delayMillis = 50)) +
+                                slideInVertically(
+                                    initialOffsetY = { 40.dp },
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                ),
+                            exit = fadeOut(animationSpec = tween(200)) +
+                                slideOutVertically(
+                                    targetOffsetY = { -40.dp },
+                                    animationSpec = tween(200)
+                                )
+                        ) {
+                            TrackerCard(
+                                item = item,
+                                onLogReps = { delta -> viewModel.logReps(item.tracker.id, delta) },
+                                onMarkDone = {
+                                    if (item.remainingToday > 0) {
+                                        viewModel.logReps(item.tracker.id, item.remainingToday)
+                                    }
+                                },
+                                onEdit = { editingTracker = item.tracker },
+                                onDelete = { viewModel.deleteTracker(item) }
+                            )
+                        }
                     }
                 }
 
@@ -373,17 +396,42 @@ fun TrackerCard(
         TrackerDateUtil.formatReminderTime(is24Hour, tracker.scheduledHour, tracker.scheduledMinute)
     }
 
+    // Animated progress bar
+    val animatedProgress by animateFloatAsState(
+        targetValue = item.completionRatio,
+        animationSpec = tween(500, 0, FastOutSlowInEasing),
+        label = "progress"
+    )
+
+    // Animated container color alpha
+    val animatedContainerAlpha by animateFloatAsState(
+        targetValue = if (item.isCompletedToday) 0.5f else 1f,
+        animationSpec = tween(300, 0, FastOutSlowInEasing),
+        label = "containerAlpha"
+    )
+
+    // Animated elevation
+    val animatedElevation by animateFloatAsState(
+        targetValue = if (item.isCompletedToday) 0f else 2f,
+        animationSpec = tween(300, 0, FastOutSlowInEasing),
+        label = "elevation"
+    )
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = tween(300, 0, FastOutSlowInEasing)
+            ),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (item.isCompletedToday) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = animatedContainerAlpha * 0.5f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (item.isCompletedToday) 0.dp else 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = animatedElevation.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header Row: Title, Alarm Chip, More Menu
@@ -491,7 +539,17 @@ fun TrackerCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             // Debt & Daily Quota Info Banner
-            if (item.accumulatedBacklogDebt > 0 && !item.isCompletedToday) {
+            AnimatedVisibility(
+                visible = item.accumulatedBacklogDebt > 0 && !item.isCompletedToday,
+                enter = expandVertically(
+                    animationSpec = tween(300, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeIn(animationSpec = tween(200)),
+                exit = shrinkVertically(
+                    animationSpec = tween(200, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeOut(animationSpec = tween(150))
+            ) {
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
@@ -519,9 +577,9 @@ fun TrackerCard(
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // Progress Bar
+            // Progress Bar with smooth animation
             LinearProgressIndicator(
-                progress = { item.completionRatio },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -565,7 +623,17 @@ fun TrackerCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             // Action Quick Increment & Undo Buttons
-            AnimatedVisibility(visible = !item.isCompletedToday) {
+            AnimatedVisibility(
+                visible = !item.isCompletedToday,
+                enter = expandVertically(
+                    animationSpec = tween(300, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeIn(animationSpec = tween(200)),
+                exit = shrinkVertically(
+                    animationSpec = tween(200, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeOut(animationSpec = tween(150))
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -577,7 +645,7 @@ fun TrackerCard(
                         modifier = Modifier.weight(0.75f),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
-                        Text(text = "\u22121", maxLines = 1)
+                        Text(text = "−1", maxLines = 1)
                     }
 
                     val increments = when {
@@ -614,7 +682,17 @@ fun TrackerCard(
                 }
             }
 
-            AnimatedVisibility(visible = item.isCompletedToday) {
+            AnimatedVisibility(
+                visible = item.isCompletedToday,
+                enter = expandVertically(
+                    animationSpec = tween(300, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeIn(animationSpec = tween(200)),
+                exit = shrinkVertically(
+                    animationSpec = tween(200, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeOut(animationSpec = tween(150))
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -638,7 +716,7 @@ fun TrackerCard(
                             onClick = { onLogReps(-1) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
-                            Text(text = "\u22121")
+                            Text(text = "−1")
                         }
 
                         OutlinedButton(

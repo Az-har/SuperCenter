@@ -235,7 +235,15 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val isDark = HabitGlanceTheme.resolveDarkMode(context)
         val renderDensity = context.resources.displayMetrics.density.coerceIn(1.0f, 1.5f)
 
-        val bitmap = remember(combinedGridItems, spec, isDark, renderDensity) {
+        // Create a stable hash key for memoization - only re-render when actual data changes
+        val gridDataHash = remember(combinedGridItems) {
+            combinedGridItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }.hashCode()
+        }
+        val specHash = remember(spec) {
+            "${spec.targetWeeks}-${spec.showMonthLabels}-${spec.availWidthDp}-${spec.availHeightDp}".hashCode()
+        }
+
+        val bitmap = remember(gridDataHash, specHash, isDark, renderDensity) {
             HabitHeatmapUtil.renderCombinedHeatmapBitmap(
                 items = combinedGridItems,
                 numWeeks = spec.targetWeeks,

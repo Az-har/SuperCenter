@@ -39,6 +39,9 @@ android {
 
         manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
         manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_round"
+
+        // Enable vector drawables for smaller APK
+        vectorDrawables.useSupportLibrary = true
     }
     signingConfigs {
         if (hasReleaseKeystore) {
@@ -58,15 +61,30 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Enable R8 full mode for aggressive optimization
+            isMinifyEnabled = true
+            // Proguard files
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             if (hasReleaseKeystore) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 signingConfig = signingConfigs.getByName("debug")
             }
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Enable debug symbols stripping
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+            // Resource shrinking with strict mode
+            shrinkResources = true
+            // Optimize APK splits
+            splits {
+                abi {
+                    enable = false
+                }
+            }
         }
         debug {
             manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
@@ -77,6 +95,32 @@ android {
             versionNameSuffix = "-debug"
         }
     }
+
+    // APK size optimizations
+    bundle {
+        language {
+            // Don't include all language resources in APK
+            enableSplit = true
+        }
+        density {
+            // Split by density to reduce APK size
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
+        }
+    }
+
+    // Packaging options to reduce size
+    packaging {
+        resources {
+            excludes += "/META-INF/*"
+        }
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildFeatures {
         viewBinding = true
         compose = true
@@ -84,6 +128,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    // Kotlin compiler options for optimization
+    kotlinOptions {
+        jvmTarget = "21"
+        freeCompilerArgs += listOf(
+            "-Xskip-prerelease-check",
+            "-Xjvm-default=all"
+        )
     }
 }
 

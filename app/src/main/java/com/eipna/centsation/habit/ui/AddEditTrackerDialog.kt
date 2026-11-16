@@ -1,6 +1,14 @@
 package com.eipna.centsation.habit.ui
 
 import android.text.format.DateFormat
+import androidx.compose.animation.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -87,6 +95,13 @@ fun AddEditTrackerDialog(
     val formattedTime = remember(hour, minute, is24Hour) {
         TrackerDateUtil.formatReminderTime(is24Hour, hour, minute)
     }
+
+    // Animate sheet elevation for press feedback
+    val sheetElevation by animateFloatAsState(
+        targetValue = 0f, // Could be used for pressed state
+        animationSpec = tween(150, 0, FastOutSlowInEasing),
+        label = "sheetElevation"
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -335,7 +350,17 @@ fun AddEditTrackerDialog(
                 }
             }
 
-            if (errorMessage != null) {
+            AnimatedVisibility(
+                visible = errorMessage != null,
+                enter = expandVertically(
+                    animationSpec = tween(250, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeIn(animationSpec = tween(150)),
+                exit = shrinkVertically(
+                    animationSpec = tween(150, 0, FastOutSlowInEasing),
+                    clip = true
+                ) + fadeOut(animationSpec = tween(100))
+            ) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = errorMessage ?: "",
