@@ -317,5 +317,57 @@ class HabitHeatmapUtilTest {
         assertEquals(1, stats.trackersCompletedToday) // only A met today
         assertEquals(3, stats.totalGoalsMet)          // A today, A yesterday, B yesterday
         assertEquals(47, stats.totalLogged)           // 10 + 12 + 5 + 20
+        assertFalse(stats.isSurplusToday)
+    }
+
+    @Test
+    fun testCombinedStreakStats_SurplusToday_ChangesFlameToBlue() {
+        val trackerA = TrackerEntity(id = 1L, title = "Pushups", baseDailyTarget = 10, unit = "reps", scheduledHour = 20, scheduledMinute = 0)
+        val trackerB = TrackerEntity(id = 2L, title = "Read", baseDailyTarget = 20, unit = "pages", scheduledHour = 21, scheduledMinute = 0)
+
+        // Both met, and trackerA has surplus (15 > 10)
+        val logsA = listOf(TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 15))
+        val logsB = listOf(TrackerLogEntity(id = 2, trackerId = 2, date = "2026-11-05", completedCount = 20))
+
+        val twpA = TrackerWithProgress(tracker = trackerA, logs = logsA, todayDate = "2026-11-05")
+        val twpB = TrackerWithProgress(tracker = trackerB, logs = logsB, todayDate = "2026-11-05")
+
+        val stats = HabitHeatmapUtil.calculateCombinedStreakStats(listOf(twpA, twpB), "2026-11-05")
+        assertEquals(2, stats.trackersCompletedToday)
+        assertTrue(stats.isSurplusToday)
+        assertEquals(1, stats.currentStreak)
+    }
+
+    @Test
+    fun testSingleTracker_EvenOneRepProducesLevel1_GreenOutline() {
+        // Goal = 10 reps, user logged only 1 rep -> Level 1 (green outline)
+        val logs = listOf(TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 1))
+        val (items, _) = HabitHeatmapUtil.generateHeatmapGridForWeeks(
+            tracker = sampleTracker,
+            logs = logs,
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        val todayItem = items.first { it.dateString == "2026-11-05" }
+        assertEquals(1, todayItem.level)
+        assertEquals(1, todayItem.completedCount)
+    }
+
+    @Test
+    fun testSingleTracker_SurplusProducesLevel3_ElectricBlue() {
+        // Goal = 10 reps, user logged 15 reps -> Level 3 (surplus electric blue)
+        val logs = listOf(TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 15))
+        val (items, _) = HabitHeatmapUtil.generateHeatmapGridForWeeks(
+            tracker = sampleTracker,
+            logs = logs,
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        val todayItem = items.first { it.dateString == "2026-11-05" }
+        assertEquals(3, todayItem.level)
+        assertEquals(15, todayItem.completedCount)
+
+        val streakStats = HabitHeatmapUtil.calculateStreakStats(sampleTracker, logs, "2026-11-05")
+        assertTrue(streakStats.isSurplusToday)
     }
 }

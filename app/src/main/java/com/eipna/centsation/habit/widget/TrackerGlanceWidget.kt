@@ -327,8 +327,11 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val btnHeight = if (compact) 36.dp else 42.dp
+
                 Box(
                     modifier = GlanceModifier
+                        .height(btnHeight)
                         .cornerRadius(9.dp)
                         .background(GlanceTheme.colors.surface)
                         .clickable(actionRunCallback<TrackerLogCallback>(
@@ -350,6 +353,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
                 Box(
                     modifier = GlanceModifier
+                        .height(btnHeight)
                         .cornerRadius(9.dp)
                         .background(GlanceTheme.colors.surface)
                         .clickable(actionRunCallback<TrackerLogCallback>(
@@ -372,6 +376,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
                 if (remaining > 0) {
                     Box(
                         modifier = GlanceModifier
+                            .height(btnHeight)
                             .cornerRadius(9.dp)
                             .background(GlanceTheme.colors.surface)
                             .clickable(actionRunCallback<TrackerLogCallback>(
@@ -393,6 +398,7 @@ class TrackerGlanceWidget : GlanceAppWidget() {
 
                     Box(
                         modifier = GlanceModifier
+                            .height(btnHeight)
                             .cornerRadius(9.dp)
                             .background(GlanceTheme.colors.primary)
                             .clickable(actionRunCallback<TrackerCompleteCallback>(

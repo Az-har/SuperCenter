@@ -3,10 +3,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:paddingLeft="12dp"
+    android:paddingTop="12dp"
+    android:paddingRight="12dp"
+    android:paddingBottom="12dp"
     android:background="@drawable/bg_widget_preview_card">
 
-    <!-- Dedicated GitHub-style Header -->
+    <!-- Header: Habit Title, Streak Flame, Range Toggle -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,24 +20,25 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Pushups  14d streak"
+            android:text="Pushups  🔥 14d"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="@color/md_theme_onSurface" />
 
         <TextView
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:text="1M"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/md_theme_onPrimaryContainer"
             android:background="@drawable/bg_widget_pill_primary" />
     </LinearLayout>
 
-    <!-- Full-width GitHub Contribution Matrix (7 rows x 12 columns, pure ImageView @RemoteView) -->
+    <!-- 7-Column Contribution Calendar Grid Preview (Sun..Sat x 4 weeks) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -43,113 +47,68 @@
         android:layout_marginBottom="4dp"
         android:orientation="vertical">
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+        <!-- Week 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
+            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
+        <!-- Week 2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
+        <!-- Week 3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-        </LinearLayout>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-        </LinearLayout>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
+        <!-- Week 4 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-        </LinearLayout>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-            <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
             <ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- GitHub-style Legend Footer -->
+    <!-- Footer: Quota status + Legend -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -160,26 +119,25 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Today: 8/10 reps  |  92% consistency"
-            android:textSize="12sp"
+            android:text="Today: 8/10 reps"
+            android:textSize="11sp"
             android:textColor="@color/md_theme_onSurfaceVariant" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Less "
-            android:textSize="12sp"
+            android:textSize="10sp"
             android:textColor="@color/md_theme_onSurfaceVariant" />
-        <ImageView android:layout_width="8dp" android:layout_height="8dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
-        <ImageView android:layout_width="8dp" android:layout_height="8dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
-        <ImageView android:layout_width="8dp" android:layout_height="8dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
-        <ImageView android:layout_width="8dp" android:layout_height="8dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_3" android:contentDescription="@null" />
-        <ImageView android:layout_width="8dp" android:layout_height="8dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
+        <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_0" android:contentDescription="@null" />
+        <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_1" android:contentDescription="@null" />
+        <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_2" android:contentDescription="@null" />
+        <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_margin="1dp" android:background="@drawable/bg_heatmap_tile_4" android:contentDescription="@null" />
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=" More"
-            android:textSize="12sp"
+            android:textSize="10sp"
             android:textColor="@color/md_theme_onSurfaceVariant" />
     </LinearLayout>
 </LinearLayout>

@@ -757,13 +757,10 @@ class SingleTrackerGlanceWidget : GlanceAppWidget() {
         minHeight: Dp? = null,
         onClick: Action
     ) {
-        val baseModifier = if (minHeight != null) {
-            GlanceModifier.height(minHeight)
-        } else {
-            GlanceModifier
-        }
+        val safeHeight = (minHeight ?: 40.dp).coerceAtLeast(36.dp)
         Box(
-            modifier = baseModifier
+            modifier = GlanceModifier
+                .height(safeHeight)
                 .cornerRadius(cornerRadius)
                 .background(backgroundColor)
                 .clickable(onClick)

@@ -11,6 +11,7 @@
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_habit_heatmap_initial"
     android:previewLayout="@layout/widget_habit_heatmap_preview"
+    android:previewImage="@drawable/widget_preview_heatmap"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:description="@string/widget_heatmap_description" />

@@ -11,4 +11,5 @@
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_single_habit_initial"
     android:previewLayout="@layout/widget_single_habit_preview"
+    android:previewImage="@drawable/widget_preview_single_tracker"
     android:updatePeriodMillis="0" />

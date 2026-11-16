@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="120dp"
+    android:viewportWidth="200"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#1E2634"
+        android:strokeColor="#334155"
+        android:strokeWidth="1"
+        android:pathData="M12,0 L188,0 A12,12 0 0,1 200,12 L200,108 A12,12 0 0,1 188,120 L12,120 A12,12 0 0,1 0,108 L0,12 A12,12 0 0,1 12,0 Z" />
+    <!-- Header -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M14,14 L70,14 A2,2 0 0,1 72,16 L72,22 A2,2 0 0,1 70,24 L14,24 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M140,14 L186,14 A2,2 0 0,1 188,16 L188,22 A2,2 0 0,1 186,24 L140,24 Z" />
+    <!-- Reps Counter -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M14,34 L100,34 A2,2 0 0,1 102,36 L102,44 A2,2 0 0,1 100,46 L14,46 Z" />
+    <!-- Progress Bar -->
+    <path
+        android:fillColor="#2D384B"
+        android:pathData="M14,54 L186,54 A3,3 0 0,1 189,57 L189,57 A3,3 0 0,1 186,60 L14,60 A3,3 0 0,1 11,57 L11,57 A3,3 0 0,1 14,54 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M14,54 L140,54 A3,3 0 0,1 143,57 L143,57 A3,3 0 0,1 140,60 L14,60 A3,3 0 0,1 11,57 L11,57 A3,3 0 0,1 14,54 Z" />
+    <!-- Buttons Row -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M14,75 L56,75 A6,6 0 0,1 62,81 L62,100 A6,6 0 0,1 56,106 L14,106 A6,6 0 0,1 8,100 L8,81 A6,6 0 0,1 14,75 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M68,75 L118,75 A6,6 0 0,1 124,81 L124,100 A6,6 0 0,1 118,106 L68,106 A6,6 0 0,1 62,100 L62,81 A6,6 0 0,1 68,75 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M130,75 L186,75 A6,6 0 0,1 192,81 L192,100 A6,6 0 0,1 186,106 L130,106 A6,6 0 0,1 124,100 L124,81 A6,6 0 0,1 130,75 Z" />
+</vector>

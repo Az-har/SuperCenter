@@ -3,7 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:paddingLeft="12dp"
+    android:paddingTop="12dp"
+    android:paddingRight="12dp"
+    android:paddingBottom="12dp"
     android:background="@drawable/bg_widget_preview_card">
 
     <LinearLayout
@@ -30,14 +33,14 @@
             android:textColor="@color/md_theme_primary" />
     </LinearLayout>
 
-    <ImageView
+    <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="6dp"
         android:layout_marginBottom="6dp"
-        android:background="@color/md_theme_outlineVariant"
-        android:contentDescription="@null" />
+        android:background="@color/md_theme_outlineVariant" />
 
+    <!-- Habit Item 1 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -67,17 +70,21 @@
                 android:textColor="@color/md_theme_primary" />
         </LinearLayout>
 
-        <ProgressBar
-            style="@android:style/Widget.ProgressBar.Horizontal"
+        <!-- Safe Progress Track -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="6dp"
             android:layout_marginTop="4dp"
-            android:max="100"
-            android:progress="80"
-            android:progressTint="@color/md_theme_primary"
-            android:progressBackgroundTint="@color/md_theme_surfaceVariant" />
+            android:background="@drawable/bg_heatmap_tile_0">
+
+            <View
+                android:layout_width="160dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_heatmap_tile_2" />
+        </FrameLayout>
     </LinearLayout>
 
+    <!-- Habit Item 2 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -107,14 +114,17 @@
                 android:textColor="@color/md_theme_error" />
         </LinearLayout>
 
-        <ProgressBar
-            style="@android:style/Widget.ProgressBar.Horizontal"
+        <!-- Safe Progress Track -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="6dp"
             android:layout_marginTop="4dp"
-            android:max="100"
-            android:progress="25"
-            android:progressTint="@color/md_theme_error"
-            android:progressBackgroundTint="@color/md_theme_surfaceVariant" />
+            android:background="@drawable/bg_heatmap_tile_0">
+
+            <View
+                android:layout_width="60dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_heatmap_tile_4" />
+        </FrameLayout>
     </LinearLayout>
 </LinearLayout>
