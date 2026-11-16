@@ -61,8 +61,6 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            // Enable R8 full mode for aggressive optimization
-            isMinifyEnabled = true
             // Proguard files
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -76,14 +74,6 @@ android {
             // Enable debug symbols stripping
             ndk {
                 debugSymbolLevel = "FULL"
-            }
-            // Resource shrinking with strict mode
-            shrinkResources = true
-            // Optimize APK splits
-            splits {
-                abi {
-                    enable = false
-                }
             }
         }
         debug {
@@ -129,19 +119,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-
-    // Kotlin compiler options for optimization
-    kotlinOptions {
-        jvmTarget = "21"
-        freeCompilerArgs += listOf(
-            "-Xskip-prerelease-check",
-            "-Xjvm-default=all"
-        )
+    kotlin {
+        compilerOptions {
+            jvmTarget.set("21")
+            freeCompilerArgs.addAll(listOf(
+                "-Xskip-prerelease-check",
+                "-Xjvm-default=all"
+            ))
+        }
     }
-}
-
-kotlin {
-    jvmToolchain(21)
 }
 
 ksp {
