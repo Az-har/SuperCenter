@@ -363,14 +363,16 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 Color(0xFF1E2634),      // Empty
                 Color(0xFF6366F1),      // Some activity (purple)
                 Color(0xFF8B5CF6),      // Partial goals (light purple)
-                Color(0xFF00E676)       // All goals met (green)
+                Color(0xFF00E676),      // All goals met (green)
+                Color(0xFF38BDF8)       // Surplus (blue)
             )
         } else {
             listOf(
                 Color(0xFFF1F5F9),      // Empty
                 Color(0xFF818CF8),      // Some activity (purple)
                 Color(0xFFA78BFA),      // Partial goals (light purple)
-                Color(0xFF10B981)       // All goals met (green)
+                Color(0xFF10B981),      // All goals met (green)
+                Color(0xFF0284C7)       // Surplus (blue)
             )
         }
 

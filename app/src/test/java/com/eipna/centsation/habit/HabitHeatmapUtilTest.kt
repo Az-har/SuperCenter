@@ -2,6 +2,7 @@ package com.eipna.centsation.habit
 
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
+import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -224,5 +225,97 @@ class HabitHeatmapUtilTest {
         assertEquals(5, numWeeks)
         assertEquals(35, items.size)
         assertTrue(items.any { it.isToday })
+    }
+
+    @Test
+    fun testCombinedHeatmap_EmptyTrackers_ReturnsEmpty() {
+        val (items, numWeeks) = HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+            trackersWithProgress = emptyList(),
+            numWeeks = 5,
+            todayDate = "2026-11-05"
+        )
+        assertTrue(items.isEmpty())
+        assertEquals(0, numWeeks)
+    }
+
+    @Test
+    fun testCombinedHeatmap_CalculatesLevelsCorrectly() {
+        val trackerA = TrackerEntity(id = 1L, title = "Pushups", baseDailyTarget = 10, unit = "reps", scheduledHour = 20, scheduledMinute = 0)
+        val trackerB = TrackerEntity(id = 2L, title = "Read", baseDailyTarget = 20, unit = "pages", scheduledHour = 21, scheduledMinute = 0)
+
+        val logsA = listOf(
+            TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-04", completedCount = 5),  // Partial A (5/10), B not done -> Level 1 (some activity)
+            TrackerLogEntity(id = 2, trackerId = 1, date = "2026-11-03", completedCount = 10), // A done (10/10), B partial (5/20) -> Level 2 (partial goals)
+            TrackerLogEntity(id = 3, trackerId = 1, date = "2026-11-02", completedCount = 10), // A done (10/10), B done (20/20) -> Level 3 (all goals met)
+            TrackerLogEntity(id = 4, trackerId = 1, date = "2026-11-01", completedCount = 15)  // A surplus (15/10), B surplus (25/20) -> Level 4 (surplus)
+        )
+        val logsB = listOf(
+            TrackerLogEntity(id = 5, trackerId = 2, date = "2026-11-04", completedCount = 0),
+            TrackerLogEntity(id = 6, trackerId = 2, date = "2026-11-03", completedCount = 5),
+            TrackerLogEntity(id = 7, trackerId = 2, date = "2026-11-02", completedCount = 20),
+            TrackerLogEntity(id = 8, trackerId = 2, date = "2026-11-01", completedCount = 25)
+        )
+
+        val twpA = TrackerWithProgress(tracker = trackerA, logs = logsA, todayDate = "2026-11-05")
+        val twpB = TrackerWithProgress(tracker = trackerB, logs = logsB, todayDate = "2026-11-05")
+
+        val (items, numWeeks) = HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+            trackersWithProgress = listOf(twpA, twpB),
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(1, numWeeks)
+        assertEquals(7, items.size)
+
+        // 2026-11-05 (today): No logs -> Level 0
+        val todayItem = items.first { it.dateString == "2026-11-05" }
+        assertEquals(0, todayItem.level)
+        assertTrue(todayItem.isToday)
+
+        // 2026-11-04: count=5 (A=5, B=0), target=30, goalsMet=0 -> Level 1 (some activity, no goals)
+        val itemNov04 = items.first { it.dateString == "2026-11-04" }
+        assertEquals(1, itemNov04.level)
+        assertEquals(5, itemNov04.totalCompletedCount)
+        assertEquals(0, itemNov04.trackersCompleted)
+
+        // 2026-11-03: count=15 (A=10, B=5), target=30, goalsMet=1 (A) out of 2 -> Level 2 (partial goals)
+        val itemNov03 = items.first { it.dateString == "2026-11-03" }
+        assertEquals(2, itemNov03.level)
+        assertEquals(1, itemNov03.trackersCompleted)
+
+        // 2026-11-02: count=30 (A=10, B=20), target=30, goalsMet=2 out of 2 -> Level 3 (all goals)
+        val itemNov02 = items.first { it.dateString == "2026-11-02" }
+        assertEquals(3, itemNov02.level)
+        assertEquals(2, itemNov02.trackersCompleted)
+
+        // 2026-11-01: count=40 (A=15, B=25), target=30, goalsMet=2, surplus=true -> Level 4 (surplus)
+        val itemNov01 = items.first { it.dateString == "2026-11-01" }
+        assertEquals(4, itemNov01.level)
+        assertEquals(2, itemNov01.trackersCompleted)
+        assertEquals(40, itemNov01.totalCompletedCount)
+    }
+
+    @Test
+    fun testCombinedStreakStats() {
+        val trackerA = TrackerEntity(id = 1L, title = "Pushups", baseDailyTarget = 10, unit = "reps", scheduledHour = 20, scheduledMinute = 0)
+        val trackerB = TrackerEntity(id = 2L, title = "Read", baseDailyTarget = 20, unit = "pages", scheduledHour = 21, scheduledMinute = 0)
+
+        val logsA = listOf(
+            TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 10), // today met
+            TrackerLogEntity(id = 2, trackerId = 1, date = "2026-11-04", completedCount = 12)  // past met
+        )
+        val logsB = listOf(
+            TrackerLogEntity(id = 3, trackerId = 2, date = "2026-11-05", completedCount = 5),  // today not met
+            TrackerLogEntity(id = 4, trackerId = 2, date = "2026-11-04", completedCount = 20)  // past met
+        )
+
+        val twpA = TrackerWithProgress(tracker = trackerA, logs = logsA, todayDate = "2026-11-05")
+        val twpB = TrackerWithProgress(tracker = trackerB, logs = logsB, todayDate = "2026-11-05")
+
+        val stats = HabitHeatmapUtil.calculateCombinedStreakStats(listOf(twpA, twpB), "2026-11-05")
+        assertEquals(2, stats.totalTrackers)
+        assertEquals(1, stats.trackersCompletedToday) // only A met today
+        assertEquals(3, stats.totalGoalsMet)          // A today, A yesterday, B yesterday
+        assertEquals(47, stats.totalLogged)           // 10 + 12 + 5 + 20
     }
 }

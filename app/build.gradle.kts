@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
@@ -121,13 +122,17 @@ android {
     }
     kotlin {
         compilerOptions {
-            jvmTarget.set("21")
+            jvmTarget.set(JvmTarget.JVM_21)
             freeCompilerArgs.addAll(listOf(
                 "-Xskip-prerelease-check",
                 "-Xjvm-default=all"
             ))
         }
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 ksp {

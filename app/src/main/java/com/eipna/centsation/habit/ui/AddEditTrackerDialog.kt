@@ -1,7 +1,6 @@
 package com.eipna.centsation.habit.ui
 
 import android.text.format.DateFormat
-import androidx.compose.animation.animateFloatAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -95,13 +94,6 @@ fun AddEditTrackerDialog(
     val formattedTime = remember(hour, minute, is24Hour) {
         TrackerDateUtil.formatReminderTime(is24Hour, hour, minute)
     }
-
-    // Animate sheet elevation for press feedback
-    val sheetElevation by animateFloatAsState(
-        targetValue = 0f, // Could be used for pressed state
-        animationSpec = tween(150, 0, FastOutSlowInEasing),
-        label = "sheetElevation"
-    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -2,13 +2,12 @@ package com.eipna.centsation.habit.ui
 
 import android.text.format.DateFormat
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +70,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.FastOutSlowInEasing
 import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
@@ -196,30 +194,18 @@ fun HabitDashboardScreen(
                     }
 
                     items(trackers, key = { it.tracker.id }) { item ->
-                        AnimatedVisibility(
-                            enter = fadeIn(animationSpec = tween(300, delayMillis = 50)) +
-                                slideInVertically(
-                                    initialOffsetY = { 40.dp },
-                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
-                                ),
-                            exit = fadeOut(animationSpec = tween(200)) +
-                                slideOutVertically(
-                                    targetOffsetY = { -40.dp },
-                                    animationSpec = tween(200)
-                                )
-                        ) {
-                            TrackerCard(
-                                item = item,
-                                onLogReps = { delta -> viewModel.logReps(item.tracker.id, delta) },
-                                onMarkDone = {
-                                    if (item.remainingToday > 0) {
-                                        viewModel.logReps(item.tracker.id, item.remainingToday)
-                                    }
-                                },
-                                onEdit = { editingTracker = item.tracker },
-                                onDelete = { viewModel.deleteTracker(item) }
-                            )
-                        }
+                        TrackerCard(
+                            item = item,
+                            modifier = Modifier.animateItem(),
+                            onLogReps = { delta -> viewModel.logReps(item.tracker.id, delta) },
+                            onMarkDone = {
+                                if (item.remainingToday > 0) {
+                                    viewModel.logReps(item.tracker.id, item.remainingToday)
+                                }
+                            },
+                            onEdit = { editingTracker = item.tracker },
+                            onDelete = { viewModel.deleteTracker(item) }
+                        )
                     }
                 }
 
@@ -378,6 +364,7 @@ fun HabitHeroSummaryCard(trackers: List<TrackerWithProgress>) {
 @Composable
 fun TrackerCard(
     item: TrackerWithProgress,
+    modifier: Modifier = Modifier,
     onLogReps: (Int) -> Unit,
     onMarkDone: () -> Unit,
     onEdit: () -> Unit,
@@ -418,7 +405,7 @@ fun TrackerCard(
     )
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = tween(300, 0, FastOutSlowInEasing)

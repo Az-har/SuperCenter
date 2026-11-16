@@ -112,13 +112,15 @@ object HabitHeatmapUtil {
                 val trackersCompleted = trackerData.count { (count, target) -> count >= target }
                 val activeTrackersForDay = trackerData.size
 
-                // Level is based on percentage of trackers that met their goal
+                // Level is based on percentage of trackers that met their goal and surplus
+                val isSurplus = totalTrackers > 0 && trackersCompleted == totalTrackers && totalCompletedCount > totalTarget
                 val level = when {
-                    isFuture || activeTrackersForDay == 0 -> 0
-                    trackersCompleted == 0 -> 1  // Some activity, no goals met
-                    trackersCompleted < totalTrackers -> 2  // Partial completion
+                    isFuture || activeTrackersForDay == 0 || totalCompletedCount == 0 -> 0
+                    isSurplus -> 4  // Surplus (exceeded all targets)
                     trackersCompleted == totalTrackers -> 3  // All goals met
-                    else -> 4  // Surplus (exceeded all targets)
+                    trackersCompleted > 0 -> 2  // Partial completion (at least 1 goal met)
+                    totalCompletedCount > 0 -> 1  // Some activity, no goals met
+                    else -> 0
                 }
 
                 items.add(
