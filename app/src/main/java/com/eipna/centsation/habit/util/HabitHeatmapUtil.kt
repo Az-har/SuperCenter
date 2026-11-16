@@ -33,12 +33,153 @@ data class StreakStats(
     val isSurplusToday: Boolean = false
 )
 
+/**
+ * Represents aggregated heatmap data across all trackers for a single day.
+ */
+data class CombinedDayHeatmapItem(
+    val dateString: String,
+    val weekIndex: Int,
+    val dayOfWeek: Int,
+    val totalCompletedCount: Int,
+    val totalTarget: Int,
+    val trackersCompleted: Int,      // Number of trackers that met their goal
+    val totalTrackers: Int,          // Total active trackers for that day
+    val level: Int,
+    val isToday: Boolean,
+    val isFuture: Boolean
+)
+
+data class CombinedStreakStats(
+    val totalGoalsMet: Int,
+    val totalLogged: Int,
+    val totalTrackers: Int,
+    val activeTrackersToday: Int,
+    val trackersCompletedToday: Int
+)
+
 object HabitHeatmapUtil {
 
     private val MONTH_NAMES = arrayOf(
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     )
+
+    /**
+     * Generates a combined heatmap grid aggregating all trackers.
+     * Each cell shows the total completion level across all active trackers for that day.
+     */
+    fun generateCombinedHeatmapGridForWeeks(
+        trackersWithProgress: List<com.eipna.centsation.habit.data.model.TrackerWithProgress>,
+        numWeeks: Int,
+        todayDate: String = TrackerDateUtil.getTodayDateString()
+    ): Pair<List<CombinedDayHeatmapItem>, Int> {
+        if (trackersWithProgress.isEmpty()) {
+            return Pair(emptyList(), 0)
+        }
+
+        val safeWeeks = numWeeks.coerceIn(1, 54)
+        val todayCal = parseDate(todayDate)
+        val todayDow = todayCal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
+        val startCal = (todayCal.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_MONTH, -todayDow - (safeWeeks - 1) * 7)
+        }
+
+        // Build a map of date -> list of (count, target) for all trackers
+        val dateToTrackerData = mutableMapOf<String, MutableList<Pair<Int, Int>>>()
+        for (twp in trackersWithProgress) {
+            val target = twp.tracker.baseDailyTarget.coerceAtLeast(1)
+            for (log in twp.logs) {
+                dateToTrackerData.getOrPut(log.date) { mutableListOf() }
+                    .add(Pair(log.completedCount, target))
+            }
+        }
+
+        val todayAbsoluteIdx = (safeWeeks - 1) * 7 + todayDow
+        val items = ArrayList<CombinedDayHeatmapItem>(safeWeeks * 7)
+        val walkCal = startCal.clone() as Calendar
+        val totalTrackers = trackersWithProgress.size
+
+        for (week in 0 until safeWeeks) {
+            for (dow in 0 until 7) {
+                val idx = week * 7 + dow
+                val dStr = formatDate(walkCal)
+                val isFuture = idx > todayAbsoluteIdx
+                val isToday = idx == todayAbsoluteIdx
+
+                val trackerData = if (isFuture) emptyList() else (dateToTrackerData[dStr] ?: emptyList())
+                val totalCompletedCount = trackerData.sumOf { it.first }
+                val totalTarget = trackerData.sumOf { it.second }
+                val trackersCompleted = trackerData.count { (count, target) -> count >= target }
+                val activeTrackersForDay = trackerData.size
+
+                // Level is based on percentage of trackers that met their goal
+                val level = when {
+                    isFuture || activeTrackersForDay == 0 -> 0
+                    trackersCompleted == 0 -> 1  // Some activity, no goals met
+                    trackersCompleted < totalTrackers -> 2  // Partial completion
+                    trackersCompleted == totalTrackers -> 3  // All goals met
+                    else -> 4  // Surplus (exceeded all targets)
+                }
+
+                items.add(
+                    CombinedDayHeatmapItem(
+                        dateString = dStr,
+                        weekIndex = week,
+                        dayOfWeek = dow,
+                        totalCompletedCount = totalCompletedCount,
+                        totalTarget = totalTarget,
+                        trackersCompleted = trackersCompleted,
+                        totalTrackers = totalTrackers,
+                        level = level,
+                        isToday = isToday,
+                        isFuture = isFuture
+                    )
+                )
+                walkCal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+        }
+
+        return Pair(items, safeWeeks)
+    }
+
+    /**
+     * Calculates combined streak statistics across all trackers.
+     */
+    fun calculateCombinedStreakStats(
+        trackersWithProgress: List<com.eipna.centsation.habit.data.model.TrackerWithProgress>,
+        todayDate: String = TrackerDateUtil.getTodayDateString()
+    ): CombinedStreakStats {
+        if (trackersWithProgress.isEmpty()) {
+            return CombinedStreakStats(0, 0, 0, 0, 0)
+        }
+
+        var totalGoalsMet = 0
+        var totalLogged = 0
+        var trackersCompletedToday = 0
+
+        for (twp in trackersWithProgress) {
+            val target = twp.tracker.baseDailyTarget.coerceAtLeast(1)
+            for (log in twp.logs) {
+                totalLogged += log.completedCount
+                if (log.completedCount >= target) {
+                    totalGoalsMet++
+                }
+            }
+            // Check if this tracker met its goal today
+            val todayLog = twp.logs.firstOrNull { it.date == todayDate }
+            if (todayLog != null && todayLog.completedCount >= target) {
+                trackersCompletedToday++
+            }
+        }
+
+        return CombinedStreakStats(
+            totalGoalsMet = totalGoalsMet,
+            totalLogged = totalLogged,
+            totalTrackers = trackersWithProgress.size,
+            activeTrackersToday = trackersWithProgress.size,
+            trackersCompletedToday = trackersCompletedToday
+        )
+    }
 
     fun formatDate(cal: Calendar): String {
         return String.format(
@@ -595,6 +736,204 @@ object HabitHeatmapUtil {
                 drawMonths = showMonthLabels
             )
         }
+
+        return bitmap
+    }
+
+    /**
+     * Renders a combined heatmap bitmap aggregating all trackers.
+     * Level meanings for combined view:
+     * 0: No activity / future
+     * 1: Some activity, no goals met
+     * 2: Partial goals met (some trackers completed)
+     * 3: All goals met (all trackers completed)
+     * 4: Surplus (exceeded all targets)
+     */
+    fun renderCombinedHeatmapBitmap(
+        items: List<CombinedDayHeatmapItem>,
+        numWeeks: Int,
+        showMonthLabels: Boolean,
+        isDarkMode: Boolean,
+        widthPx: Int,
+        heightPx: Int,
+        density: Float
+    ): Bitmap {
+        val cappedDensity = density.coerceIn(1.0f, 1.5f)
+        val safeWidth = widthPx.coerceAtLeast(140)
+        val safeHeight = heightPx.coerceAtLeast(80)
+        val safeWeeks = numWeeks.coerceAtLeast(1)
+
+        val bitmap = createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
+        val canvas = Canvas(bitmap)
+
+        val bgColor = if (isDarkMode) 0xFF111620.toInt() else 0xFFFFFFFF.toInt()
+        canvas.drawColor(bgColor)
+
+        val emptyColor = if (isDarkMode) 0xFF1E2634.toInt() else 0xFFF1F5F9.toInt()
+        val emptyBorderColor = if (isDarkMode) 0xFF2D384B.toInt() else 0xFFCBD5E1.toInt()
+        val partialColor = if (isDarkMode) 0xFF6366F1.toInt() else 0xFF818CF8.toInt()       // Purple - some activity
+        val halfCompleteColor = if (isDarkMode) 0xFF8B5CF6.toInt() else 0xFFA78BFA.toInt() // Light purple - partial
+        val allCompleteColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()  // Green - all goals met
+        val surplusColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()      // Blue - surplus
+
+        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF475569.toInt()
+        val todayRingColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
+
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1f * cappedDensity
+        }
+        val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = todayRingColor
+            strokeWidth = 1.4f * cappedDensity
+        }
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = labelColor
+            textSize = 9f * cappedDensity
+        }
+
+        val showDayLabels = safeWidth >= (170f * cappedDensity).toInt()
+        val leftGutter = if (showDayLabels) 13f * cappedDensity else 2f * cappedDensity
+        val rightMargin = 4f * cappedDensity
+        val rect = RectF()
+        val ringRect = RectF()
+        var lastDrawnMonth = -1
+
+        fun drawCombinedBand(
+            bandItems: List<CombinedDayHeatmapItem>,
+            bandWeekOffset: Int,
+            bandWeekCount: Int,
+            bandTop: Float,
+            bandHeight: Float,
+            drawMonths: Boolean
+        ) {
+            if (bandWeekCount <= 0) return
+            val monthH = if (drawMonths) 12f * cappedDensity else 2f * cappedDensity
+            val bottomPad = 3f * cappedDensity
+            val availW = (safeWidth - leftGutter - rightMargin).coerceAtLeast(40f)
+            val availH = (bandHeight - monthH - bottomPad).coerceAtLeast(30f)
+
+            val rawPitch = min(availW / bandWeekCount, availH / 7f)
+            val minGap = if (bandWeekCount >= 35) 1.0f else 1.5f * cappedDensity
+            val gap = (rawPitch * 0.16f).coerceIn(minGap, 4f * cappedDensity)
+            val cellW = (availW - (bandWeekCount - 1) * gap) / bandWeekCount.toFloat()
+            val cellH = (availH - 6f * gap) / 7f
+            val cellSize = min(cellW, cellH).coerceAtLeast(1.5f)
+
+            val isMonthMode = bandWeekCount <= 5
+            val tileW = if (isMonthMode) cellW else cellSize
+            val tileH = if (isMonthMode) cellH else cellSize
+
+            val gridW = bandWeekCount * tileW + (bandWeekCount - 1) * gap
+            val gridH = 7f * tileH + 6f * gap
+            val startX = leftGutter + max(0f, (availW - gridW) / 2f)
+            val startY = bandTop + monthH + max(0f, (availH - gridH) / 2f)
+            val radius = (min(tileW, tileH) * 0.25f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
+
+            if (showDayLabels) {
+                textPaint.textSize = (min(tileW, tileH) * 0.65f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
+                val dayRows = intArrayOf(1, 3, 5)
+                val dayNames = arrayOf("M", "W", "F")
+                for (i in dayRows.indices) {
+                    val yCenter = startY + dayRows[i] * (tileH + gap) + tileH * 0.72f
+                    canvas.drawText(dayNames[i], 1f * cappedDensity, yCenter, textPaint)
+                }
+            }
+
+            if (drawMonths) {
+                textPaint.textSize = 9f * cappedDensity
+                var lastLabelX = -100f
+                for (w in 0 until bandWeekCount) {
+                    val globalWeek = bandWeekOffset + w
+                    val firstDay = bandItems.firstOrNull { it.weekIndex == globalWeek && it.dayOfWeek == 0 }
+                        ?: bandItems.firstOrNull { it.weekIndex == globalWeek }
+                        ?: continue
+                    val cal = parseDate(firstDay.dateString)
+                    val month = cal.get(Calendar.MONTH)
+                    val dom = cal.get(Calendar.DAY_OF_MONTH)
+                    if (month != lastDrawnMonth && (dom <= 7 || (w == 0 && bandWeekOffset == 0))) {
+                        val x = startX + w * (tileW + gap)
+                        if (x - lastLabelX >= 18f * cappedDensity) {
+                            val labelW = textPaint.measureText(MONTH_NAMES[month])
+                            val drawX = x.coerceAtMost(safeWidth - labelW - 2f)
+                            if (drawX - lastLabelX >= 14f * cappedDensity) {
+                                canvas.drawText(MONTH_NAMES[month], drawX, startY - 3f * cappedDensity, textPaint)
+                                lastDrawnMonth = month
+                                lastLabelX = drawX
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (item in bandItems) {
+                if (item.isFuture) continue
+                val localWeek = item.weekIndex - bandWeekOffset
+                if (localWeek !in 0 until bandWeekCount) continue
+
+                val x = startX + localWeek * (tileW + gap)
+                val y = startY + item.dayOfWeek * (tileH + gap)
+                rect.set(x, y, x + tileW, y + tileH)
+
+                when (item.level) {
+                    0 -> {
+                        fillPaint.color = emptyColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                        strokePaint.color = emptyBorderColor
+                        strokePaint.strokeWidth = 1f * cappedDensity
+                        canvas.drawRoundRect(rect, radius, radius, strokePaint)
+                    }
+                    1 -> {
+                        // Some activity, no goals met
+                        fillPaint.color = partialColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
+                    2 -> {
+                        // Partial goals met
+                        fillPaint.color = halfCompleteColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
+                    3 -> {
+                        // All goals met
+                        fillPaint.color = allCompleteColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
+                    else -> {
+                        // Surplus
+                        fillPaint.color = surplusColor
+                        canvas.drawRoundRect(rect, radius, radius, fillPaint)
+                    }
+                }
+
+                if (isMonthMode && item.trackersCompleted > 0 && tileH >= 9f * cappedDensity && tileW >= 16f * cappedDensity) {
+                    val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textAlign = Paint.Align.CENTER
+                        textSize = (tileH * 0.55f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
+                        color = if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
+                        isFakeBoldText = true
+                    }
+                    val yCenter = y + tileH / 2f + countPaint.textSize * 0.35f
+                    canvas.drawText("${item.trackersCompleted}/${item.totalTrackers}", x + tileW / 2f, yCenter, countPaint)
+                }
+
+                if (item.isToday) {
+                    val pad = 1.2f * cappedDensity
+                    ringRect.set(x - pad, y - pad, x + tileW + pad, y + tileH + pad)
+                    canvas.drawRoundRect(ringRect, radius + pad, radius + pad, todayRingPaint)
+                }
+            }
+        }
+
+        drawCombinedBand(
+            bandItems = items,
+            bandWeekOffset = 0,
+            bandWeekCount = safeWeeks,
+            bandTop = 0f,
+            bandHeight = safeHeight.toFloat(),
+            drawMonths = showMonthLabels
+        )
 
         return bitmap
     }

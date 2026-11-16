@@ -53,9 +53,9 @@ import com.eipna.centsation.R
 import com.eipna.centsation.habit.data.model.TrackerWithProgress
 import com.eipna.centsation.habit.data.repository.TrackerRepository
 import com.eipna.centsation.habit.ui.HabitTrackerActivity
-import com.eipna.centsation.habit.util.DayHeatmapItem
+import com.eipna.centsation.habit.util.CombinedDayHeatmapItem
+import com.eipna.centsation.habit.util.CombinedStreakStats
 import com.eipna.centsation.habit.util.HabitHeatmapUtil
-import com.eipna.centsation.habit.util.StreakStats
 import com.eipna.centsation.habit.util.TrackerDateUtil
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.math.roundToInt
@@ -101,47 +101,36 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         provideContent {
             val allTrackers by repository.getTrackersWithProgress().collectAsState(initial = initialTrackers)
             val prefs = currentState<Preferences>()
-            val savedIndex = prefs[KEY_TRACKER_INDEX] ?: 0
             val isOneWeek = prefs[KEY_IS_ONE_WEEK] ?: false
 
-            val activeIndex = if (allTrackers.isNotEmpty()) {
-                savedIndex.coerceIn(0, allTrackers.size - 1)
-            } else {
-                0
-            }
-
-            val currentItem = allTrackers.getOrNull(activeIndex)
             val today = TrackerDateUtil.getTodayDateString()
 
-            val streakStats = remember(currentItem, today) {
-                currentItem?.let {
-                    HabitHeatmapUtil.calculateStreakStats(
-                        tracker = it.tracker,
-                        logs = it.logs,
-                        todayDate = today
-                    )
-                }
+            // Generate combined heatmap for all trackers
+            val combinedStats = remember(allTrackers, today) {
+                HabitHeatmapUtil.calculateCombinedStreakStats(
+                    trackersWithProgress = allTrackers,
+                    todayDate = today
+                )
             }
 
-            val gridItems = remember(currentItem, today, isOneWeek) {
-                currentItem?.let {
-                    HabitHeatmapUtil.generateHeatmapGridForWeeks(
-                        tracker = it.tracker,
-                        logs = it.logs,
+            val combinedGridItems = remember(allTrackers, today, isOneWeek) {
+                if (allTrackers.isNotEmpty()) {
+                    HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+                        trackersWithProgress = allTrackers,
                         numWeeks = if (isOneWeek) 1 else 5,
                         todayDate = today
                     ).first
-                } ?: emptyList()
+                } else {
+                    emptyList()
+                }
             }
 
             GlanceTheme(colors = HabitGlanceTheme.colorsFor(context)) {
-                HeatmapWidgetContainer(
+                CombinedHeatmapWidgetContainer(
                     context = context,
-                    item = currentItem,
-                    stats = streakStats,
-                    gridItems = gridItems,
-                    totalCount = allTrackers.size,
-                    currentIndex = activeIndex,
+                    trackers = allTrackers,
+                    combinedStats = combinedStats,
+                    combinedGridItems = combinedGridItems,
                     isOneWeek = isOneWeek
                 )
             }
@@ -172,13 +161,11 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun HeatmapWidgetContainer(
+    private fun CombinedHeatmapWidgetContainer(
         context: Context,
-        item: TrackerWithProgress?,
-        stats: StreakStats?,
-        gridItems: List<DayHeatmapItem>,
-        totalCount: Int,
-        currentIndex: Int,
+        trackers: List<TrackerWithProgress>,
+        combinedStats: CombinedStreakStats,
+        combinedGridItems: List<CombinedDayHeatmapItem>,
         isOneWeek: Boolean
     ) {
         val size = LocalSize.current
@@ -191,18 +178,16 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 .background(GlanceTheme.colors.surface)
                 .padding(padDp)
         ) {
-            if (item == null || stats == null) {
+            if (trackers.isEmpty() || combinedGridItems.isEmpty()) {
                 EmptyHeatmapState()
             } else {
                 val spec = computeLayoutSpec(size, isOneWeek)
-                DedicatedHeatmapLayout(
+                CombinedHeatmapLayout(
                     context = context,
-                    item = item,
-                    stats = stats,
-                    gridItems = gridItems,
+                    trackers = trackers,
+                    combinedStats = combinedStats,
+                    combinedGridItems = combinedGridItems,
                     spec = spec,
-                    totalCount = totalCount,
-                    currentIndex = currentIndex,
                     isOneWeek = isOneWeek
                 )
             }
@@ -239,27 +224,22 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun DedicatedHeatmapLayout(
+    private fun CombinedHeatmapLayout(
         context: Context,
-        item: TrackerWithProgress,
-        stats: StreakStats,
-        gridItems: List<DayHeatmapItem>,
+        trackers: List<TrackerWithProgress>,
+        combinedStats: CombinedStreakStats,
+        combinedGridItems: List<CombinedDayHeatmapItem>,
         spec: HeatmapLayoutSpec,
-        totalCount: Int,
-        currentIndex: Int,
         isOneWeek: Boolean
     ) {
-        val tracker = item.tracker
         val isDark = HabitGlanceTheme.resolveDarkMode(context)
         val renderDensity = context.resources.displayMetrics.density.coerceIn(1.0f, 1.5f)
-        val isSurplus = item.isSurplusToday
 
-        val bitmap = remember(gridItems, spec, isDark, renderDensity) {
-            HabitHeatmapUtil.renderFullBleedHeatmapBitmap(
-                items = gridItems,
+        val bitmap = remember(combinedGridItems, spec, isDark, renderDensity) {
+            HabitHeatmapUtil.renderCombinedHeatmapBitmap(
+                items = combinedGridItems,
                 numWeeks = spec.targetWeeks,
                 showMonthLabels = spec.showMonthLabels,
-                stackedBands = spec.stackedBands,
                 isDarkMode = isDark,
                 widthPx = (spec.availWidthDp * renderDensity).roundToInt(),
                 heightPx = (spec.availHeightDp * renderDensity).roundToInt(),
@@ -270,7 +250,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
-            // Slim GitHub-style Header Bar
+            // Combined Header Bar showing all trackers
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -278,7 +258,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = tracker.title,
+                    text = "All Habits",
                     maxLines = 1,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
@@ -292,15 +272,16 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
 
                 Spacer(modifier = GlanceModifier.width(6.dp))
 
+                // Show trackers completed today
                 Text(
-                    text = "${item.todayCompletedReps}/${item.effectiveTargetToday}",
+                    text = "${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers}",
                     maxLines = 1,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
-                        color = if (isSurplus) {
-                            ColorProvider(if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7))
-                        } else if (item.todayCompletedReps > 0) {
+                        color = if (combinedStats.trackersCompletedToday == combinedStats.totalTrackers && combinedStats.totalTrackers > 0) {
+                            ColorProvider(if (isDark) Color(0xFF00E676) else Color(0xFF10B981))
+                        } else if (combinedStats.trackersCompletedToday > 0) {
                             GlanceTheme.colors.primary
                         } else {
                             GlanceTheme.colors.onSurfaceVariant
@@ -308,39 +289,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     )
                 )
 
-                Spacer(modifier = GlanceModifier.width(6.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        provider = ImageProvider(
-                            if (isSurplus) R.drawable.ic_fire_blue
-                            else if (stats.currentStreak > 0) R.drawable.ic_fire_amber
-                            else R.drawable.ic_fire_muted
-                        ),
-                        contentDescription = "Streak Fire",
-                        modifier = GlanceModifier.size(13.dp)
-                    )
-                    Spacer(modifier = GlanceModifier.width(2.dp))
-                    Text(
-                        text = "${stats.currentStreak}d",
-                        maxLines = 1,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = if (isSurplus) {
-                                ColorProvider(if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7))
-                            } else if (stats.currentStreak > 0) {
-                                GlanceTheme.colors.primary
-                            } else {
-                                GlanceTheme.colors.onSurfaceVariant
-                            }
-                        )
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.width(6.dp))
+                Spacer(modifier = GlanceModifier.width(8.dp))
 
                 Box(
                     modifier = GlanceModifier
@@ -361,34 +310,11 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                         )
                     )
                 }
-
-                if (totalCount > 1) {
-                    Spacer(modifier = GlanceModifier.width(6.dp))
-                    Box(
-                        modifier = GlanceModifier
-                            .height(32.dp)
-                            .cornerRadius(10.dp)
-                            .background(GlanceTheme.colors.secondaryContainer)
-                            .clickable(actionRunCallback<HabitHeatmapCycleAction>())
-                            .padding(horizontal = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${currentIndex + 1}/$totalCount ❯",
-                            maxLines = 1,
-                            style = TextStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = GlanceTheme.colors.onSecondaryContainer
-                            )
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = GlanceModifier.height(4.dp))
 
-            // Dedicated Full-Bleed Heatmap Matrix taking all remaining widget area
+            // Combined Heatmap Matrix
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -398,7 +324,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             ) {
                 Image(
                     provider = ImageProvider(bitmap),
-                    contentDescription = "Habit Contribution Heatmap",
+                    contentDescription = "Combined Habits Heatmap",
                     contentScale = ContentScale.Fit,
                     modifier = GlanceModifier.fillMaxSize()
                 )
@@ -406,10 +332,10 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
 
             if (spec.showFooterLegend) {
                 Spacer(modifier = GlanceModifier.height(4.dp))
-                HeatmapFooterLegend(
-                    completedDays = stats.completedDays,
-                    totalLogged = stats.totalLogged,
-                    unit = tracker.unit,
+                CombinedHeatmapFooterLegend(
+                    totalGoalsMet = combinedStats.totalGoalsMet,
+                    totalLogged = combinedStats.totalLogged,
+                    totalTrackers = combinedStats.totalTrackers,
                     isDark = isDark
                 )
             }
@@ -417,25 +343,26 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun HeatmapFooterLegend(
-        completedDays: Int,
+    private fun CombinedHeatmapFooterLegend(
+        totalGoalsMet: Int,
         totalLogged: Int,
-        unit: String,
+        totalTrackers: Int,
         isDark: Boolean
     ) {
+        // Color swatches for combined view: empty, partial activity, partial goals, all goals, surplus
         val swatchColors = if (isDark) {
             listOf(
-                Color(0xFF1E2634),
-                Color(0xFF00E676),
-                Color(0xFF00E676),
-                Color(0xFF38BDF8)
+                Color(0xFF1E2634),      // Empty
+                Color(0xFF6366F1),      // Some activity (purple)
+                Color(0xFF8B5CF6),      // Partial goals (light purple)
+                Color(0xFF00E676)       // All goals met (green)
             )
         } else {
             listOf(
-                Color(0xFFF1F5F9),
-                Color(0xFF10B981),
-                Color(0xFF10B981),
-                Color(0xFF0284C7)
+                Color(0xFFF1F5F9),      // Empty
+                Color(0xFF818CF8),      // Some activity (purple)
+                Color(0xFFA78BFA),      // Partial goals (light purple)
+                Color(0xFF10B981)       // All goals met (green)
             )
         }
 
@@ -445,9 +372,9 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 .height(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val goalsLabel = if (completedDays == 1) "goal" else "goals"
+            val goalsLabel = if (totalGoalsMet == 1) "goal" else "goals"
             Text(
-                text = "$completedDays $goalsLabel met • $totalLogged $unit total",
+                text = "$totalGoalsMet $goalsLabel met • $totalTrackers habits",
                 maxLines = 1,
                 style = TextStyle(
                     fontSize = 10.sp,
@@ -481,28 +408,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 )
             }
         }
-    }
-}
-
-class HabitHeatmapCycleAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        val repository = TrackerRepository.getInstance(context)
-        val totalCount = repository.getActiveTrackerCount()
-        if (totalCount <= 0) return
-
-        updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-            prefs.toMutablePreferences().apply {
-                val current = this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] ?: 0
-                this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] =
-                    HabitWidgetSyncManager.computeNextTrackerIndex(current, totalCount)
-            }
-        }
-
-        HabitHeatmapGlanceWidget().update(context, glanceId)
     }
 }
 
