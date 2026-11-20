@@ -4,6 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
+import android.text.TextPaint
+import android.text.TextUtils
 import androidx.core.graphics.createBitmap
 import com.eipna.centsation.habit.data.entity.TrackerEntity
 import com.eipna.centsation.habit.data.entity.TrackerLogEntity
@@ -431,321 +434,273 @@ object HabitHeatmapUtil {
         return Pair(items, safeWeeks)
     }
 
+    private data class HeatmapRenderCell(
+        val weekIndex: Int,
+        val dayOfWeek: Int,
+        val dateString: String,
+        val level: Int,
+        val isToday: Boolean,
+        val isFuture: Boolean
+    )
+
     /**
-     * Renders a full-bleed contribution heatmap scaling edge-to-edge across the widget bitmap.
-     * 1W Mode: 7 columns (Sun..Sat) across the full width with date numbers and large cards.
-     * 1M Mode: 7-column x 5-row monthly contribution calendar with S M T W T F S headers and rounded tiles.
-     * 4-Level Color Scheme:
-     * Level 0: Empty
-     * Level 1: Light green outline + translucent tint (even 1 rep!)
-     * Level 2: Solid emerald green (target met)
-     * Level 3: Electric blue (surplus / backlog catchup)
+     * Renders an authentic GitHub contribution graph matching Image 1:
+     * - Top: Month labels (Nov, Dec, Jan, Feb...) aligned above week start
+     * - Left: Day of week labels (Mon, Wed, Fri) aligned with rows 1, 3, 5
+     * - Grid: 53 columns x 7 rows of crisp square tiles with rounded corners
+     * - Colors:
+     *     - Level 0: GitHub slate #161B22 with #21262D border
+     *     - Level 1: #26A641 outline + subtle tint (even 1 rep!)
+     *     - Level 2: GitHub green #006D32 (partial goals) / #26A641 (target met)
+     *     - Level 3: Vibrant GitHub green #26A641 / #39D353 (all goals)
+     *     - Level 4 / Surplus: Electric blue #38BDF8
+     *     - Today: Highlighted with a crisp white ring
+     * - Footer: Status text on bottom left + Less [ ][ ][ ][ ][ ] More legend on bottom right
      */
-    fun renderFullBleedHeatmapBitmap(
-        items: List<DayHeatmapItem>,
+    private fun renderGitHubContributionGraph(
+        cells: List<HeatmapRenderCell>,
         numWeeks: Int,
         showMonthLabels: Boolean,
-        stackedBands: Boolean,
         isDarkMode: Boolean,
         widthPx: Int,
         heightPx: Int,
-        density: Float
+        density: Float,
+        isCombined: Boolean,
+        footerStatus: String? = null
     ): Bitmap {
-        val cappedDensity = density.coerceIn(1.0f, 1.5f)
-        val safeWidth = widthPx.coerceAtLeast(140)
-        val safeHeight = heightPx.coerceAtLeast(70)
-        val safeWeeks = numWeeks.coerceAtLeast(1)
+        val cappedDensity = density.coerceIn(1.0f, 3.0f)
+        val safeWidth = widthPx.coerceAtLeast(180)
+        val safeHeight = heightPx.coerceAtLeast(80)
+        val cols = numWeeks.coerceIn(1, 54)
 
         val bitmap = createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
-        val bgColor = if (isDarkMode) 0xFF111620.toInt() else 0xFFFFFFFF.toInt()
-        canvas.drawColor(bgColor)
+        // Palette matching GitHub Dark theme (#0D1117)
+        val canvasBg = if (isDarkMode) 0xFF0D1117.toInt() else 0xFFFFFFFF.toInt()
+        val textMuted = if (isDarkMode) 0xFF7D8590.toInt() else 0xFF57606A.toInt()
+        val emptyFill = if (isDarkMode) 0xFF161B22.toInt() else 0xFFEBEDF0.toInt()
+        val emptyStroke = if (isDarkMode) 0xFF21262D.toInt() else 0xFFD0D7DE.toInt()
 
-        val emptyColor = if (isDarkMode) 0xFF1E2634.toInt() else 0xFFF1F5F9.toInt()
-        val emptyBorderColor = if (isDarkMode) 0xFF2D384B.toInt() else 0xFFCBD5E1.toInt()
-        val partialOutlineColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
-        val partialFillColor = if (isDarkMode) 0x1A00E676.toInt() else 0x1A10B981.toInt()
-        val completedColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
-        val surplusBlueColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
+        // GitHub Contribution Green Progression
+        val greenL1 = if (isDarkMode) 0xFF0E4429.toInt() else 0xFF9BE9A8.toInt()
+        val greenL2 = if (isDarkMode) 0xFF006D32.toInt() else 0xFF40C463.toInt()
+        val greenL3 = if (isDarkMode) 0xFF26A641.toInt() else 0xFF30A14E.toInt()
+        val greenL4 = if (isDarkMode) 0xFF39D353.toInt() else 0xFF216E39.toInt()
+        val surplusBlue = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
 
-        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF475569.toInt()
-        val todayRingColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
+        val partialOutline = if (isDarkMode) 0xFF26A641.toInt() else 0xFF10B981.toInt()
+        val partialFill = if (isDarkMode) 0x2626A641.toInt() else 0x2610B981.toInt()
+        val todayRing = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
 
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 1f * cappedDensity
-        }
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
         val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            color = todayRingColor
+            color = todayRing
             strokeWidth = 1.6f * cappedDensity
         }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = labelColor
-            textSize = 9f * cappedDensity
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textMuted
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         }
+
+        canvas.drawColor(canvasBg)
+
+        // Layout Geometry
+        val padX = 6f * cappedDensity
+        val padY = 4f * cappedDensity
+        val headerH = if (showMonthLabels) 14f * cappedDensity else 2f * cappedDensity
+        val footerH = 15f * cappedDensity
+
+        // Measure left gutter for Day of Week labels ("Mon", "Wed", "Fri")
+        textPaint.textSize = (11f * cappedDensity).coerceIn(7.5f * cappedDensity, 9.5f * cappedDensity)
+        val wedW = textPaint.measureText("Wed")
+        val leftGutter = wedW + 4f * cappedDensity
+
+        val availW = (safeWidth - padX * 2f - leftGutter).coerceAtLeast(40f)
+        val availH = (safeHeight - padY * 2f - headerH - footerH).coerceAtLeast(30f)
+
+        val gapRatio = 0.22f
+        val rawTileW = availW / (cols + (cols - 1) * gapRatio)
+        val rawTileH = availH / (7f + 6f * gapRatio)
+        val tileSize = min(rawTileW, rawTileH).coerceAtLeast(2.5f)
+        val gap = (tileSize * gapRatio).coerceIn(1.2f * cappedDensity, 3.5f * cappedDensity)
+        val tileRadius = (tileSize * 0.22f).coerceIn(1.0f * cappedDensity, 3.0f * cappedDensity)
+
+        val actualGridW = cols * tileSize + (cols - 1) * gap
+        val actualGridH = 7f * tileSize + 6f * gap
+        val gridStartX = padX + leftGutter + max(0f, (availW - actualGridW) / 2f)
+        val gridStartY = padY + headerH + max(0f, (availH - actualGridH) / 2f)
 
         val rect = RectF()
         val ringRect = RectF()
 
-        // ----------------- 1-WEEK MODE (7 Days across full width) -----------------
-        if (safeWeeks == 1) {
-            val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            val cols = 7
-            val padX = 4f * cappedDensity
-            val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
-            val availH = (safeHeight - 4f * cappedDensity).coerceAtLeast(30f)
+        // 1. Draw Month Labels (Top Header)
+        if (showMonthLabels && headerH >= 10f * cappedDensity) {
+            textPaint.textAlign = Paint.Align.LEFT
+            textPaint.textSize = (headerH * 0.65f).coerceIn(7.5f * cappedDensity, 10f * cappedDensity)
+            val monthY = gridStartY - 3f * cappedDensity
+            var lastDrawnX = -1000f
 
-            val gap = (availW * 0.02f).coerceIn(2f * cappedDensity, 6f * cappedDensity)
-            val colW = (availW - (cols - 1) * gap) / cols
-            val cellW = colW.coerceAtLeast(10f)
-
-            val headerH = (availH * 0.28f).coerceIn(12f * cappedDensity, 18f * cappedDensity)
-            val tileH = (availH - headerH - 4f * cappedDensity).coerceAtLeast(16f)
-            val startX = padX
-            val startY = 2f * cappedDensity
-            val tileRadius = (cellW * 0.22f).coerceIn(3f * cappedDensity, 8f * cappedDensity)
-
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (cellW * 0.38f).coerceIn(8.5f * cappedDensity, 12f * cappedDensity)
-
-            for (i in 0 until 7) {
-                val item = items.getOrNull(i) ?: continue
-                val x = startX + i * (cellW + gap)
-                val centerX = x + cellW / 2f
-
-                val label = if (cellW >= 24f * cappedDensity) dayNames[item.dayOfWeek] else dayNames[item.dayOfWeek].substring(0, 1)
-                val cal = parseDate(item.dateString)
+            for (w in 0 until cols) {
+                val cell = cells.firstOrNull { it.weekIndex == w } ?: continue
+                val cal = parseDate(cell.dateString)
                 val dom = cal.get(Calendar.DAY_OF_MONTH)
-                val headerText = if (cellW >= 34f * cappedDensity) "$label $dom" else label
-
-                textPaint.color = if (item.isToday) (if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()) else labelColor
-                textPaint.isFakeBoldText = item.isToday
-                canvas.drawText(headerText, centerX, startY + headerH - 3f * cappedDensity, textPaint)
-
-                val tileTop = startY + headerH
-                rect.set(x, tileTop, x + cellW, tileTop + tileH)
-
-                when {
-                    item.isFuture || item.level == 0 -> {
-                        fillPaint.color = emptyColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = emptyBorderColor
-                        strokePaint.strokeWidth = 1f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                if (w == 0 || dom <= 7) {
+                    val mName = MONTH_NAMES[cal.get(Calendar.MONTH)]
+                    val x = gridStartX + w * (tileSize + gap)
+                    if (x - lastDrawnX >= 22f * cappedDensity && (gridStartX + actualGridW - x) >= 14f * cappedDensity) {
+                        canvas.drawText(mName, x, monthY, textPaint)
+                        lastDrawnX = x
                     }
-                    item.level == 1 || item.level == 2 -> {
-                        fillPaint.color = partialFillColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = partialOutlineColor
-                        strokePaint.strokeWidth = 1.8f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-                    }
-                    item.level == 3 -> {
-                        fillPaint.color = completedColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                    else -> {
-                        fillPaint.color = surplusBlueColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                }
-
-                if (item.completedCount > 0 && tileH >= 16f * cappedDensity) {
-                    val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                        textAlign = Paint.Align.CENTER
-                        textSize = (tileH * 0.42f).coerceIn(8.5f * cappedDensity, 14f * cappedDensity)
-                        color = if (item.level == 1) {
-                            partialOutlineColor
-                        } else {
-                            if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                        }
-                        isFakeBoldText = true
-                    }
-                    val yCenter = tileTop + tileH / 2f + countPaint.textSize * 0.35f
-                    canvas.drawText("${item.completedCount}", centerX, yCenter, countPaint)
-                }
-
-                if (item.isToday) {
-                    val pad = 1.4f * cappedDensity
-                    ringRect.set(x - pad, tileTop - pad, x + cellW + pad, tileTop + tileH + pad)
-                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
                 }
             }
-            return bitmap
         }
 
-        // ----------------- 1-MONTH CALENDAR GRID MODE (7 Columns x 5 Rows) -----------------
-        if (safeWeeks in 2..6) {
-            val dayHeaders = arrayOf("S", "M", "T", "W", "T", "F", "S")
-            val cols = 7
-            val rows = safeWeeks
-            val padX = 4f * cappedDensity
-            val padY = 2f * cappedDensity
-            val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
-            val availH = (safeHeight - padY * 2f).coerceAtLeast(30f)
+        // 2. Draw Day of Week Labels (Left Gutter: Mon, Wed, Fri)
+        textPaint.textAlign = Paint.Align.RIGHT
+        textPaint.textSize = (tileSize * 0.85f).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+        val fm = textPaint.fontMetrics
+        val vCenterOffset = (fm.descent + fm.ascent) / 2f
+        val dayLabelX = gridStartX - 3f * cappedDensity
 
-            val headerH = (availH * 0.16f).coerceIn(9f * cappedDensity, 14f * cappedDensity)
-            val gapX = (availW * 0.015f).coerceIn(2f * cappedDensity, 5f * cappedDensity)
-            val gapY = (availH * 0.02f).coerceIn(2f * cappedDensity, 4f * cappedDensity)
+        val monY = gridStartY + 1 * (tileSize + gap) + tileSize / 2f - vCenterOffset
+        canvas.drawText("Mon", dayLabelX, monY, textPaint)
 
-            val cellW = (availW - (cols - 1) * gapX) / cols
-            val cellH = (availH - headerH - (rows - 1) * gapY) / rows
-            val tileRadius = (min(cellW, cellH) * 0.22f).coerceIn(2f * cappedDensity, 6f * cappedDensity)
+        val wedY = gridStartY + 3 * (tileSize + gap) + tileSize / 2f - vCenterOffset
+        canvas.drawText("Wed", dayLabelX, wedY, textPaint)
 
-            // Draw Column Headers (S M T W T F S)
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (headerH * 0.75f).coerceIn(7.5f * cappedDensity, 10.5f * cappedDensity)
-            textPaint.color = labelColor
-            textPaint.isFakeBoldText = true
+        val friY = gridStartY + 5 * (tileSize + gap) + tileSize / 2f - vCenterOffset
+        canvas.drawText("Fri", dayLabelX, friY, textPaint)
 
-            for (col in 0 until 7) {
-                val cx = padX + col * (cellW + gapX) + cellW / 2f
-                canvas.drawText(dayHeaders[col], cx, padY + headerH - 2f * cappedDensity, textPaint)
+        // 3. Draw Grid Tiles (53 columns x 7 rows)
+        for (cell in cells) {
+            if (cell.weekIndex !in 0 until cols || cell.dayOfWeek !in 0 until 7) continue
+            val x = gridStartX + cell.weekIndex * (tileSize + gap)
+            val y = gridStartY + cell.dayOfWeek * (tileSize + gap)
+            rect.set(x, y, x + tileSize, y + tileSize)
+
+            if (cell.isFuture) {
+                fillPaint.color = emptyFill
+                canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                strokePaint.color = emptyStroke
+                strokePaint.strokeWidth = 0.6f * cappedDensity
+                canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                continue
             }
 
-            // Draw Month Grid Tiles
-            val startY = padY + headerH
-            for (item in items) {
-                if (item.weekIndex !in 0 until rows || item.dayOfWeek !in 0 until cols) continue
-                val x = padX + item.dayOfWeek * (cellW + gapX)
-                val y = startY + item.weekIndex * (cellH + gapY)
-                val centerX = x + cellW / 2f
-                rect.set(x, y, x + cellW, y + cellH)
-
-                when {
-                    item.isFuture -> {
-                        fillPaint.color = emptyColor
+            if (isCombined) {
+                when (cell.level) {
+                    0 -> {
+                        fillPaint.color = emptyFill
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                    item.level == 0 -> {
-                        fillPaint.color = emptyColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = emptyBorderColor
+                        strokePaint.color = emptyStroke
                         strokePaint.strokeWidth = 0.8f * cappedDensity
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-
-                        if (cellH >= 11f * cappedDensity && cellW >= 16f * cappedDensity) {
-                            val cal = parseDate(item.dateString)
-                            val dom = cal.get(Calendar.DAY_OF_MONTH)
-                            val domPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.5f).coerceIn(6.5f * cappedDensity, 9.5f * cappedDensity)
-                                color = emptyBorderColor
-                            }
-                            canvas.drawText("$dom", centerX, y + cellH / 2f + domPaint.textSize * 0.35f, domPaint)
-                        }
                     }
-                    item.level == 1 -> {
-                        fillPaint.color = partialFillColor
+                    1 -> {
+                        fillPaint.color = partialFill
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = partialOutlineColor
-                        strokePaint.strokeWidth = 1.6f * cappedDensity
+                        strokePaint.color = partialOutline
+                        strokePaint.strokeWidth = 1.2f * cappedDensity
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-
-                        if (item.completedCount > 0 && cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 11f * cappedDensity)
-                                color = partialOutlineColor
-                                isFakeBoldText = true
-                            }
-                            canvas.drawText("${item.completedCount}", centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
                     }
-                    item.level == 2 -> {
-                        fillPaint.color = completedColor
+                    2 -> {
+                        fillPaint.color = greenL2
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-
-                        if (cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 11f * cappedDensity)
-                                color = if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                                isFakeBoldText = true
-                            }
-                            val text = if (cellW >= 24f * cappedDensity) "${item.completedCount}" else "✓"
-                            canvas.drawText(text, centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
+                    }
+                    3 -> {
+                        fillPaint.color = greenL3
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
                     }
                     else -> {
-                        fillPaint.color = surplusBlueColor
+                        fillPaint.color = surplusBlue
                         canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-
-                        if (cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 11f * cappedDensity)
-                                color = if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                                isFakeBoldText = true
-                            }
-                            canvas.drawText("${item.completedCount}", centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
                     }
                 }
-
-                if (item.isToday) {
-                    val pad = 1.2f * cappedDensity
-                    ringRect.set(x - pad, y - pad, x + cellW + pad, y + cellH + pad)
-                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
+            } else {
+                when (cell.level) {
+                    0 -> {
+                        fillPaint.color = emptyFill
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = emptyStroke
+                        strokePaint.strokeWidth = 0.8f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    1 -> {
+                        fillPaint.color = partialFill
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = partialOutline
+                        strokePaint.strokeWidth = 1.2f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    2 -> {
+                        fillPaint.color = greenL3
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
+                    else -> {
+                        fillPaint.color = surplusBlue
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
                 }
             }
-            return bitmap
+
+            if (cell.isToday) {
+                val pad = 0.8f * cappedDensity
+                ringRect.set(x - pad, y - pad, x + tileSize + pad, y + tileSize + pad)
+                canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
+            }
         }
 
-        // ----------------- MULTI-WEEK BANDS (Fallback for > 6 weeks) -----------------
-        val leftGutter = 13f * cappedDensity
-        val rightMargin = 4f * cappedDensity
-        val monthH = if (showMonthLabels) 12f * cappedDensity else 2f * cappedDensity
-        val availW = (safeWidth - leftGutter - rightMargin).coerceAtLeast(40f)
-        val availH = (safeHeight - monthH - 3f * cappedDensity).coerceAtLeast(30f)
+        // 4. Draw Footer (Bottom Left Status + Bottom Right Legend)
+        textPaint.textSize = (footerH * 0.60f).coerceIn(7.5f * cappedDensity, 9.5f * cappedDensity)
+        val footerBaseline = safeHeight - padY - 2f * cappedDensity
 
-        val rawPitch = min(availW / safeWeeks, availH / 7f)
-        val gap = (rawPitch * 0.16f).coerceIn(1.5f * cappedDensity, 4f * cappedDensity)
-        val cellW = (availW - (safeWeeks - 1) * gap) / safeWeeks.toFloat()
-        val cellH = (availH - 6f * gap) / 7f
-        val cellSize = min(cellW, cellH).coerceAtLeast(1.5f)
-        val radius = (cellSize * 0.25f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
+        // Bottom Right Legend: Less [ ][ ][ ][ ][ ] More
+        val swatchSize = (tileSize * 0.9f).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+        val swatchGap = (gap * 0.9f).coerceIn(1.5f * cappedDensity, 2.5f * cappedDensity)
+        val lessW = textPaint.measureText("Less")
+        val moreW = textPaint.measureText("More")
+        val legendSwatchesW = 5 * swatchSize + 4 * swatchGap
+        val totalLegendW = lessW + 4f * cappedDensity + legendSwatchesW + 4f * cappedDensity + moreW
+        var curX = safeWidth - padX - totalLegendW
 
-        val gridW = safeWeeks * cellSize + (safeWeeks - 1) * gap
-        val gridH = 7f * cellSize + 6f * gap
-        val startX = leftGutter + max(0f, (availW - gridW) / 2f)
-        val startY = monthH + max(0f, (availH - gridH) / 2f)
+        textPaint.textAlign = Paint.Align.LEFT
+        canvas.drawText("Less", curX, footerBaseline, textPaint)
+        curX += lessW + 4f * cappedDensity
 
-        for (item in items) {
-            if (item.isFuture) continue
-            val x = startX + item.weekIndex * (cellSize + gap)
-            val y = startY + item.dayOfWeek * (cellSize + gap)
-            rect.set(x, y, x + cellSize, y + cellSize)
-
-            when (item.level) {
-                0 -> {
-                    fillPaint.color = emptyColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
-                1, 2 -> {
-                    fillPaint.color = partialFillColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                    strokePaint.color = partialOutlineColor
-                    strokePaint.strokeWidth = 1.2f * cappedDensity
-                    canvas.drawRoundRect(rect, radius, radius, strokePaint)
-                }
-                3 -> {
-                    fillPaint.color = completedColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
-                else -> {
-                    fillPaint.color = surplusBlueColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
+        val legendColors = intArrayOf(emptyFill, greenL1, greenL2, greenL3, greenL4)
+        for (i in 0 until 5) {
+            val sRect = RectF(
+                curX,
+                footerBaseline - swatchSize + textPaint.descent(),
+                curX + swatchSize,
+                footerBaseline + textPaint.descent()
+            )
+            fillPaint.color = legendColors[i]
+            canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
+            if (i == 0) {
+                strokePaint.color = emptyStroke
+                strokePaint.strokeWidth = 0.6f * cappedDensity
+                canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, strokePaint)
             }
+            curX += swatchSize + swatchGap
+        }
 
-            if (item.isToday) {
-                val pad = 1.2f * cappedDensity
-                ringRect.set(x - pad, y - pad, x + cellSize + pad, y + cellSize + pad)
-                canvas.drawRoundRect(ringRect, radius + pad, radius + pad, todayRingPaint)
+        curX += 4f * cappedDensity - swatchGap
+        canvas.drawText("More", curX, footerBaseline, textPaint)
+
+        // Bottom Left Status
+        if (!footerStatus.isNullOrEmpty()) {
+            val maxStatusW = safeWidth - padX - totalLegendW - padX - 8f * cappedDensity
+            if (maxStatusW > 30f * cappedDensity) {
+                val displayStatus = if (textPaint.measureText(footerStatus) > maxStatusW) {
+                    TextUtils.ellipsize(footerStatus, textPaint, maxStatusW, TextUtils.TruncateAt.END).toString()
+                } else {
+                    footerStatus
+                }
+                canvas.drawText(displayStatus, padX, footerBaseline, textPaint)
             }
         }
 
@@ -753,321 +708,75 @@ object HabitHeatmapUtil {
     }
 
     /**
-     * Renders a combined heatmap bitmap aggregating all trackers.
-     * Uses the exact same 7-column calendar grid and 4-level color scheme:
-     * Level 0: None
-     * Level 1: Some activity (light green outline + translucent tint)
-     * Level 2: All goals met (solid emerald green)
-     * Level 3: Surplus (electric blue)
+     * Renders a full-bleed GitHub contribution heatmap scaling edge-to-edge across the widget bitmap.
+     */
+    fun renderFullBleedHeatmapBitmap(
+        items: List<DayHeatmapItem>,
+        numWeeks: Int,
+        showMonthLabels: Boolean = true,
+        stackedBands: Boolean = false,
+        isDarkMode: Boolean,
+        widthPx: Int,
+        heightPx: Int,
+        density: Float,
+        footerStatus: String? = null
+    ): Bitmap {
+        val cells = items.map {
+            HeatmapRenderCell(
+                weekIndex = it.weekIndex,
+                dayOfWeek = it.dayOfWeek,
+                dateString = it.dateString,
+                level = it.level,
+                isToday = it.isToday,
+                isFuture = it.isFuture
+            )
+        }
+        return renderGitHubContributionGraph(
+            cells = cells,
+            numWeeks = numWeeks,
+            showMonthLabels = showMonthLabels,
+            isDarkMode = isDarkMode,
+            widthPx = widthPx,
+            heightPx = heightPx,
+            density = density,
+            isCombined = false,
+            footerStatus = footerStatus
+        )
+    }
+
+    /**
+     * Renders a combined heatmap bitmap aggregating all trackers into an authentic GitHub contribution graph.
      */
     fun renderCombinedHeatmapBitmap(
         items: List<CombinedDayHeatmapItem>,
         numWeeks: Int,
-        showMonthLabels: Boolean,
+        showMonthLabels: Boolean = true,
         isDarkMode: Boolean,
         widthPx: Int,
         heightPx: Int,
-        density: Float
+        density: Float,
+        footerStatus: String? = null
     ): Bitmap {
-        val cappedDensity = density.coerceIn(1.0f, 1.5f)
-        val safeWidth = widthPx.coerceAtLeast(140)
-        val safeHeight = heightPx.coerceAtLeast(70)
-        val safeWeeks = numWeeks.coerceAtLeast(1)
-
-        val bitmap = createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
-        val canvas = Canvas(bitmap)
-
-        val bgColor = if (isDarkMode) 0xFF111620.toInt() else 0xFFFFFFFF.toInt()
-        canvas.drawColor(bgColor)
-
-        val emptyColor = if (isDarkMode) 0xFF1E2634.toInt() else 0xFFF1F5F9.toInt()
-        val emptyBorderColor = if (isDarkMode) 0xFF2D384B.toInt() else 0xFFCBD5E1.toInt()
-        val partialOutlineColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
-        val partialFillColor = if (isDarkMode) 0x1A00E676.toInt() else 0x1A10B981.toInt()
-        val completedColor = if (isDarkMode) 0xFF00E676.toInt() else 0xFF10B981.toInt()
-        val surplusBlueColor = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
-
-        val labelColor = if (isDarkMode) 0xFF94A3B8.toInt() else 0xFF475569.toInt()
-        val todayRingColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
-
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 1f * cappedDensity
+        val cells = items.map {
+            HeatmapRenderCell(
+                weekIndex = it.weekIndex,
+                dayOfWeek = it.dayOfWeek,
+                dateString = it.dateString,
+                level = it.level,
+                isToday = it.isToday,
+                isFuture = it.isFuture
+            )
         }
-        val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = todayRingColor
-            strokeWidth = 1.6f * cappedDensity
-        }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = labelColor
-            textSize = 9f * cappedDensity
-        }
-
-        val rect = RectF()
-        val ringRect = RectF()
-
-        // ----------------- COMBINED 1-WEEK MODE (7 Columns) -----------------
-        if (safeWeeks == 1) {
-            val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            val cols = 7
-            val padX = 4f * cappedDensity
-            val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
-            val availH = (safeHeight - 4f * cappedDensity).coerceAtLeast(30f)
-
-            val gap = (availW * 0.02f).coerceIn(2f * cappedDensity, 6f * cappedDensity)
-            val colW = (availW - (cols - 1) * gap) / cols
-            val cellW = colW.coerceAtLeast(10f)
-
-            val headerH = (availH * 0.28f).coerceIn(12f * cappedDensity, 18f * cappedDensity)
-            val tileH = (availH - headerH - 4f * cappedDensity).coerceAtLeast(16f)
-            val startX = padX
-            val startY = 2f * cappedDensity
-            val tileRadius = (cellW * 0.22f).coerceIn(3f * cappedDensity, 8f * cappedDensity)
-
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (cellW * 0.38f).coerceIn(8.5f * cappedDensity, 12f * cappedDensity)
-
-            for (i in 0 until 7) {
-                val item = items.getOrNull(i) ?: continue
-                val x = startX + i * (cellW + gap)
-                val centerX = x + cellW / 2f
-
-                val label = if (cellW >= 24f * cappedDensity) dayNames[item.dayOfWeek] else dayNames[item.dayOfWeek].substring(0, 1)
-                val cal = parseDate(item.dateString)
-                val dom = cal.get(Calendar.DAY_OF_MONTH)
-                val headerText = if (cellW >= 34f * cappedDensity) "$label $dom" else label
-
-                textPaint.color = if (item.isToday) (if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()) else labelColor
-                textPaint.isFakeBoldText = item.isToday
-                canvas.drawText(headerText, centerX, startY + headerH - 3f * cappedDensity, textPaint)
-
-                val tileTop = startY + headerH
-                rect.set(x, tileTop, x + cellW, tileTop + tileH)
-
-                when {
-                    item.isFuture || item.level == 0 -> {
-                        fillPaint.color = emptyColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = emptyBorderColor
-                        strokePaint.strokeWidth = 1f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-                    }
-                    item.level == 1 || item.level == 2 -> {
-                        fillPaint.color = partialFillColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = partialOutlineColor
-                        strokePaint.strokeWidth = 1.8f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-                    }
-                    item.level == 3 -> {
-                        fillPaint.color = completedColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                    else -> {
-                        fillPaint.color = surplusBlueColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                }
-
-                if (item.totalCompletedCount > 0 && tileH >= 16f * cappedDensity) {
-                    val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                        textAlign = Paint.Align.CENTER
-                        textSize = (tileH * 0.42f).coerceIn(8f * cappedDensity, 13f * cappedDensity)
-                        color = if (item.level == 1) {
-                            partialOutlineColor
-                        } else {
-                            if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                        }
-                        isFakeBoldText = true
-                    }
-                    val yCenter = tileTop + tileH / 2f + countPaint.textSize * 0.35f
-                    val labelText = "${item.trackersCompleted}/${item.totalTrackers}"
-                    canvas.drawText(labelText, centerX, yCenter, countPaint)
-                }
-
-                if (item.isToday) {
-                    val pad = 1.4f * cappedDensity
-                    ringRect.set(x - pad, tileTop - pad, x + cellW + pad, tileTop + tileH + pad)
-                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
-                }
-            }
-            return bitmap
-        }
-
-        // ----------------- COMBINED 1-MONTH CALENDAR GRID MODE (7 Columns x 5 Rows) -----------------
-        if (safeWeeks in 2..6) {
-            val dayHeaders = arrayOf("S", "M", "T", "W", "T", "F", "S")
-            val cols = 7
-            val rows = safeWeeks
-            val padX = 4f * cappedDensity
-            val padY = 2f * cappedDensity
-            val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
-            val availH = (safeHeight - padY * 2f).coerceAtLeast(30f)
-
-            val headerH = (availH * 0.16f).coerceIn(9f * cappedDensity, 14f * cappedDensity)
-            val gapX = (availW * 0.015f).coerceIn(2f * cappedDensity, 5f * cappedDensity)
-            val gapY = (availH * 0.02f).coerceIn(2f * cappedDensity, 4f * cappedDensity)
-
-            val cellW = (availW - (cols - 1) * gapX) / cols
-            val cellH = (availH - headerH - (rows - 1) * gapY) / rows
-            val tileRadius = (min(cellW, cellH) * 0.22f).coerceIn(2f * cappedDensity, 6f * cappedDensity)
-
-            // Draw Column Headers (S M T W T F S)
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (headerH * 0.75f).coerceIn(7.5f * cappedDensity, 10.5f * cappedDensity)
-            textPaint.color = labelColor
-            textPaint.isFakeBoldText = true
-
-            for (col in 0 until 7) {
-                val cx = padX + col * (cellW + gapX) + cellW / 2f
-                canvas.drawText(dayHeaders[col], cx, padY + headerH - 2f * cappedDensity, textPaint)
-            }
-
-            // Draw Month Grid Tiles
-            val startY = padY + headerH
-            for (item in items) {
-                if (item.weekIndex !in 0 until rows || item.dayOfWeek !in 0 until cols) continue
-                val x = padX + item.dayOfWeek * (cellW + gapX)
-                val y = startY + item.weekIndex * (cellH + gapY)
-                val centerX = x + cellW / 2f
-                rect.set(x, y, x + cellW, y + cellH)
-
-                when {
-                    item.isFuture -> {
-                        fillPaint.color = emptyColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                    }
-                    item.level == 0 -> {
-                        fillPaint.color = emptyColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = emptyBorderColor
-                        strokePaint.strokeWidth = 0.8f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-
-                        if (cellH >= 11f * cappedDensity && cellW >= 16f * cappedDensity) {
-                            val cal = parseDate(item.dateString)
-                            val dom = cal.get(Calendar.DAY_OF_MONTH)
-                            val domPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.5f).coerceIn(6.5f * cappedDensity, 9.5f * cappedDensity)
-                                color = emptyBorderColor
-                            }
-                            canvas.drawText("$dom", centerX, y + cellH / 2f + domPaint.textSize * 0.35f, domPaint)
-                        }
-                    }
-                    item.level == 1 || item.level == 2 -> {
-                        fillPaint.color = partialFillColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-                        strokePaint.color = partialOutlineColor
-                        strokePaint.strokeWidth = 1.6f * cappedDensity
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
-
-                        if (item.totalCompletedCount > 0 && cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
-                                color = partialOutlineColor
-                                isFakeBoldText = true
-                            }
-                            canvas.drawText("${item.trackersCompleted}/${item.totalTrackers}", centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
-                    }
-                    item.level == 3 -> {
-                        fillPaint.color = completedColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-
-                        if (cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
-                                color = if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                                isFakeBoldText = true
-                            }
-                            val text = if (cellW >= 24f * cappedDensity) "${item.trackersCompleted}/${item.totalTrackers}" else "✓"
-                            canvas.drawText(text, centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
-                    }
-                    else -> {
-                        fillPaint.color = surplusBlueColor
-                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
-
-                        if (cellH >= 9f * cappedDensity) {
-                            val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                textAlign = Paint.Align.CENTER
-                                textSize = (cellH * 0.55f).coerceIn(7f * cappedDensity, 10f * cappedDensity)
-                                color = if (isDarkMode) 0xFF0B0E14.toInt() else 0xFFFFFFFF.toInt()
-                                isFakeBoldText = true
-                            }
-                            canvas.drawText("${item.trackersCompleted}/${item.totalTrackers}", centerX, y + cellH / 2f + countPaint.textSize * 0.35f, countPaint)
-                        }
-                    }
-                }
-
-                if (item.isToday) {
-                    val pad = 1.2f * cappedDensity
-                    ringRect.set(x - pad, y - pad, x + cellW + pad, y + cellH + pad)
-                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
-                }
-            }
-            return bitmap
-        }
-
-        // ----------------- MULTI-WEEK BANDS (Fallback for > 6 weeks) -----------------
-        val leftGutter = 13f * cappedDensity
-        val rightMargin = 4f * cappedDensity
-        val monthH = if (showMonthLabels) 12f * cappedDensity else 2f * cappedDensity
-        val availW = (safeWidth - leftGutter - rightMargin).coerceAtLeast(40f)
-        val availH = (safeHeight - monthH - 3f * cappedDensity).coerceAtLeast(30f)
-
-        val rawPitch = min(availW / safeWeeks, availH / 7f)
-        val gap = (rawPitch * 0.16f).coerceIn(1.5f * cappedDensity, 4f * cappedDensity)
-        val cellW = (availW - (safeWeeks - 1) * gap) / safeWeeks.toFloat()
-        val cellH = (availH - 6f * gap) / 7f
-        val cellSize = min(cellW, cellH).coerceAtLeast(1.5f)
-        val radius = (cellSize * 0.25f).coerceIn(1.5f * cappedDensity, 5f * cappedDensity)
-
-        val gridW = safeWeeks * cellSize + (safeWeeks - 1) * gap
-        val gridH = 7f * cellSize + 6f * gap
-        val startX = leftGutter + max(0f, (availW - gridW) / 2f)
-        val startY = monthH + max(0f, (availH - gridH) / 2f)
-
-        for (item in items) {
-            if (item.isFuture) continue
-            val x = startX + item.weekIndex * (cellSize + gap)
-            val y = startY + item.dayOfWeek * (cellSize + gap)
-            rect.set(x, y, x + cellSize, y + cellSize)
-
-            when (item.level) {
-                0 -> {
-                    fillPaint.color = emptyColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
-                1, 2 -> {
-                    fillPaint.color = partialFillColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                    strokePaint.color = partialOutlineColor
-                    strokePaint.strokeWidth = 1.2f * cappedDensity
-                    canvas.drawRoundRect(rect, radius, radius, strokePaint)
-                }
-                3 -> {
-                    fillPaint.color = completedColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
-                else -> {
-                    fillPaint.color = surplusBlueColor
-                    canvas.drawRoundRect(rect, radius, radius, fillPaint)
-                }
-            }
-
-            if (item.isToday) {
-                val pad = 1.2f * cappedDensity
-                ringRect.set(x - pad, y - pad, x + cellSize + pad, y + cellSize + pad)
-                canvas.drawRoundRect(ringRect, radius + pad, radius + pad, todayRingPaint)
-            }
-        }
-
-        return bitmap
+        return renderGitHubContributionGraph(
+            cells = cells,
+            numWeeks = numWeeks,
+            showMonthLabels = showMonthLabels,
+            isDarkMode = isDarkMode,
+            widthPx = widthPx,
+            heightPx = heightPx,
+            density = density,
+            isCombined = true,
+            footerStatus = footerStatus
+        )
     }
 }

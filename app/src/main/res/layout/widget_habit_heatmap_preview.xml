@@ -17,25 +17,12 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="Pushups  🔥 14d"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="@color/md_theme_onSurface" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="24dp"
-            android:gravity="center"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp"
-            android:text="1M"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="@color/md_theme_onPrimaryContainer"
-            android:background="@drawable/bg_widget_pill_primary" />
     </LinearLayout>
 
     <!-- 7-Column Contribution Calendar Grid Preview (Sun..Sat x 4 weeks) -->

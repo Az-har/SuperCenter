@@ -3,48 +3,80 @@
     android:height="120dp"
     android:viewportWidth="250"
     android:viewportHeight="120">
-    <!-- Card Background -->
+    <!-- Dark Card Background (GitHub Canvas Dark) -->
     <path
-        android:fillColor="#1E2634"
-        android:strokeColor="#334155"
+        android:fillColor="#0D1117"
+        android:strokeColor="#30363D"
         android:strokeWidth="1"
         android:pathData="M12,0 L238,0 A12,12 0 0,1 250,12 L250,108 A12,12 0 0,1 238,120 L12,120 A12,12 0 0,1 0,108 L0,12 A12,12 0 0,1 12,0 Z" />
-    <!-- Header Title & Range Pill -->
+
+    <!-- Header Title: "Pushups" & Streak Flame -->
     <path
-        android:fillColor="#F8FAFC"
-        android:pathData="M16,14 L70,14 A2,2 0 0,1 72,16 L72,22 A2,2 0 0,1 70,24 L16,24 Z" />
+        android:fillColor="#F0F6FC"
+        android:pathData="M16,13 L80,13 A2,2 0 0,1 82,15 L82,21 A2,2 0 0,1 80,23 L16,23 Z" />
     <path
-        android:fillColor="#00E676"
-        android:pathData="M210,12 L234,12 A4,4 0 0,1 238,16 L238,22 A4,4 0 0,1 234,26 L210,26 A4,4 0 0,1 206,22 L206,16 A4,4 0 0,1 210,12 Z" />
-    <!-- Heatmap Grid Row 1 -->
-    <path android:fillColor="#2D384B" android:pathData="M16,36 L44,36 A3,3 0 0,1 47,39 L47,47 A3,3 0 0,1 44,50 L16,50 A3,3 0 0,1 13,47 L13,39 A3,3 0 0,1 16,36 Z" />
-    <path android:fillColor="#00E676" android:pathData="M49,36 L77,36 A3,3 0 0,1 80,39 L80,47 A3,3 0 0,1 77,50 L49,50 A3,3 0 0,1 46,47 L46,39 A3,3 0 0,1 49,36 Z" />
-    <path android:fillColor="#00E676" android:pathData="M82,36 L110,36 A3,3 0 0,1 113,39 L113,47 A3,3 0 0,1 110,50 L82,50 A3,3 0 0,1 79,47 L79,39 A3,3 0 0,1 82,36 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M115,36 L143,36 A3,3 0 0,1 146,39 L146,47 A3,3 0 0,1 143,50 L115,50 A3,3 0 0,1 112,47 L112,39 A3,3 0 0,1 115,36 Z" />
-    <path android:fillColor="#00E676" android:pathData="M148,36 L176,36 A3,3 0 0,1 179,39 L179,47 A3,3 0 0,1 176,50 L148,50 A3,3 0 0,1 145,47 L145,39 A3,3 0 0,1 148,36 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M181,36 L209,36 A3,3 0 0,1 212,39 L212,47 A3,3 0 0,1 209,50 L181,50 A3,3 0 0,1 178,47 L178,39 A3,3 0 0,1 181,36 Z" />
-    <path android:fillColor="#00E676" android:pathData="M214,36 L237,36 A3,3 0 0,1 240,39 L240,47 A3,3 0 0,1 237,50 L214,50 A3,3 0 0,1 211,47 L211,39 A3,3 0 0,1 214,36 Z" />
-    <!-- Heatmap Grid Row 2 -->
-    <path android:fillColor="#00E676" android:pathData="M16,54 L44,54 A3,3 0 0,1 47,57 L47,65 A3,3 0 0,1 44,68 L16,68 A3,3 0 0,1 13,65 L13,57 A3,3 0 0,1 16,54 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M49,54 L77,54 A3,3 0 0,1 80,57 L80,65 A3,3 0 0,1 77,68 L49,68 A3,3 0 0,1 46,57 L46,57 A3,3 0 0,1 49,54 Z" />
-    <path android:fillColor="#00E676" android:pathData="M82,54 L110,54 A3,3 0 0,1 113,57 L113,65 A3,3 0 0,1 110,68 L82,68 A3,3 0 0,1 79,65 L79,57 A3,3 0 0,1 82,54 Z" />
-    <path android:fillColor="#00E676" android:pathData="M115,54 L143,54 A3,3 0 0,1 146,57 L146,65 A3,3 0 0,1 143,68 L115,68 A3,3 0 0,1 112,65 L112,57 A3,3 0 0,1 115,54 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M148,54 L176,54 A3,3 0 0,1 179,57 L179,65 A3,3 0 0,1 176,68 L148,68 A3,3 0 0,1 145,65 L145,57 A3,3 0 0,1 148,54 Z" />
-    <path android:fillColor="#00E676" android:pathData="M181,54 L209,54 A3,3 0 0,1 212,57 L212,65 A3,3 0 0,1 209,68 L181,68 A3,3 0 0,1 178,65 L178,57 A3,3 0 0,1 181,54 Z" />
-    <path android:fillColor="#2D384B" android:pathData="M214,54 L237,54 A3,3 0 0,1 240,57 L240,65 A3,3 0 0,1 237,68 L214,68 A3,3 0 0,1 211,65 L211,57 A3,3 0 0,1 214,54 Z" />
-    <!-- Heatmap Grid Row 3 -->
-    <path android:fillColor="#38BDF8" android:pathData="M16,72 L44,72 A3,3 0 0,1 47,75 L47,83 A3,3 0 0,1 44,86 L16,86 A3,3 0 0,1 13,83 L13,75 A3,3 0 0,1 16,72 Z" />
-    <path android:fillColor="#00E676" android:pathData="M49,72 L77,72 A3,3 0 0,1 80,75 L80,83 A3,3 0 0,1 77,86 L49,86 A3,3 0 0,1 46,83 L46,75 A3,3 0 0,1 49,72 Z" />
-    <path android:fillColor="#00E676" android:pathData="M82,72 L110,72 A3,3 0 0,1 113,75 L113,83 A3,3 0 0,1 110,86 L82,86 A3,3 0 0,1 79,83 L79,75 A3,3 0 0,1 82,72 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M115,72 L143,72 A3,3 0 0,1 146,75 L146,83 A3,3 0 0,1 143,86 L115,86 A3,3 0 0,1 112,83 L112,75 A3,3 0 0,1 115,72 Z" />
-    <path android:fillColor="#00E676" android:pathData="M148,72 L176,72 A3,3 0 0,1 179,75 L179,83 A3,3 0 0,1 176,86 L148,86 A3,3 0 0,1 145,83 L145,75 A3,3 0 0,1 148,72 Z" />
-    <path android:fillColor="#00E676" android:pathData="M181,72 L209,72 A3,3 0 0,1 212,75 L212,83 A3,3 0 0,1 209,86 L181,86 A3,3 0 0,1 178,83 L178,75 A3,3 0 0,1 181,72 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M214,72 L237,72 A3,3 0 0,1 240,75 L240,83 A3,3 0 0,1 237,86 L214,86 A3,3 0 0,1 211,83 L211,75 A3,3 0 0,1 214,72 Z" />
-    <!-- Footer Legend -->
+        android:fillColor="#F59E0B"
+        android:pathData="M90,13 L106,13 A2,2 0 0,1 108,15 L108,21 A2,2 0 0,1 106,23 L90,23 Z" />
+
+    <!-- Month Labels Preview (Nov Dec Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov) -->
     <path
-        android:fillColor="#64748B"
-        android:pathData="M16,98 L80,98 A2,2 0 0,1 82,100 L82,104 A2,2 0 0,1 80,106 L16,106 Z" />
-    <path android:fillColor="#2D384B" android:pathData="M190,99 L196,99 A1,1 0 0,1 197,100 L197,105 A1,1 0 0,1 196,106 L190,106 Z" />
-    <path android:fillColor="#00E676" android:pathData="M200,99 L206,99 A1,1 0 0,1 207,100 L207,105 A1,1 0 0,1 206,106 L200,106 Z" />
-    <path android:fillColor="#38BDF8" android:pathData="M210,99 L216,99 A1,1 0 0,1 217,100 L217,105 A1,1 0 0,1 216,106 L210,106 Z" />
+        android:fillColor="#7D8590"
+        android:pathData="M24,28 L34,28 A1,1 0 0,1 35,29 L35,32 A1,1 0 0,1 34,33 L24,33 Z M50,28 L60,28 A1,1 0 0,1 61,29 L61,32 A1,1 0 0,1 60,33 L50,33 Z M76,28 L86,28 A1,1 0 0,1 87,29 L87,32 A1,1 0 0,1 86,33 L76,33 Z M102,28 L112,28 A1,1 0 0,1 113,29 L113,32 A1,1 0 0,1 112,33 L102,33 Z M128,28 L138,28 A1,1 0 0,1 139,29 L139,32 A1,1 0 0,1 138,33 L128,33 Z M154,28 L164,28 A1,1 0 0,1 165,29 L165,32 A1,1 0 0,1 164,33 L154,33 Z M180,28 L190,28 A1,1 0 0,1 191,29 L191,32 A1,1 0 0,1 190,33 L180,33 Z M206,28 L216,28 A1,1 0 0,1 217,29 L217,32 A1,1 0 0,1 216,33 L206,33 Z M230,28 L240,28 A1,1 0 0,1 241,29 L241,32 A1,1 0 0,1 240,33 L230,33 Z" />
+
+    <!-- Left Gutter: Mon, Wed, Fri Day Labels -->
+    <path
+        android:fillColor="#7D8590"
+        android:pathData="M14,44 L20,44 A1,1 0 0,1 21,45 L21,48 A1,1 0 0,1 20,49 L14,49 Z M14,60 L20,60 A1,1 0 0,1 21,61 L21,64 A1,1 0 0,1 20,65 L14,65 Z M14,76 L20,76 A1,1 0 0,1 21,77 L21,80 A1,1 0 0,1 20,81 L14,81 Z" />
+
+    <!-- Contribution Heatmap Tiles (Empty Base Matrix) -->
+    <path
+        android:fillColor="#161B22"
+        android:pathData="M25,38 L242,38 A2,2 0 0,1 244,40 L244,88 A2,2 0 0,1 242,90 L25,90 A2,2 0 0,1 23,88 L23,40 A2,2 0 0,1 25,38 Z" />
+
+    <!-- Scattered GitHub Green & Electric Blue Tiles -->
+    <path
+        android:fillColor="#0E4429"
+        android:pathData="M160,42 L165,42 A1,1 0 0,1 166,43 L166,48 A1,1 0 0,1 165,49 L160,49 Z M170,52 L175,52 A1,1 0 0,1 176,53 L176,58 A1,1 0 0,1 175,59 L170,59 Z M190,62 L195,62 A1,1 0 0,1 196,63 L196,68 A1,1 0 0,1 195,69 L190,69 Z M210,42 L215,42 A1,1 0 0,1 216,43 L216,48 A1,1 0 0,1 215,49 L210,49 Z" />
+
+    <path
+        android:fillColor="#006D32"
+        android:pathData="M180,42 L185,42 A1,1 0 0,1 186,43 L186,48 A1,1 0 0,1 185,49 L180,49 Z M190,42 L195,42 A1,1 0 0,1 196,43 L196,48 A1,1 0 0,1 195,49 L190,49 Z M200,52 L205,52 A1,1 0 0,1 206,53 L206,58 A1,1 0 0,1 205,59 L200,59 Z M220,62 L225,62 A1,1 0 0,1 226,63 L226,68 A1,1 0 0,1 225,69 L220,69 Z M230,72 L235,72 A1,1 0 0,1 236,73 L236,78 A1,1 0 0,1 235,79 L230,79 Z" />
+
+    <path
+        android:fillColor="#26A641"
+        android:pathData="M180,52 L185,52 A1,1 0 0,1 186,53 L186,58 A1,1 0 0,1 185,59 L180,59 Z M180,62 L185,62 A1,1 0 0,1 186,63 L186,68 A1,1 0 0,1 185,69 L180,69 Z M210,52 L215,52 A1,1 0 0,1 216,53 L216,58 A1,1 0 0,1 215,59 L210,59 Z M220,42 L225,42 A1,1 0 0,1 226,43 L226,48 A1,1 0 0,1 225,49 L220,49 Z M230,52 L235,52 A1,1 0 0,1 236,53 L236,58 A1,1 0 0,1 235,59 L230,59 Z" />
+
+    <path
+        android:fillColor="#39D353"
+        android:pathData="M180,72 L185,72 A1,1 0 0,1 186,73 L186,78 A1,1 0 0,1 185,79 L180,79 Z M210,62 L215,62 A1,1 0 0,1 216,63 L216,68 A1,1 0 0,1 215,69 L210,69 Z M220,52 L225,52 A1,1 0 0,1 226,53 L226,58 A1,1 0 0,1 225,59 L220,59 Z M230,62 L235,62 A1,1 0 0,1 236,63 L236,68 A1,1 0 0,1 235,69 L230,69 Z" />
+
+    <!-- Surplus Electric Blue -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M230,42 L235,42 A1,1 0 0,1 236,43 L236,48 A1,1 0 0,1 235,49 L230,49 Z M220,72 L225,72 A1,1 0 0,1 226,73 L226,78 A1,1 0 0,1 225,79 L220,79 Z" />
+
+    <!-- Today Cell Ring (White border) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M239,61 L244,61 A1,1 0 0,1 245,62 L245,67 A1,1 0 0,1 244,68 L239,68 A1,1 0 0,1 238,67 L238,62 A1,1 0 0,1 239,61 Z" />
+
+    <!-- Footer: Status Text on Left ("365-day Activity") -->
+    <path
+        android:fillColor="#7D8590"
+        android:pathData="M16,102 L95,102 A1.5,1.5 0 0,1 96.5,103.5 L96.5,107.5 A1.5,1.5 0 0,1 95,109 L16,109 Z" />
+
+    <!-- Footer Legend on Right: "Less [ ][ ][ ][ ][ ] More" -->
+    <path
+        android:fillColor="#7D8590"
+        android:pathData="M165,103 L178,103 A1,1 0 0,1 179,104 L179,108 A1,1 0 0,1 178,109 L165,109 Z" />
+    <path android:fillColor="#161B22" android:strokeColor="#21262D" android:strokeWidth="0.5" android:pathData="M182,103 L188,103 A1,1 0 0,1 189,104 L189,108 A1,1 0 0,1 188,109 L182,109 Z" />
+    <path android:fillColor="#0E4429" android:pathData="M191,103 L197,103 A1,1 0 0,1 198,104 L198,108 A1,1 0 0,1 197,109 L191,109 Z" />
+    <path android:fillColor="#006D32" android:pathData="M200,103 L206,103 A1,1 0 0,1 207,104 L207,108 A1,1 0 0,1 206,109 L200,109 Z" />
+    <path android:fillColor="#26A641" android:pathData="M209,103 L215,103 A1,1 0 0,1 216,104 L216,108 A1,1 0 0,1 215,109 L209,109 Z" />
+    <path android:fillColor="#39D353" android:pathData="M218,103 L224,103 A1,1 0 0,1 225,104 L225,108 A1,1 0 0,1 224,109 L218,109 Z" />
+    <path
+        android:fillColor="#7D8590"
+        android:pathData="M228,103 L242,103 A1,1 0 0,1 243,104 L243,108 A1,1 0 0,1 242,109 L228,109 Z" />
 </vector>

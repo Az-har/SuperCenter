@@ -99,7 +99,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         provideContent {
             val allTrackers by repository.getTrackersWithProgress().collectAsState(initial = initialTrackers)
             val prefs = currentState<Preferences>()
-            val isOneWeek = prefs[KEY_IS_ONE_WEEK] ?: false
             val trackerIndexPref = prefs[KEY_TRACKER_INDEX] ?: 0
 
             val today = TrackerDateUtil.getTodayDateString()
@@ -109,28 +108,23 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     context = context,
                     allTrackers = allTrackers,
                     trackerIndexPref = trackerIndexPref,
-                    isOneWeek = isOneWeek,
                     today = today
                 )
             }
         }
     }
 
-    private fun computeLayoutSpec(size: DpSize, isOneWeek: Boolean): HeatmapLayoutSpec {
-        val padDp = if (size.width < 220.dp) 8f else 10f
-        val showFooterLegend = size.height >= 120.dp
-        val headerHeightDp = 34f
-        val footerHeightDp = if (showFooterLegend) 18f else 0f
-        val spacingDp = if (showFooterLegend) 6f else 4f
+    private fun computeLayoutSpec(size: DpSize): HeatmapLayoutSpec {
+        val padDp = if (size.width < 220.dp) 6f else 8f
+        val headerHeightDp = 30f
+        val spacingDp = 3f
 
-        val availWidthDp = (size.width.value - padDp * 2f).coerceAtLeast(130f)
-        val availHeightDp = (size.height.value - padDp * 2f - headerHeightDp - footerHeightDp - spacingDp).coerceAtLeast(60f)
-
-        val targetWeeks = if (isOneWeek) 1 else 5
+        val availWidthDp = (size.width.value - padDp * 2f).coerceAtLeast(160f)
+        val availHeightDp = (size.height.value - padDp * 2f - headerHeightDp - spacingDp).coerceAtLeast(60f)
 
         return HeatmapLayoutSpec(
-            targetWeeks = targetWeeks,
-            showFooterLegend = showFooterLegend,
+            targetWeeks = 53, // Always 53 weeks (full 1 year GitHub contribution graph!)
+            showFooterLegend = true,
             padDp = padDp,
             availWidthDp = availWidthDp,
             availHeightDp = availHeightDp
@@ -142,17 +136,19 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         context: Context,
         allTrackers: List<TrackerWithProgress>,
         trackerIndexPref: Int,
-        isOneWeek: Boolean,
         today: String
     ) {
         val size = LocalSize.current
-        val padDp = if (size.width < 220.dp) 8.dp else 10.dp
+        val padDp = if (size.width < 220.dp) 6.dp else 8.dp
+        val isDark = HabitGlanceTheme.resolveDarkMode(context)
+
+        val widgetBg = if (isDark) ColorProvider(Color(0xFF0D1117)) else GlanceTheme.colors.surface
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .cornerRadius(20.dp)
-                .background(GlanceTheme.colors.surface)
+                .cornerRadius(16.dp)
+                .background(widgetBg)
                 .padding(padDp)
         ) {
             if (allTrackers.isEmpty()) {
@@ -164,9 +160,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             val activeIndex = ((trackerIndexPref % totalOptions) + totalOptions) % totalOptions
             val isCombinedView = (activeIndex == allTrackers.size)
 
-            val spec = computeLayoutSpec(size, isOneWeek)
-            val isDark = HabitGlanceTheme.resolveDarkMode(context)
-            val renderDensity = context.resources.displayMetrics.density.coerceIn(1.0f, 1.5f)
+            val spec = computeLayoutSpec(size)
+            val renderDensity = context.resources.displayMetrics.density.coerceIn(1.5f, 2.5f)
             val widthPx = (spec.availWidthDp * renderDensity).roundToInt()
             val heightPx = (spec.availHeightDp * renderDensity).roundToInt()
 
@@ -174,21 +169,23 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 val combinedStats = remember(allTrackers, today) {
                     HabitHeatmapUtil.calculateCombinedStreakStats(allTrackers, today)
                 }
-                val combinedItems = remember(allTrackers, today, isOneWeek) {
+                val combinedItems = remember(allTrackers, today) {
                     HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(allTrackers, spec.targetWeeks, today).first
                 }
-                val dataHash = remember(combinedItems) {
-                    combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }.hashCode()
+                val footerText = "Today: ${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers} habits met"
+                val dataHash = remember(combinedItems, footerText) {
+                    "${combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }}#$footerText".hashCode()
                 }
                 val bitmap = remember(dataHash, spec.targetWeeks, widthPx, heightPx, isDark) {
                     HabitHeatmapUtil.renderCombinedHeatmapBitmap(
                         items = combinedItems,
                         numWeeks = spec.targetWeeks,
-                        showMonthLabels = !isOneWeek,
+                        showMonthLabels = true,
                         isDarkMode = isDark,
                         widthPx = widthPx,
                         heightPx = heightPx,
-                        density = renderDensity
+                        density = renderDensity,
+                        footerStatus = footerText
                     )
                 }
 
@@ -198,10 +195,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     isSurplus = combinedStats.isSurplusToday,
                     cycleLabel = "All (${allTrackers.size}) ❯",
                     totalOptions = totalOptions,
-                    isOneWeek = isOneWeek,
                     bitmap = bitmap,
-                    footerStatus = "Today: ${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers} habits met",
-                    showFooterLegend = spec.showFooterLegend,
                     isDark = isDark
                 )
             } else {
@@ -210,23 +204,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 val streakStats = remember(current, today) {
                     HabitHeatmapUtil.calculateStreakStats(tracker, current.logs, today)
                 }
-                val singleItems = remember(current, today, isOneWeek) {
+                val singleItems = remember(current, today) {
                     HabitHeatmapUtil.generateHeatmapGridForWeeks(tracker, current.logs, spec.targetWeeks, today).first
-                }
-                val dataHash = remember(singleItems) {
-                    singleItems.joinToString("|") { "${it.dateString}-${it.level}-${it.completedCount}-${it.isToday}" }.hashCode()
-                }
-                val bitmap = remember(dataHash, spec.targetWeeks, widthPx, heightPx, isDark) {
-                    HabitHeatmapUtil.renderFullBleedHeatmapBitmap(
-                        items = singleItems,
-                        numWeeks = spec.targetWeeks,
-                        showMonthLabels = !isOneWeek,
-                        stackedBands = false,
-                        isDarkMode = isDark,
-                        widthPx = widthPx,
-                        heightPx = heightPx,
-                        density = renderDensity
-                    )
                 }
 
                 val target = tracker.baseDailyTarget.coerceAtLeast(1)
@@ -234,8 +213,24 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 val footerText = when {
                     reps > target -> "⚡ $reps ${tracker.unit} (+${reps - target} surplus!)"
                     reps == target -> "✓ $target ${tracker.unit} completed today"
-                    reps > 0 -> "Today: $reps / $target ${tracker.unit} (${reps * 100 / target}%)"
-                    else -> "Today: 0 / $target ${tracker.unit} due"
+                    reps > 0 -> "Today: $reps / $target ${tracker.unit}"
+                    else -> "Today: 0 / $target ${tracker.unit}"
+                }
+                val dataHash = remember(singleItems, footerText) {
+                    "${singleItems.joinToString("|") { "${it.dateString}-${it.level}-${it.completedCount}-${it.isToday}" }}#$footerText".hashCode()
+                }
+                val bitmap = remember(dataHash, spec.targetWeeks, widthPx, heightPx, isDark) {
+                    HabitHeatmapUtil.renderFullBleedHeatmapBitmap(
+                        items = singleItems,
+                        numWeeks = spec.targetWeeks,
+                        showMonthLabels = true,
+                        stackedBands = false,
+                        isDarkMode = isDark,
+                        widthPx = widthPx,
+                        heightPx = heightPx,
+                        density = renderDensity,
+                        footerStatus = footerText
+                    )
                 }
 
                 HeatmapScaffold(
@@ -244,10 +239,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     isSurplus = streakStats.isSurplusToday,
                     cycleLabel = "${activeIndex + 1}/${allTrackers.size} ❯",
                     totalOptions = totalOptions,
-                    isOneWeek = isOneWeek,
                     bitmap = bitmap,
-                    footerStatus = footerText,
-                    showFooterLegend = spec.showFooterLegend,
                     isDark = isDark
                 )
             }
@@ -261,10 +253,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         isSurplus: Boolean,
         cycleLabel: String,
         totalOptions: Int,
-        isOneWeek: Boolean,
         bitmap: Bitmap,
-        footerStatus: String,
-        showFooterLegend: Boolean,
         isDark: Boolean
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
@@ -272,17 +261,18 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(34.dp),
+                    .height(30.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Title
+                val titleColor = if (isDark) ColorProvider(Color(0xFFF0F6FC)) else GlanceTheme.colors.onSurface
                 Text(
                     text = title,
                     maxLines = 1,
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
-                        color = GlanceTheme.colors.onSurface
+                        color = titleColor
                     ),
                     modifier = GlanceModifier
                         .defaultWeight()
@@ -299,7 +289,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 }
                 val streakTextColor = when {
                     isSurplus -> ColorProvider(Color(0xFF38BDF8))
-                    streakCount > 0 -> ColorProvider(if (isDark) Color(0xFF00E676) else Color(0xFF10B981))
+                    streakCount > 0 -> ColorProvider(if (isDark) Color(0xFF26A641) else Color(0xFF10B981))
                     else -> GlanceTheme.colors.onSurfaceVariant
                 }
 
@@ -327,11 +317,13 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 // Cycle Pill (if multiple options exist)
                 if (totalOptions > 1) {
                     Spacer(modifier = GlanceModifier.width(6.dp))
+                    val pillBg = if (isDark) ColorProvider(Color(0xFF21262D)) else GlanceTheme.colors.surfaceVariant
+                    val pillTextColor = if (isDark) ColorProvider(Color(0xFF8B949E)) else GlanceTheme.colors.onSurfaceVariant
                     Box(
                         modifier = GlanceModifier
-                            .height(28.dp)
-                            .cornerRadius(8.dp)
-                            .background(GlanceTheme.colors.surfaceVariant)
+                            .height(26.dp)
+                            .cornerRadius(6.dp)
+                            .background(pillBg)
                             .clickable(actionRunCallback<HabitHeatmapCycleAction>(
                                 actionParametersOf(HabitHeatmapCycleAction.TotalOptionsKey to totalOptions)
                             ))
@@ -344,38 +336,16 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant
+                                color = pillTextColor
                             )
                         )
                     }
                 }
-
-                // Range Toggle (1W / 1M)
-                Spacer(modifier = GlanceModifier.width(6.dp))
-                Box(
-                    modifier = GlanceModifier
-                        .height(28.dp)
-                        .cornerRadius(8.dp)
-                        .background(GlanceTheme.colors.primaryContainer)
-                        .clickable(actionRunCallback<HabitHeatmapToggleRangeAction>())
-                        .padding(horizontal = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (isOneWeek) "1W" else "1M",
-                        maxLines = 1,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = GlanceTheme.colors.onPrimaryContainer
-                        )
-                    )
-                }
             }
 
-            Spacer(modifier = GlanceModifier.height(4.dp))
+            Spacer(modifier = GlanceModifier.height(3.dp))
 
-            // Heatmap Matrix Canvas Bitmap
+            // Heatmap Matrix Canvas Bitmap (fills entire remaining space)
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -385,76 +355,9 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             ) {
                 Image(
                     provider = ImageProvider(bitmap),
-                    contentDescription = "Habit Contribution Heatmap",
+                    contentDescription = "GitHub Contribution Heatmap",
                     contentScale = ContentScale.Fit,
                     modifier = GlanceModifier.fillMaxSize()
-                )
-            }
-
-            // Footer (Status + Legend)
-            if (showFooterLegend) {
-                Spacer(modifier = GlanceModifier.height(4.dp))
-                HeatmapFooter(footerStatus = footerStatus, isDark = isDark)
-            }
-        }
-    }
-
-    @Composable
-    private fun HeatmapFooter(footerStatus: String, isDark: Boolean) {
-        val swatches = if (isDark) {
-            listOf(
-                Color(0xFF1E2634), // Empty
-                Color(0xFF00E676), // Partial Outline
-                Color(0xFF00E676), // Completed Solid
-                Color(0xFF38BDF8)  // Surplus Blue
-            )
-        } else {
-            listOf(
-                Color(0xFFF1F5F9), // Empty
-                Color(0xFF10B981), // Partial Outline
-                Color(0xFF10B981), // Completed Solid
-                Color(0xFF0284C7)  // Surplus Blue
-            )
-        }
-
-        Row(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = footerStatus,
-                maxLines = 1,
-                style = TextStyle(
-                    fontSize = 10.sp,
-                    color = GlanceTheme.colors.onSurfaceVariant
-                ),
-                modifier = GlanceModifier.defaultWeight()
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Less ",
-                    style = TextStyle(fontSize = 9.sp, color = GlanceTheme.colors.onSurfaceVariant),
-                    modifier = GlanceModifier.padding(end = 2.dp)
-                )
-
-                swatches.forEachIndexed { idx, swatch ->
-                    Box(modifier = GlanceModifier.padding(end = 2.dp)) {
-                        Box(
-                            modifier = GlanceModifier
-                                .size(7.dp)
-                                .cornerRadius(2.dp)
-                                .background(ColorProvider(swatch))
-                        ) {}
-                    }
-                }
-
-                Text(
-                    text = "More",
-                    style = TextStyle(fontSize = 9.sp, color = GlanceTheme.colors.onSurfaceVariant),
-                    modifier = GlanceModifier.padding(start = 1.dp)
                 )
             }
         }
