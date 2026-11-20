@@ -82,8 +82,6 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val SIZE_LARGE = DpSize(320.dp, 200.dp)
         val SIZE_FULL_PAGE = DpSize(320.dp, 280.dp)
         val KEY_TRACKER_INDEX = intPreferencesKey("heatmap_tracker_index")
-        val KEY_IS_ONE_WEEK = booleanPreferencesKey("heatmap_is_one_week")
-        val KEY_IS_365_DAYS = booleanPreferencesKey("heatmap_is_365_days")
     }
 
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
@@ -411,21 +409,5 @@ class HabitHeatmapCycleAction : ActionCallback {
 
     companion object {
         val TotalOptionsKey = ActionParameters.Key<Int>("total_options")
-    }
-}
-
-class HabitHeatmapToggleRangeAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-            prefs.toMutablePreferences().apply {
-                val current = this[HabitHeatmapGlanceWidget.KEY_IS_ONE_WEEK] ?: false
-                this[HabitHeatmapGlanceWidget.KEY_IS_ONE_WEEK] = !current
-            }
-        }
-        HabitHeatmapGlanceWidget().update(context, glanceId)
     }
 }

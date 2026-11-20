@@ -7,7 +7,6 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.PowerManager;
-import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
@@ -40,15 +39,6 @@ public final class AnimationUtil {
     }
 
     /**
-     * Subtle tactile tick on button/card tap.
-     */
-    public static void performHapticFeedback(View view) {
-        if (view != null) {
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
-        }
-    }
-
-    /**
      * Smoothly scales down view on touch down and springs back on touch up/cancel.
      * Integrates subtle haptic feedback on touch down for tactile satisfaction.
      */
@@ -59,7 +49,7 @@ public final class AnimationUtil {
         view.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    performHapticFeedback(v);
+                    HapticUtil.performTap(v);
                     if (!powerSave) {
                         v.animate()
                                 .scaleX(0.965f)

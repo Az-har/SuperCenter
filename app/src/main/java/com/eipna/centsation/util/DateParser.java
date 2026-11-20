@@ -1,17 +1,17 @@
 package com.eipna.centsation.util;
 
-import android.icu.text.SimpleDateFormat;
-
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class DateParser {
-    public static String getStringDate(long timeStamp, String pattern) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat(pattern, Locale.getDefault());
-        return dateFormat.format(new Date(timeStamp));
-    }
+public final class DateParser {
+    private DateParser() {}
 
     public static String format(long timeStamp, String pattern) {
-        return getStringDate(timeStamp, pattern);
+        return new SimpleDateFormat(pattern, Locale.getDefault()).format(new Date(timeStamp));
+    }
+
+    public static String getStringDate(long timeStamp, String pattern) {
+        return format(timeStamp, pattern);
     }
 }

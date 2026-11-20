@@ -9,12 +9,8 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
-import androidx.core.content.edit
 import androidx.core.net.toUri
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -26,23 +22,13 @@ import kotlin.math.max
 object DeviceHardwareOptimizer {
 
     private const val TAG = "HardwareOptimizer"
-    private const val PREFS_NAME = "hardware_telemetry_prefs"
-    private const val KEY_BATTERY_LOGS = "battery_snapshots"
-    private const val MAX_LOGS = 20
-    private const val MIN_LOG_INTERVAL_MS = 60_000L
 
     @Volatile
     private var hasResolvedOriginOsVersion = false
     @Volatile
     private var cachedOriginOsVersion: String? = null
     @Volatile
-    private var lastRecordedAtMs = 0L
-    @Volatile
-    private var lastRecordedPercentage = -1
-    @Volatile
-    private var lastRecordedCharging: Boolean? = null
-    @Volatile
-    private var lastRecordedPowerSave: Boolean? = null
+    private var initialSnapshot: BatterySnapshot? = null
 
     data class BatterySnapshot(
         val level: Int,
@@ -160,8 +146,8 @@ object DeviceHardwareOptimizer {
             health = healthStr
         )
 
-        if (recordTelemetry && shouldRecordSnapshot(snapshot)) {
-            recordSnapshot(appContext, snapshot)
+        if (recordTelemetry && initialSnapshot == null) {
+            initialSnapshot = snapshot
         }
         return snapshot
     }
@@ -248,68 +234,15 @@ object DeviceHardwareOptimizer {
         }
     }
 
-    private fun shouldRecordSnapshot(snapshot: BatterySnapshot): Boolean {
-        val now = snapshot.timestamp
-        if (lastRecordedAtMs == 0L) return true
-        if (now - lastRecordedAtMs >= MIN_LOG_INTERVAL_MS) return true
-        if (abs(snapshot.percentage - lastRecordedPercentage) >= 2) return true
-        if (snapshot.isCharging != lastRecordedCharging) return true
-        if (snapshot.isPowerSaveMode != lastRecordedPowerSave) return true
-        return false
-    }
-
-    private fun recordSnapshot(context: Context, snapshot: BatterySnapshot) {
-        try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val jsonArray = JSONArray(prefs.getString(KEY_BATTERY_LOGS, "[]"))
-
-            val obj = JSONObject().apply {
-                put("level", snapshot.percentage)
-                put("temp", snapshot.temperatureCelsius)
-                put("charging", snapshot.isCharging)
-                put("powerSave", snapshot.isPowerSaveMode)
-                put("ts", snapshot.timestamp)
-            }
-
-            jsonArray.put(obj)
-            // Keep at most MAX_LOGS
-            val trimmed = JSONArray()
-            val start = max(0, jsonArray.length() - MAX_LOGS)
-            for (i in start until jsonArray.length()) {
-                trimmed.put(jsonArray.get(i))
-            }
-
-            prefs.edit { putString(KEY_BATTERY_LOGS, trimmed.toString()) }
-            lastRecordedAtMs = snapshot.timestamp
-            lastRecordedPercentage = snapshot.percentage
-            lastRecordedCharging = snapshot.isCharging
-            lastRecordedPowerSave = snapshot.isPowerSaveMode
-        } catch (_: Exception) {}
-    }
-
     fun getBatteryLogSummary(context: Context): String {
-        return try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val array = JSONArray(prefs.getString(KEY_BATTERY_LOGS, "[]"))
-            if (array.length() < 2) return "Collecting initial battery telemetry..."
-
-            val first = array.getJSONObject(0)
-            val last = array.getJSONObject(array.length() - 1)
-
-            val firstLevel = first.getInt("level")
-            val lastLevel = last.getInt("level")
-            val durationMin = max(1L, (last.getLong("ts") - first.getLong("ts")) / 60000L)
-
-            val drain = firstLevel - lastLevel
-            if (drain > 0) {
-                "Drain: -$drain% over ${durationMin}m (${String.format(Locale.US, "%.1f", (drain.toFloat() / durationMin) * 60f)}%/hr)"
-            } else if (drain < 0) {
-                "Charging: +${-drain}% over ${durationMin}m"
-            } else {
-                "Stable: 0% drain over ${durationMin}m"
-            }
-        } catch (_: Exception) {
-            "Telemetry active"
+        val initial = initialSnapshot ?: return "Collecting initial battery telemetry..."
+        val current = getBatterySnapshot(context, recordTelemetry = false)
+        val durationMin = max(1L, (current.timestamp - initial.timestamp) / 60000L)
+        val drain = initial.percentage - current.percentage
+        return when {
+            drain > 0 -> "Drain: -$drain% over ${durationMin}m"
+            drain < 0 -> "Charging: +${-drain}% over ${durationMin}m"
+            else -> "Stable: 0% drain over ${durationMin}m"
         }
     }
 }
