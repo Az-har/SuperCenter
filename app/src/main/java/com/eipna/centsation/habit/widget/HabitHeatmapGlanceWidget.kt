@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -20,7 +19,6 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -81,7 +79,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val SIZE_TALL_MEDIUM = DpSize(250.dp, 200.dp)
         val SIZE_LARGE = DpSize(320.dp, 200.dp)
         val SIZE_FULL_PAGE = DpSize(320.dp, 280.dp)
-        val KEY_TRACKER_INDEX = intPreferencesKey("heatmap_tracker_index")
+        val KEY_IS_ONE_MONTH = booleanPreferencesKey("heatmap_is_one_month")
     }
 
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
@@ -97,22 +95,21 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         provideContent {
             val allTrackers by repository.getTrackersWithProgress().collectAsState(initial = initialTrackers)
             val prefs = currentState<Preferences>()
-            val trackerIndexPref = prefs[KEY_TRACKER_INDEX] ?: 0
-
+            val isOneMonth = prefs[KEY_IS_ONE_MONTH] ?: false
             val today = TrackerDateUtil.getTodayDateString()
 
             GlanceTheme(colors = HabitGlanceTheme.colorsFor(context)) {
                 HeatmapWidgetRoot(
                     context = context,
                     allTrackers = allTrackers,
-                    trackerIndexPref = trackerIndexPref,
+                    isOneMonth = isOneMonth,
                     today = today
                 )
             }
         }
     }
 
-    private fun computeLayoutSpec(size: DpSize): HeatmapLayoutSpec {
+    private fun computeLayoutSpec(size: DpSize, targetWeeks: Int): HeatmapLayoutSpec {
         val padDp = if (size.width < 220.dp) 6f else 8f
         val headerHeightDp = 30f
         val spacingDp = 3f
@@ -121,7 +118,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         val availHeightDp = (size.height.value - padDp * 2f - headerHeightDp - spacingDp).coerceAtLeast(60f)
 
         return HeatmapLayoutSpec(
-            targetWeeks = 53, // Always 53 weeks (full 1 year GitHub contribution graph!)
+            targetWeeks = targetWeeks,
             showFooterLegend = true,
             padDp = padDp,
             availWidthDp = availWidthDp,
@@ -133,7 +130,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     private fun HeatmapWidgetRoot(
         context: Context,
         allTrackers: List<TrackerWithProgress>,
-        trackerIndexPref: Int,
+        isOneMonth: Boolean,
         today: String
     ) {
         val size = LocalSize.current
@@ -154,93 +151,52 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 return@Box
             }
 
-            val totalOptions = allTrackers.size + 1
-            val activeIndex = ((trackerIndexPref % totalOptions) + totalOptions) % totalOptions
-            val isCombinedView = (activeIndex == allTrackers.size)
-
-            val spec = computeLayoutSpec(size)
+            val targetWeeks = if (isOneMonth) 5 else 1
+            val spec = computeLayoutSpec(size, targetWeeks)
             val renderDensity = context.resources.displayMetrics.density.coerceIn(1.5f, 2.5f)
             val widthPx = (spec.availWidthDp * renderDensity).roundToInt()
             val heightPx = (spec.availHeightDp * renderDensity).roundToInt()
 
-            if (isCombinedView) {
-                val combinedStats = remember(allTrackers, today) {
-                    HabitHeatmapUtil.calculateCombinedStreakStats(allTrackers, today)
-                }
-                val combinedItems = remember(allTrackers, today) {
-                    HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(allTrackers, spec.targetWeeks, today).first
-                }
-                val footerText = "Today: ${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers} habits met"
-                val dataHash = remember(combinedItems, footerText) {
-                    "${combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }}#$footerText".hashCode()
-                }
-                val bitmap = remember(dataHash, spec.targetWeeks, widthPx, heightPx, isDark) {
-                    HabitHeatmapUtil.renderCombinedHeatmapBitmap(
-                        items = combinedItems,
-                        numWeeks = spec.targetWeeks,
-                        showMonthLabels = true,
-                        isDarkMode = isDark,
-                        widthPx = widthPx,
-                        heightPx = heightPx,
-                        density = renderDensity,
-                        footerStatus = footerText
-                    )
-                }
-
-                HeatmapScaffold(
-                    title = "All Habits",
-                    streakCount = combinedStats.currentStreak,
-                    isSurplus = combinedStats.isSurplusToday,
-                    cycleLabel = "All (${allTrackers.size}) ❯",
-                    totalOptions = totalOptions,
-                    bitmap = bitmap,
-                    isDark = isDark
-                )
-            } else {
-                val current = allTrackers[activeIndex]
-                val tracker = current.tracker
-                val streakStats = remember(current, today) {
-                    HabitHeatmapUtil.calculateStreakStats(tracker, current.logs, today)
-                }
-                val singleItems = remember(current, today) {
-                    HabitHeatmapUtil.generateHeatmapGridForWeeks(tracker, current.logs, spec.targetWeeks, today).first
-                }
-
-                val target = tracker.baseDailyTarget.coerceAtLeast(1)
-                val reps = current.todayCompletedReps
-                val footerText = when {
-                    reps > target -> "⚡ $reps ${tracker.unit} (+${reps - target} surplus!)"
-                    reps == target -> "✓ $target ${tracker.unit} completed today"
-                    reps > 0 -> "Today: $reps / $target ${tracker.unit}"
-                    else -> "Today: 0 / $target ${tracker.unit}"
-                }
-                val dataHash = remember(singleItems, footerText) {
-                    "${singleItems.joinToString("|") { "${it.dateString}-${it.level}-${it.completedCount}-${it.isToday}" }}#$footerText".hashCode()
-                }
-                val bitmap = remember(dataHash, spec.targetWeeks, widthPx, heightPx, isDark) {
-                    HabitHeatmapUtil.renderFullBleedHeatmapBitmap(
-                        items = singleItems,
-                        numWeeks = spec.targetWeeks,
-                        showMonthLabels = true,
-                        stackedBands = false,
-                        isDarkMode = isDark,
-                        widthPx = widthPx,
-                        heightPx = heightPx,
-                        density = renderDensity,
-                        footerStatus = footerText
-                    )
-                }
-
-                HeatmapScaffold(
-                    title = tracker.title,
-                    streakCount = streakStats.currentStreak,
-                    isSurplus = streakStats.isSurplusToday,
-                    cycleLabel = "${activeIndex + 1}/${allTrackers.size} ❯",
-                    totalOptions = totalOptions,
-                    bitmap = bitmap,
-                    isDark = isDark
-                )
+            val combinedStats = remember(allTrackers, today) {
+                HabitHeatmapUtil.calculateCombinedStreakStats(allTrackers, today)
             }
+            val combinedItems = remember(allTrackers, today, targetWeeks) {
+                HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(allTrackers, targetWeeks, today).first
+            }
+            val footerText = "Today: ${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers} habits met"
+            val dataHash = remember(combinedItems, footerText, isOneMonth) {
+                "${combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }}#$footerText#$isOneMonth".hashCode()
+            }
+            val bitmap = remember(dataHash, targetWeeks, widthPx, heightPx, isDark) {
+                if (isOneMonth) {
+                    HabitHeatmapUtil.renderCombinedOneMonthBitmap(
+                        items = combinedItems,
+                        isDarkMode = isDark,
+                        widthPx = widthPx,
+                        heightPx = heightPx,
+                        density = renderDensity,
+                        footerStatus = footerText
+                    )
+                } else {
+                    HabitHeatmapUtil.renderCombinedOneWeekBitmap(
+                        items = combinedItems,
+                        isDarkMode = isDark,
+                        widthPx = widthPx,
+                        heightPx = heightPx,
+                        density = renderDensity,
+                        footerStatus = footerText
+                    )
+                }
+            }
+
+            HeatmapScaffold(
+                title = "All Habits",
+                streakCount = combinedStats.currentStreak,
+                isSurplus = combinedStats.isSurplusToday,
+                isOneMonth = isOneMonth,
+                bitmap = bitmap,
+                isDark = isDark
+            )
         }
     }
 
@@ -249,8 +205,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
         title: String,
         streakCount: Int,
         isSurplus: Boolean,
-        cycleLabel: String,
-        totalOptions: Int,
+        isOneMonth: Boolean,
         bitmap: Bitmap,
         isDark: Boolean
     ) {
@@ -312,38 +267,36 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                     )
                 }
 
-                // Cycle Pill (if multiple options exist)
-                if (totalOptions > 1) {
-                    Spacer(modifier = GlanceModifier.width(6.dp))
-                    val pillBg = if (isDark) ColorProvider(Color(0xFF21262D)) else GlanceTheme.colors.surfaceVariant
-                    val pillTextColor = if (isDark) ColorProvider(Color(0xFF8B949E)) else GlanceTheme.colors.onSurfaceVariant
-                    Box(
-                        modifier = GlanceModifier
-                            .height(26.dp)
-                            .cornerRadius(6.dp)
-                            .background(pillBg)
-                            .clickable(actionRunCallback<HabitHeatmapCycleAction>(
-                                actionParametersOf(HabitHeatmapCycleAction.TotalOptionsKey to totalOptions)
-                            ))
-                            .padding(horizontal = 7.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = cycleLabel,
-                            maxLines = 1,
-                            style = TextStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                color = pillTextColor
-                            )
+                Spacer(modifier = GlanceModifier.width(6.dp))
+
+                // 1W / 1M Toggle Pill
+                val toggleLabel = if (isOneMonth) "1M" else "1W"
+                val pillBg = if (isDark) ColorProvider(Color(0xFF21262D)) else GlanceTheme.colors.surfaceVariant
+                val pillTextColor = if (isDark) ColorProvider(Color(0xFF8B949E)) else GlanceTheme.colors.onSurfaceVariant
+                Box(
+                    modifier = GlanceModifier
+                        .height(26.dp)
+                        .cornerRadius(6.dp)
+                        .background(pillBg)
+                        .clickable(actionRunCallback<HabitHeatmapToggleRangeAction>())
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = toggleLabel,
+                        maxLines = 1,
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = pillTextColor
                         )
-                    }
+                    )
                 }
             }
 
             Spacer(modifier = GlanceModifier.height(3.dp))
 
-            // Heatmap Matrix Canvas Bitmap (fills entire remaining space)
+            // Heatmap Canvas Image
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -353,7 +306,7 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
             ) {
                 Image(
                     provider = ImageProvider(bitmap),
-                    contentDescription = "GitHub Contribution Heatmap",
+                    contentDescription = "Habit Activity Heatmap",
                     contentScale = ContentScale.Fit,
                     modifier = GlanceModifier.fillMaxSize()
                 )
@@ -391,23 +344,18 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     }
 }
 
-class HabitHeatmapCycleAction : ActionCallback {
+class HabitHeatmapToggleRangeAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        val totalOptions = parameters[TotalOptionsKey] ?: 1
         updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
             prefs.toMutablePreferences().apply {
-                val current = this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] ?: 0
-                this[HabitHeatmapGlanceWidget.KEY_TRACKER_INDEX] = (current + 1) % totalOptions
+                val current = this[HabitHeatmapGlanceWidget.KEY_IS_ONE_MONTH] ?: false
+                this[HabitHeatmapGlanceWidget.KEY_IS_ONE_MONTH] = !current
             }
         }
         HabitHeatmapGlanceWidget().update(context, glanceId)
-    }
-
-    companion object {
-        val TotalOptionsKey = ActionParameters.Key<Int>("total_options")
     }
 }

@@ -654,15 +654,57 @@ object HabitHeatmapUtil {
         }
 
         // 4. Draw Footer (Bottom Left Status + Bottom Right Legend)
+        drawFooterWithLegend(
+            canvas = canvas,
+            safeWidth = safeWidth,
+            safeHeight = safeHeight,
+            padX = padX,
+            padY = padY,
+            footerH = footerH,
+            cappedDensity = cappedDensity,
+            textPaint = textPaint,
+            fillPaint = fillPaint,
+            strokePaint = strokePaint,
+            emptyFill = emptyFill,
+            emptyStroke = emptyStroke,
+            partialFill = partialFill,
+            partialOutline = partialOutline,
+            greenL3 = greenL3,
+            surplusBlue = surplusBlue,
+            footerStatus = footerStatus
+        )
+
+        return bitmap
+    }
+
+    private fun drawFooterWithLegend(
+        canvas: Canvas,
+        safeWidth: Int,
+        safeHeight: Int,
+        padX: Float,
+        padY: Float,
+        footerH: Float,
+        cappedDensity: Float,
+        textPaint: TextPaint,
+        fillPaint: Paint,
+        strokePaint: Paint,
+        emptyFill: Int,
+        emptyStroke: Int,
+        partialFill: Int,
+        partialOutline: Int,
+        greenL3: Int,
+        surplusBlue: Int,
+        footerStatus: String?
+    ) {
         textPaint.textSize = (footerH * 0.60f).coerceIn(7.5f * cappedDensity, 9.5f * cappedDensity)
         val footerBaseline = safeHeight - padY - 2f * cappedDensity
 
-        // Bottom Right Legend: Less [ ][ ][ ][ ][ ] More
-        val swatchSize = (tileSize * 0.9f).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
-        val swatchGap = (gap * 0.9f).coerceIn(1.5f * cappedDensity, 2.5f * cappedDensity)
+        // Bottom Right Legend: Less [empty] [outline green] [solid green] [solid blue] More
+        val swatchSize = (8f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+        val swatchGap = (2f * cappedDensity).coerceIn(1.5f * cappedDensity, 2.5f * cappedDensity)
         val lessW = textPaint.measureText("Less")
         val moreW = textPaint.measureText("More")
-        val legendSwatchesW = 5 * swatchSize + 4 * swatchGap
+        val legendSwatchesW = 4 * swatchSize + 3 * swatchGap
         val totalLegendW = lessW + 4f * cappedDensity + legendSwatchesW + 4f * cappedDensity + moreW
         var curX = safeWidth - padX - totalLegendW
 
@@ -670,20 +712,36 @@ object HabitHeatmapUtil {
         canvas.drawText("Less", curX, footerBaseline, textPaint)
         curX += lessW + 4f * cappedDensity
 
-        val legendColors = intArrayOf(emptyFill, greenL1, greenL2, greenL3, greenL4)
-        for (i in 0 until 5) {
+        for (i in 0 until 4) {
             val sRect = RectF(
                 curX,
                 footerBaseline - swatchSize + textPaint.descent(),
                 curX + swatchSize,
                 footerBaseline + textPaint.descent()
             )
-            fillPaint.color = legendColors[i]
-            canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
-            if (i == 0) {
-                strokePaint.color = emptyStroke
-                strokePaint.strokeWidth = 0.6f * cappedDensity
-                canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, strokePaint)
+            when (i) {
+                0 -> {
+                    fillPaint.color = emptyFill
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
+                    strokePaint.color = emptyStroke
+                    strokePaint.strokeWidth = 0.6f * cappedDensity
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, strokePaint)
+                }
+                1 -> {
+                    fillPaint.color = partialFill
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
+                    strokePaint.color = partialOutline
+                    strokePaint.strokeWidth = 0.9f * cappedDensity
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, strokePaint)
+                }
+                2 -> {
+                    fillPaint.color = greenL3
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
+                }
+                3 -> {
+                    fillPaint.color = surplusBlue
+                    canvas.drawRoundRect(sRect, swatchSize * 0.22f, swatchSize * 0.22f, fillPaint)
+                }
             }
             curX += swatchSize + swatchGap
         }
@@ -703,8 +761,6 @@ object HabitHeatmapUtil {
                 canvas.drawText(displayStatus, padX, footerBaseline, textPaint)
             }
         }
-
-        return bitmap
     }
 
     /**
@@ -745,12 +801,10 @@ object HabitHeatmapUtil {
     }
 
     /**
-     * Renders a combined heatmap bitmap aggregating all trackers into an authentic GitHub contribution graph.
+     * Renders a 1-Month (5 weeks, ~35 days) combined heatmap bitmap in authentic GitHub contribution style.
      */
-    fun renderCombinedHeatmapBitmap(
+    fun renderCombinedOneMonthBitmap(
         items: List<CombinedDayHeatmapItem>,
-        numWeeks: Int,
-        showMonthLabels: Boolean = true,
         isDarkMode: Boolean,
         widthPx: Int,
         heightPx: Int,
@@ -769,8 +823,8 @@ object HabitHeatmapUtil {
         }
         return renderGitHubContributionGraph(
             cells = cells,
-            numWeeks = numWeeks,
-            showMonthLabels = showMonthLabels,
+            numWeeks = 5,
+            showMonthLabels = true,
             isDarkMode = isDarkMode,
             widthPx = widthPx,
             heightPx = heightPx,
@@ -778,5 +832,210 @@ object HabitHeatmapUtil {
             isCombined = true,
             footerStatus = footerStatus
         )
+    }
+
+    /**
+     * Renders a 1-Week (7 days) combined heatmap bitmap with square tiles, day headers, today indicator, and legend.
+     */
+    fun renderCombinedOneWeekBitmap(
+        items: List<CombinedDayHeatmapItem>,
+        isDarkMode: Boolean,
+        widthPx: Int,
+        heightPx: Int,
+        density: Float,
+        footerStatus: String? = null
+    ): Bitmap {
+        val cappedDensity = density.coerceIn(1.0f, 3.0f)
+        val safeWidth = widthPx.coerceAtLeast(180)
+        val safeHeight = heightPx.coerceAtLeast(80)
+
+        val bitmap = createBitmap(safeWidth, safeHeight, Bitmap.Config.RGB_565)
+        val canvas = Canvas(bitmap)
+
+        val canvasBg = if (isDarkMode) 0xFF0D1117.toInt() else 0xFFFFFFFF.toInt()
+        val textMuted = if (isDarkMode) 0xFF7D8590.toInt() else 0xFF57606A.toInt()
+        val textPrimary = if (isDarkMode) 0xFFF0F6FC.toInt() else 0xFF1F2328.toInt()
+        val emptyFill = if (isDarkMode) 0xFF161B22.toInt() else 0xFFEBEDF0.toInt()
+        val emptyStroke = if (isDarkMode) 0xFF21262D.toInt() else 0xFFD0D7DE.toInt()
+        val partialFill = if (isDarkMode) 0x2626A641.toInt() else 0x2610B981.toInt()
+        val partialOutline = if (isDarkMode) 0xFF26A641.toInt() else 0xFF10B981.toInt()
+        val greenL3 = if (isDarkMode) 0xFF26A641.toInt() else 0xFF30A14E.toInt()
+        val surplusBlue = if (isDarkMode) 0xFF38BDF8.toInt() else 0xFF0284C7.toInt()
+        val todayRing = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF0F172A.toInt()
+
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+        val todayRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = todayRing
+            strokeWidth = 1.6f * cappedDensity
+        }
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textMuted
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+
+        canvas.drawColor(canvasBg)
+
+        val padX = 6f * cappedDensity
+        val padY = 4f * cappedDensity
+        val headerH = 14f * cappedDensity
+        val footerH = 15f * cappedDensity
+        val subtextH = 12f * cappedDensity
+
+        val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
+        val availH = (safeHeight - padY * 2f - headerH - footerH - subtextH).coerceAtLeast(20f)
+
+        val cols = 7
+        val rawTileW = (availW / cols) * 0.72f
+        val tileSize = min(rawTileW, availH).coerceIn(16f * cappedDensity, 34f * cappedDensity)
+        val colStep = availW / cols
+        val tileRadius = (tileSize * 0.22f).coerceIn(2.5f * cappedDensity, 6.0f * cappedDensity)
+
+        val gridStartY = padY + headerH + max(0f, (availH - tileSize) / 2f)
+        val rect = RectF()
+        val ringRect = RectF()
+
+        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
+        for (i in 0 until cols) {
+            val cell = items.getOrNull(i)
+            val colCenterX = padX + i * colStep + colStep / 2f
+            val tileLeft = colCenterX - tileSize / 2f
+            val tileTop = gridStartY
+            rect.set(tileLeft, tileTop, tileLeft + tileSize, tileTop + tileSize)
+
+            val cal = if (cell != null) parseDate(cell.dateString) else null
+            val dayName = if (cal != null) dayNames[cal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY] else dayNames[i]
+            val dayOfMonth = cal?.get(Calendar.DAY_OF_MONTH)?.toString() ?: ""
+            val headerText = if (dayOfMonth.isNotEmpty()) "$dayName $dayOfMonth" else dayName
+
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.textSize = (8.5f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+            textPaint.color = if (cell?.isToday == true) textPrimary else textMuted
+            textPaint.isFakeBoldText = (cell?.isToday == true)
+            canvas.drawText(headerText, colCenterX, padY + headerH - 3f * cappedDensity, textPaint)
+            textPaint.isFakeBoldText = false
+
+            if (cell == null || cell.isFuture) {
+                fillPaint.color = emptyFill
+                canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                strokePaint.color = emptyStroke
+                strokePaint.strokeWidth = 0.8f * cappedDensity
+                canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+            } else {
+                when {
+                    cell.level == 0 -> {
+                        fillPaint.color = emptyFill
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = emptyStroke
+                        strokePaint.strokeWidth = 0.8f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    cell.level in 1..2 -> {
+                        fillPaint.color = partialFill
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                        strokePaint.color = partialOutline
+                        strokePaint.strokeWidth = 1.3f * cappedDensity
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, strokePaint)
+                    }
+                    cell.level == 3 -> {
+                        fillPaint.color = greenL3
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
+                    else -> {
+                        fillPaint.color = surplusBlue
+                        canvas.drawRoundRect(rect, tileRadius, tileRadius, fillPaint)
+                    }
+                }
+
+                if (cell.isToday) {
+                    val pad = 1.0f * cappedDensity
+                    ringRect.set(tileLeft - pad, tileTop - pad, tileLeft + tileSize + pad, tileTop + tileSize + pad)
+                    canvas.drawRoundRect(ringRect, tileRadius + pad, tileRadius + pad, todayRingPaint)
+                }
+
+                // Subtext below tile (e.g. 0/6, 2/6, ✓)
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = (7.5f * cappedDensity).coerceIn(6.5f * cappedDensity, 8.5f * cappedDensity)
+                textPaint.color = when {
+                    cell.level >= 4 -> surplusBlue
+                    cell.level == 3 -> greenL3
+                    cell.level in 1..2 -> partialOutline
+                    else -> textMuted
+                }
+                val subText = when {
+                    cell.level >= 4 && cell.totalCompletedCount > cell.totalTarget -> "+${cell.totalCompletedCount - cell.totalTarget}"
+                    cell.level == 3 -> "✓"
+                    cell.totalTrackers > 0 -> "${cell.trackersCompleted}/${cell.totalTrackers}"
+                    else -> ""
+                }
+                if (subText.isNotEmpty()) {
+                    canvas.drawText(subText, colCenterX, tileTop + tileSize + subtextH - 1f * cappedDensity, textPaint)
+                }
+            }
+        }
+
+        drawFooterWithLegend(
+            canvas = canvas,
+            safeWidth = safeWidth,
+            safeHeight = safeHeight,
+            padX = padX,
+            padY = padY,
+            footerH = footerH,
+            cappedDensity = cappedDensity,
+            textPaint = textPaint,
+            fillPaint = fillPaint,
+            strokePaint = strokePaint,
+            emptyFill = emptyFill,
+            emptyStroke = emptyStroke,
+            partialFill = partialFill,
+            partialOutline = partialOutline,
+            greenL3 = greenL3,
+            surplusBlue = surplusBlue,
+            footerStatus = footerStatus
+        )
+
+        return bitmap
+    }
+
+    /**
+     * Renders a combined heatmap bitmap aggregating all trackers into an authentic GitHub contribution graph.
+     */
+    fun renderCombinedHeatmapBitmap(
+        items: List<CombinedDayHeatmapItem>,
+        numWeeks: Int,
+        showMonthLabels: Boolean = true,
+        isDarkMode: Boolean,
+        widthPx: Int,
+        heightPx: Int,
+        density: Float,
+        footerStatus: String? = null
+    ): Bitmap {
+        return if (numWeeks <= 1) {
+            renderCombinedOneWeekBitmap(items, isDarkMode, widthPx, heightPx, density, footerStatus)
+        } else {
+            val cells = items.map {
+                HeatmapRenderCell(
+                    weekIndex = it.weekIndex,
+                    dayOfWeek = it.dayOfWeek,
+                    dateString = it.dateString,
+                    level = it.level,
+                    isToday = it.isToday,
+                    isFuture = it.isFuture
+                )
+            }
+            renderGitHubContributionGraph(
+                cells = cells,
+                numWeeks = numWeeks,
+                showMonthLabels = showMonthLabels,
+                isDarkMode = isDarkMode,
+                widthPx = widthPx,
+                heightPx = heightPx,
+                density = density,
+                isCombined = true,
+                footerStatus = footerStatus
+            )
+        }
     }
 }

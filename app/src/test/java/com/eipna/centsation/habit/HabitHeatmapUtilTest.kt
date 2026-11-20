@@ -370,4 +370,26 @@ class HabitHeatmapUtilTest {
         val streakStats = HabitHeatmapUtil.calculateStreakStats(sampleTracker, logs, "2026-11-05")
         assertTrue(streakStats.isSurplusToday)
     }
+
+    @Test
+    fun testCombinedHeatmap_1WeekHasExactly7Days() {
+        val (items, numWeeks) = HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+            trackersWithProgress = listOf(TrackerWithProgress(sampleTracker, emptyList(), "2026-11-05")),
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(1, numWeeks)
+        assertEquals(7, items.size)
+    }
+
+    @Test
+    fun testCombinedHeatmap_1MonthHas5Weeks35Days() {
+        val (items, numWeeks) = HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+            trackersWithProgress = listOf(TrackerWithProgress(sampleTracker, emptyList(), "2026-11-05")),
+            numWeeks = 5,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(5, numWeeks)
+        assertEquals(35, items.size)
+    }
 }
