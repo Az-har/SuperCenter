@@ -73,20 +73,12 @@ private data class HeatmapLayoutSpec(
 class HabitHeatmapGlanceWidget : GlanceAppWidget() {
 
     companion object {
-        val SIZE_COMPACT = DpSize(180.dp, 100.dp)
-        val SIZE_MEDIUM = DpSize(250.dp, 115.dp)
-        val SIZE_WIDE = DpSize(320.dp, 130.dp)
-        val SIZE_TALL_MEDIUM = DpSize(250.dp, 200.dp)
-        val SIZE_LARGE = DpSize(320.dp, 200.dp)
-        val SIZE_FULL_PAGE = DpSize(320.dp, 280.dp)
         val KEY_IS_ONE_MONTH = booleanPreferencesKey("heatmap_is_one_month")
     }
 
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
 
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(SIZE_COMPACT, SIZE_MEDIUM, SIZE_WIDE, SIZE_TALL_MEDIUM, SIZE_LARGE, SIZE_FULL_PAGE)
-    )
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = TrackerRepository.getInstance(context)
@@ -112,9 +104,9 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
     private fun computeLayoutSpec(size: DpSize, targetWeeks: Int): HeatmapLayoutSpec {
         val padDp = if (size.width < 220.dp) 6f else 8f
         val headerHeightDp = 30f
-        val spacingDp = 3f
+        val spacingDp = 2f
 
-        val availWidthDp = (size.width.value - padDp * 2f).coerceAtLeast(160f)
+        val availWidthDp = (size.width.value - padDp * 2f).coerceAtLeast(140f)
         val availHeightDp = (size.height.value - padDp * 2f - headerHeightDp - spacingDp).coerceAtLeast(60f)
 
         return HeatmapLayoutSpec(
@@ -164,8 +156,8 @@ class HabitHeatmapGlanceWidget : GlanceAppWidget() {
                 HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(allTrackers, targetWeeks, today).first
             }
             val footerText = "Today: ${combinedStats.trackersCompletedToday}/${combinedStats.totalTrackers} habits met"
-            val dataHash = remember(combinedItems, footerText, isOneMonth) {
-                "${combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }}#$footerText#$isOneMonth".hashCode()
+            val dataHash = remember(combinedItems, footerText, isOneMonth, widthPx, heightPx) {
+                "${combinedItems.joinToString("|") { "${it.dateString}-${it.level}-${it.trackersCompleted}-${it.isToday}" }}#$footerText#$isOneMonth#$widthPx#$heightPx".hashCode()
             }
             val bitmap = remember(dataHash, targetWeeks, widthPx, heightPx, isDark) {
                 if (isOneMonth) {

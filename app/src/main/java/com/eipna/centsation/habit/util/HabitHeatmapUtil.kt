@@ -521,12 +521,15 @@ object HabitHeatmapUtil {
         val availW = (safeWidth - padX * 2f - leftGutter).coerceAtLeast(40f)
         val availH = (safeHeight - padY * 2f - headerH - footerH).coerceAtLeast(30f)
 
-        val gapRatio = 0.22f
+        val initialTileW = availW / cols
+        val initialTileH = availH / 7f
+        val gapRatio = if (cols <= 6 && initialTileW > initialTileH * 1.3f) 0.30f else 0.22f
         val rawTileW = availW / (cols + (cols - 1) * gapRatio)
         val rawTileH = availH / (7f + 6f * gapRatio)
         val tileSize = min(rawTileW, rawTileH).coerceAtLeast(2.5f)
-        val gap = (tileSize * gapRatio).coerceIn(1.2f * cappedDensity, 3.5f * cappedDensity)
-        val tileRadius = (tileSize * 0.22f).coerceIn(1.0f * cappedDensity, 3.0f * cappedDensity)
+        val maxGap = if (cols <= 6) 5.0f * cappedDensity else 3.5f * cappedDensity
+        val gap = (tileSize * gapRatio).coerceIn(1.2f * cappedDensity, maxGap)
+        val tileRadius = (tileSize * 0.22f).coerceIn(1.0f * cappedDensity, 3.5f * cappedDensity)
 
         val actualGridW = cols * tileSize + (cols - 1) * gap
         val actualGridH = 7f * tileSize + 6f * gap
@@ -749,15 +752,18 @@ object HabitHeatmapUtil {
         curX += 4f * cappedDensity - swatchGap
         canvas.drawText("More", curX, footerBaseline, textPaint)
 
-        // Bottom Left Status
+        // Bottom Left Status (Responsive fallback to avoid ugly truncation)
         if (!footerStatus.isNullOrEmpty()) {
-            val maxStatusW = safeWidth - padX - totalLegendW - padX - 8f * cappedDensity
-            if (maxStatusW > 30f * cappedDensity) {
-                val displayStatus = if (textPaint.measureText(footerStatus) > maxStatusW) {
-                    TextUtils.ellipsize(footerStatus, textPaint, maxStatusW, TextUtils.TruncateAt.END).toString()
-                } else {
-                    footerStatus
+            val maxStatusW = safeWidth - padX - totalLegendW - padX - 6f * cappedDensity
+            if (maxStatusW > 20f * cappedDensity) {
+                val candidates = mutableListOf(footerStatus)
+                if (footerStatus.contains(" habits met")) {
+                    candidates.add(footerStatus.replace(" habits met", " met"))
+                    candidates.add(footerStatus.replace(" habits met", ""))
+                    candidates.add(footerStatus.replace("Today: ", "").replace(" habits met", ""))
                 }
+                val bestFit = candidates.firstOrNull { textPaint.measureText(it) <= maxStatusW }
+                val displayStatus = bestFit ?: TextUtils.ellipsize(footerStatus, textPaint, maxStatusW, TextUtils.TruncateAt.END).toString()
                 canvas.drawText(displayStatus, padX, footerBaseline, textPaint)
             }
         }
@@ -879,20 +885,30 @@ object HabitHeatmapUtil {
 
         val padX = 6f * cappedDensity
         val padY = 4f * cappedDensity
-        val headerH = 14f * cappedDensity
         val footerH = 15f * cappedDensity
         val subtextH = 12f * cappedDensity
 
         val availW = (safeWidth - padX * 2f).coerceAtLeast(40f)
-        val availH = (safeHeight - padY * 2f - headerH - footerH - subtextH).coerceAtLeast(20f)
-
         val cols = 7
-        val rawTileW = (availW / cols) * 0.72f
-        val tileSize = min(rawTileW, availH).coerceIn(16f * cappedDensity, 34f * cappedDensity)
         val colStep = availW / cols
+
+        // Determine if single-line day headers fit without overlapping
+        textPaint.textSize = (8.0f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+        val sampleHeaderW = textPaint.measureText("Sun 15")
+        val fitsSingleLine = sampleHeaderW <= (colStep - 4f * cappedDensity)
+        val headerBlockH = if (fitsSingleLine) 13f * cappedDensity else 20f * cappedDensity
+
+        val gapTop = 3.5f * cappedDensity
+        val gapBottom = 3.5f * cappedDensity
+        val availH = (safeHeight - padY * 2f - footerH).coerceAtLeast(30f)
+        val nonTileH = headerBlockH + gapTop + gapBottom + subtextH
+        val maxTileH = (availH - nonTileH).coerceAtLeast(16f * cappedDensity)
+        val rawTileW = colStep * 0.74f
+        val tileSize = min(rawTileW, maxTileH).coerceIn(16f * cappedDensity, 38f * cappedDensity)
         val tileRadius = (tileSize * 0.22f).coerceIn(2.5f * cappedDensity, 6.0f * cappedDensity)
 
-        val gridStartY = padY + headerH + max(0f, (availH - tileSize) / 2f)
+        val totalBlockH = headerBlockH + gapTop + tileSize + gapBottom + subtextH
+        val blockStartY = padY + max(0f, (availH - totalBlockH) / 2f)
         val rect = RectF()
         val ringRect = RectF()
 
@@ -902,19 +918,30 @@ object HabitHeatmapUtil {
             val cell = items.getOrNull(i)
             val colCenterX = padX + i * colStep + colStep / 2f
             val tileLeft = colCenterX - tileSize / 2f
-            val tileTop = gridStartY
+            val tileTop = blockStartY + headerBlockH + gapTop
             rect.set(tileLeft, tileTop, tileLeft + tileSize, tileTop + tileSize)
 
             val cal = if (cell != null) parseDate(cell.dateString) else null
             val dayName = if (cal != null) dayNames[cal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY] else dayNames[i]
             val dayOfMonth = cal?.get(Calendar.DAY_OF_MONTH)?.toString() ?: ""
-            val headerText = if (dayOfMonth.isNotEmpty()) "$dayName $dayOfMonth" else dayName
 
             textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (8.5f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
             textPaint.color = if (cell?.isToday == true) textPrimary else textMuted
             textPaint.isFakeBoldText = (cell?.isToday == true)
-            canvas.drawText(headerText, colCenterX, padY + headerH - 3f * cappedDensity, textPaint)
+
+            if (fitsSingleLine) {
+                textPaint.textSize = (8.5f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+                val headerText = if (dayOfMonth.isNotEmpty()) "$dayName $dayOfMonth" else dayName
+                canvas.drawText(headerText, colCenterX, blockStartY + headerBlockH - 2f * cappedDensity, textPaint)
+            } else {
+                val shortDay = if (colStep < 26f * cappedDensity) dayName.take(1) else dayName
+                textPaint.textSize = (7.5f * cappedDensity).coerceIn(6.5f * cappedDensity, 9.0f * cappedDensity)
+                canvas.drawText(shortDay, colCenterX, blockStartY + 9f * cappedDensity, textPaint)
+                if (dayOfMonth.isNotEmpty()) {
+                    textPaint.textSize = (8.0f * cappedDensity).coerceIn(7f * cappedDensity, 9.5f * cappedDensity)
+                    canvas.drawText(dayOfMonth, colCenterX, blockStartY + 18.5f * cappedDensity, textPaint)
+                }
+            }
             textPaint.isFakeBoldText = false
 
             if (cell == null || cell.isFuture) {
@@ -971,7 +998,8 @@ object HabitHeatmapUtil {
                     else -> ""
                 }
                 if (subText.isNotEmpty()) {
-                    canvas.drawText(subText, colCenterX, tileTop + tileSize + subtextH - 1f * cappedDensity, textPaint)
+                    val subtextY = tileTop + tileSize + gapBottom + subtextH - 2f * cappedDensity
+                    canvas.drawText(subText, colCenterX, subtextY, textPaint)
                 }
             }
         }

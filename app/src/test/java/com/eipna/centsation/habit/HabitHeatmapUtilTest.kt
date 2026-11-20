@@ -392,4 +392,41 @@ class HabitHeatmapUtilTest {
         assertEquals(5, numWeeks)
         assertEquals(35, items.size)
     }
+
+    @Test
+    fun testCombinedHeatmap_levelsDistribution_1Week() {
+        val trackerA = TrackerEntity(id = 1L, title = "Pushups", baseDailyTarget = 10, unit = "reps", scheduledHour = 20, scheduledMinute = 0)
+        val trackerB = TrackerEntity(id = 2L, title = "Read", baseDailyTarget = 20, unit = "pages", scheduledHour = 21, scheduledMinute = 0)
+
+        val logsA = listOf(
+            TrackerLogEntity(id = 1, trackerId = 1, date = "2026-11-05", completedCount = 15), // Surplus (15 > 10)
+            TrackerLogEntity(id = 2, trackerId = 1, date = "2026-11-04", completedCount = 10), // Met
+            TrackerLogEntity(id = 3, trackerId = 1, date = "2026-11-03", completedCount = 3)   // Incomplete
+        )
+        val logsB = listOf(
+            TrackerLogEntity(id = 4, trackerId = 2, date = "2026-11-05", completedCount = 20), // Met
+            TrackerLogEntity(id = 5, trackerId = 2, date = "2026-11-04", completedCount = 20), // Met
+            TrackerLogEntity(id = 6, trackerId = 2, date = "2026-11-03", completedCount = 0)   // 0
+        )
+
+        val twpA = TrackerWithProgress(tracker = trackerA, logs = logsA, todayDate = "2026-11-05")
+        val twpB = TrackerWithProgress(tracker = trackerB, logs = logsB, todayDate = "2026-11-05")
+
+        val (items, numWeeks) = HabitHeatmapUtil.generateCombinedHeatmapGridForWeeks(
+            trackersWithProgress = listOf(twpA, twpB),
+            numWeeks = 1,
+            todayDate = "2026-11-05"
+        )
+        assertEquals(1, numWeeks)
+        assertEquals(7, items.size)
+
+        val todayItem = items.first { it.dateString == "2026-11-05" }
+        assertEquals(4, todayItem.level) // Both met, totalCompleted > totalTarget -> Level 4 (surplus)
+
+        val yesterdayItem = items.first { it.dateString == "2026-11-04" }
+        assertEquals(3, yesterdayItem.level) // Both met -> Level 3 (solid green)
+
+        val twoDaysAgoItem = items.first { it.dateString == "2026-11-03" }
+        assertEquals(1, twoDaysAgoItem.level) // Some activity, no goals met -> Level 1 (green outline)
+    }
 }
